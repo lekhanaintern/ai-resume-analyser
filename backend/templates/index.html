@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Resume Analyzer - Career Path Predictor</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #3b6fd4; --primary-end: #06b6d4; --bg: #f0f2f8;
+            --white: #ffffff; --navbar: #4361d8; --navbar-end: #3b82f6;
+            --text: #1e293b; --muted: #64748b; --border: #e2e8f0;
+            --success: #10b981; --warning: #f59e0b; --danger: #ef4444;
+            --card-shadow: 0 4px 24px rgba(59,111,212,0.10);
+            --grad: linear-gradient(135deg, var(--primary) 0%, var(--primary-end) 100%);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); min-height: 100vh; color: var(--text); }
+        .navbar { background: linear-gradient(90deg, var(--navbar) 0%, var(--navbar-end) 100%); padding: 0 32px; height: 60px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 12px rgba(59,111,212,0.18); position: sticky; top: 0; z-index: 100; }
+        .navbar-brand { font-size: 1.25em; font-weight: 800; color: white; letter-spacing: -0.5px; }
+        .navbar-brand span { font-weight: 400; opacity: 0.85; }
+        .page { max-width: 900px; margin: 0 auto; padding: 36px 20px 60px; }
+        .page-title { text-align: center; margin-bottom: 32px; }
+        .page-title h1 { font-size: 2em; font-weight: 800; background: var(--grad); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin-bottom: 6px; }
+        .page-title p { color: var(--muted); font-size: 0.95em; }
+        .card { background: var(--white); border-radius: 16px; padding: 28px; box-shadow: var(--card-shadow); margin-bottom: 20px; border: 1px solid var(--border); }
+        .upload-area { border: 2.5px dashed #93c5fd; border-radius: 12px; padding: 48px 30px; text-align: center; cursor: pointer; background: #f0f7ff; transition: all 0.25s; }
+        .upload-area:hover, .upload-area.dragover { border-color: var(--primary); background: #e0eeff; }
+        .upload-icon { font-size: 3.5em; margin-bottom: 14px; }
+        .upload-area h3 { font-size: 1.1em; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+        .upload-area p { color: var(--muted); font-size: 0.88em; }
+        #fileInput { display: none; }
+        .file-info { display: none; background: #ecfdf5; padding: 12px 16px; border-radius: 10px; margin-top: 14px; border-left: 4px solid var(--success); font-size: 0.88em; }
+        .file-info.show { display: block; }
+        .file-info strong { color: #065f46; }
+        .btn-grad { width: 100%; padding: 14px; background: var(--grad); color: white; border: none; border-radius: 10px; font-size: 1em; font-weight: 700; cursor: pointer; margin-top: 18px; transition: all 0.25s; font-family: inherit; letter-spacing: 0.3px; }
+        .btn-grad:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(59,111,212,0.3); }
+        .btn-grad:disabled { background: #cbd5e1; cursor: not-allowed; }
+        .btn-secondary { width: 100%; padding: 12px; background: #f1f5f9; color: var(--muted); border: 1px solid var(--border); border-radius: 10px; font-size: 0.95em; font-weight: 600; cursor: pointer; margin-top: 12px; transition: all 0.2s; font-family: inherit; }
+        .btn-secondary:hover { background: #e2e8f0; color: var(--text); }
+        .loading { display: none; text-align: center; padding: 40px; }
+        .loading.show { display: block; }
+        .spinner { border: 4px solid #e2e8f0; border-top: 4px solid var(--primary); border-radius: 50%; width: 48px; height: 48px; animation: spin 0.9s linear infinite; margin: 0 auto 16px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+        .loading h3 { color: var(--primary); font-size: 1em; margin-bottom: 4px; }
+        .loading p { color: var(--muted); font-size: 0.88em; }
+        .results { display: none; }
+        .results.show { display: block; animation: fadeUp 0.4s ease; }
+        .summary-banner { background: var(--grad); border-radius: 14px; padding: 28px; color: white; margin-bottom: 20px; }
+        .summary-banner h2 { font-size: 1.1em; font-weight: 700; margin-bottom: 18px; opacity: 0.9; }
+        .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .summary-tile { background: rgba(255,255,255,0.15); border-radius: 10px; padding: 18px; backdrop-filter: blur(4px); }
+        .summary-tile .tile-label { font-size: 0.78em; opacity: 0.85; margin-bottom: 6px; font-weight: 500; }
+        .summary-tile .tile-value { font-size: 2em; font-weight: 800; line-height: 1; }
+        .summary-tile .tile-sub { font-size: 0.8em; opacity: 0.8; margin-top: 4px; }
+        .section-heading { font-size: 1em; font-weight: 700; color: var(--text); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; padding-bottom: 10px; border-bottom: 2px solid #e0f2fe; }
+        .ats-score-block { text-align: center; padding: 28px; border-radius: 12px; margin-bottom: 20px; }
+        .ats-score-block.excellent { background: linear-gradient(135deg, #d1fae5, #a7f3d0); }
+        .ats-score-block.good { background: linear-gradient(135deg, #dbeafe, #bfdbfe); }
+        .ats-score-block.fair { background: linear-gradient(135deg, #fef3c7, #fde68a); }
+        .ats-score-block.poor { background: linear-gradient(135deg, #fee2e2, #fecaca); }
+        .score-circle { width: 110px; height: 110px; border-radius: 50%; background: white; margin: 0 auto 14px; display: flex; align-items: center; justify-content: center; font-size: 2.4em; font-weight: 800; box-shadow: 0 4px 16px rgba(0,0,0,0.10); }
+        .ats-score-block h3 { font-size: 0.95em; font-weight: 600; color: var(--text); }
+        .details-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-top: 18px; }
+        .detail-item { background: white; border: 1px solid var(--border); border-radius: 10px; padding: 14px; text-align: center; }
+        .detail-item strong { display: block; font-size: 0.75em; color: var(--primary); margin-bottom: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+        .detail-item span { font-size: 0.85em; color: var(--text); font-weight: 500; }
+        .issue-item { padding: 11px 14px; background: #fef2f2; border-radius: 8px; margin-bottom: 8px; border-left: 4px solid var(--danger); font-size: 0.88em; color: #7f1d1d; }
+        .suggestion-item { padding: 11px 14px; background: #f0fdf4; border-radius: 8px; margin-bottom: 8px; border-left: 4px solid var(--success); font-size: 0.88em; color: #14532d; }
+
+        /* RESUME EDITOR */
+        .editor-card { border-radius: 14px; overflow: hidden; margin-bottom: 20px; }
+        .editor-tabs { display: flex; background: #f8fafc; border-bottom: 2px solid var(--border); }
+        .editor-tab { flex: 1; padding: 14px; text-align: center; font-size: 0.88em; font-weight: 700; cursor: pointer; border: none; background: transparent; color: var(--muted); transition: all 0.2s; font-family: inherit; }
+        .editor-tab.active { color: var(--primary); border-bottom: 3px solid var(--primary); background: white; }
+        .editor-tab:hover:not(.active) { background: #f1f5f9; color: var(--text); }
+        .editor-panel { display: none; padding: 20px; }
+        .editor-panel.active { display: block; }
+        .resume-textarea { width: 100%; min-height: 320px; padding: 16px; border: 1.5px solid var(--border); border-radius: 10px; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.88em; line-height: 1.7; color: var(--text); resize: vertical; background: #fafbfc; transition: border 0.2s; outline: none; }
+        .resume-textarea:focus { border-color: var(--primary); background: white; }
+        .editor-actions { display: flex; gap: 10px; margin-top: 12px; }
+        .btn-apply { flex: 1; padding: 11px; background: var(--grad); color: white; border: none; border-radius: 8px; font-size: 0.88em; font-weight: 700; cursor: pointer; font-family: inherit; transition: all 0.2s; }
+        .btn-apply:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(59,111,212,0.3); }
+        .btn-reset-edit { padding: 11px 18px; background: #f1f5f9; color: var(--muted); border: 1px solid var(--border); border-radius: 8px; font-size: 0.88em; font-weight: 600; cursor: pointer; font-family: inherit; transition: all 0.2s; }
+        .btn-reset-edit:hover { background: #e2e8f0; color: var(--text); }
+        .tips-container { display: flex; flex-direction: column; gap: 10px; }
+        .tip-item { padding: 14px 16px; border-radius: 10px; border-left: 4px solid; font-size: 0.87em; line-height: 1.5; }
+        .tip-item.critical { background: #fef2f2; border-color: var(--danger); color: #7f1d1d; }
+        .tip-item.improvement { background: #fffbeb; border-color: var(--warning); color: #78350f; }
+        .tip-item.suggestion { background: #f0fdf4; border-color: var(--success); color: #14532d; }
+        .tip-label { font-weight: 800; font-size: 0.75em; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 4px; display: block; }
+        .char-count { font-size: 0.78em; color: var(--muted); text-align: right; margin-top: 6px; }
+
+        /* BEFORE AFTER */
+        .diff-view { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .diff-panel h4 { font-size: 0.85em; font-weight: 700; margin-bottom: 10px; padding: 8px 12px; border-radius: 8px; }
+        .diff-panel.before h4 { background: #fee2e2; color: #991b1b; }
+        .diff-panel.after h4 { background: #d1fae5; color: #065f46; }
+        .diff-text { font-size: 0.82em; line-height: 1.7; color: var(--text); background: #fafbfc; border: 1px solid var(--border); border-radius: 8px; padding: 14px; min-height: 300px; white-space: pre-wrap; word-break: break-word; max-height: 500px; overflow-y: auto; }
+        .diff-panel.after .diff-text { background: #f0fdf4; border-color: #bbf7d0; }
+        .added-line { background: #bbf7d0; border-radius: 3px; padding: 0 2px; font-weight: 600; color: #065f46; }
+        .ats-improved-badge { display: inline-flex; align-items: center; gap: 6px; background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 6px 14px; border-radius: 20px; font-size: 0.8em; font-weight: 700; margin-bottom: 14px; }
+
+        /* ROLE SELECTION */
+        .role-selection-card { background: linear-gradient(135deg, #f0f7ff, #e8f4fd); border: 1px solid #bfdbfe; border-radius: 14px; padding: 24px; margin-bottom: 20px; }
+        .role-selection-card h3 { font-size: 1em; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+        .role-selection-card p { color: var(--muted); font-size: 0.85em; margin-bottom: 18px; }
+        .role-radio-group { display: flex; flex-direction: column; gap: 10px; }
+        .role-radio-item { display: flex; align-items: center; gap: 14px; padding: 14px 18px; background: white; border: 2px solid var(--border); border-radius: 12px; cursor: pointer; transition: all 0.2s; }
+        .role-radio-item:hover { border-color: var(--primary); background: #f0f7ff; }
+        .role-radio-item.selected { border-color: var(--primary); background: linear-gradient(135deg, #eff6ff, #e0f2fe); box-shadow: 0 2px 12px rgba(59,111,212,0.15); }
+        .role-radio-item input[type="radio"] { display: none; }
+        .role-radio-dot { width: 20px; height: 20px; border-radius: 50%; border: 2px solid #cbd5e1; background: white; flex-shrink: 0; transition: all 0.2s; display: flex; align-items: center; justify-content: center; }
+        .role-radio-item.selected .role-radio-dot { border-color: var(--primary); background: var(--primary); }
+        .role-radio-item.selected .role-radio-dot::after { content: ''; width: 8px; height: 8px; border-radius: 50%; background: white; }
+        .role-radio-info { flex: 1; }
+        .role-radio-name { font-weight: 700; font-size: 0.95em; color: var(--text); }
+        .role-radio-conf { font-size: 0.8em; color: var(--muted); margin-top: 2px; }
+        .role-radio-badge { background: var(--grad); color: white; padding: 3px 10px; border-radius: 20px; font-size: 0.75em; font-weight: 700; }
+        .btn-confirm-role { width: 100%; padding: 13px; background: var(--grad); color: white; border: none; border-radius: 10px; font-size: 0.95em; font-weight: 700; cursor: pointer; margin-top: 16px; transition: all 0.25s; font-family: inherit; }
+        .btn-confirm-role:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(59,111,212,0.3); }
+        .btn-confirm-role:disabled { background: #cbd5e1; cursor: not-allowed; }
+
+        /* MCQ SECTION */
+        .mcq-section { background: linear-gradient(135deg, #ecfdf5, #d1fae5); border: 1px solid #a7f3d0; border-radius: 14px; padding: 28px; text-align: center; margin-bottom: 20px; }
+        .mcq-section h3 { font-size: 1.05em; font-weight: 700; color: #065f46; margin-bottom: 8px; }
+        .mcq-section p { color: #047857; font-size: 0.88em; margin-bottom: 6px; }
+        .mcq-role-badge { display: inline-block; background: var(--grad); color: white; padding: 4px 16px; border-radius: 20px; font-size: 0.82em; font-weight: 700; margin-bottom: 18px; }
+        .btn-take-test { background: var(--grad); color: white; border: none; padding: 13px 36px; font-size: 1em; border-radius: 50px; cursor: pointer; font-weight: 700; font-family: inherit; transition: all 0.25s; box-shadow: 0 4px 16px rgba(59,111,212,0.3); }
+        .btn-take-test:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(59,111,212,0.4); }
+        .error-message { display: none; padding: 12px 16px; background: #fef2f2; color: #991b1b; border-radius: 8px; border-left: 4px solid var(--danger); margin-top: 14px; font-size: 0.88em; }
+        .error-message.show { display: block; }
+        .footer { text-align: center; color: var(--muted); font-size: 0.8em; margin-top: 20px; }
+        @media (max-width: 600px) { .summary-grid { grid-template-columns: 1fr; } .page-title h1 { font-size: 1.5em; } .diff-view { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+<nav class="navbar">
+    <div class="navbar-brand">AI Resume<span>Analyzer</span></div>
+</nav>
+
+<div class="page">
+    <div class="page-title">
+        <h1>🎯 AI Resume Analyzer</h1>
+        <p>Upload your resume and discover your ideal career path</p>
+    </div>
+
+    <div class="card" id="uploadCard">
+        <div class="upload-area" id="uploadArea">
+            <div class="upload-icon">📄</div>
+            <h3>Drop your resume here or click to browse</h3>
+            <p>Supports PDF and DOCX files (Max 50MB)</p>
+            <input type="file" id="fileInput" accept=".pdf,.docx" />
+        </div>
+        <div class="file-info" id="fileInfo">
+            <strong>Selected File:</strong> <span id="fileName"></span> (<span id="fileSize"></span>)
+        </div>
+        <button class="btn-grad" id="analyzeBtn" disabled>🚀 Analyze Resume</button>
+        <div class="error-message" id="errorMessage"></div>
+    </div>
+
+    <div class="card loading" id="loadingCard">
+        <div class="spinner"></div>
+        <h3>Analyzing your resume...</h3>
+        <p>This may take a few seconds</p>
+    </div>
+
+    <div class="results" id="results">
+
+        <div class="summary-banner" id="summaryCard" style="display:none;">
+            <h2>📊 Analysis Summary</h2>
+            <div class="summary-grid">
+                <div class="summary-tile">
+                    <div class="tile-label">ATS Score</div>
+                    <div class="tile-value" id="summaryAtsScore">--</div>
+                </div>
+                <div class="summary-tile">
+                    <div class="tile-label">Selected Role</div>
+                    <div class="tile-value" style="font-size:1.2em;" id="summaryRole">--</div>
+                    <div class="tile-sub" id="summaryConfidence">--</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="ats-score-block" id="atsScore">
+                <h2 style="font-size:1em;font-weight:700;margin-bottom:14px;">ATS Friendliness Score</h2>
+                <div class="score-circle" id="scoreCircle">--</div>
+                <h3 id="atsOverall">--</h3>
+                <div class="details-grid" id="atsDetails"></div>
+            </div>
+            <div id="issuesSection" style="display:none; margin-top:16px;">
+                <div class="section-heading">⚠️ Issues Found</div>
+                <div id="issuesList"></div>
+            </div>
+            <div id="suggestionsSection" style="display:none; margin-top:16px;">
+                <div class="section-heading">💡 Suggestions for Improvement</div>
+                <div id="suggestionsList"></div>
+            </div>
+        </div>
+
+        <!-- RESUME EDITOR -->
+        <div class="card editor-card" id="resumeEditorCard" style="display:none;">
+            <div style="padding: 20px 20px 0;">
+                <div class="section-heading">✏️ Resume Editor & Enhancement Tips</div>
+            </div>
+            <div class="editor-tabs">
+                <button class="editor-tab active" onclick="switchTab('tips')">💡 Tips to Improve</button>
+                <button class="editor-tab" onclick="switchTab('editor')">✏️ Edit Resume</button>
+                <button class="editor-tab" onclick="switchTab('compare')">👁️ Before & After</button>
+            </div>
+
+            <div class="editor-panel active" id="panel-tips">
+                <p style="color:var(--muted);font-size:0.85em;margin-bottom:16px;">Smart suggestions generated from your actual resume using NLP analysis:</p>
+                <div class="tips-container" id="tipsList"></div>
+            </div>
+
+            <div class="editor-panel" id="panel-editor">
+                <p style="color:var(--muted);font-size:0.85em;margin-bottom:12px;">Your extracted resume text is shown below. Edit it manually or click <strong>"Auto-Improve"</strong> to apply ATS fixes automatically.</p>
+                <textarea class="resume-textarea" id="resumeEditArea" placeholder="Loading your resume text..."></textarea>
+                <div class="char-count" id="charCount">0 characters</div>
+                <div class="editor-actions">
+                    <button class="btn-apply" onclick="autoImprove()">⚡ Auto-Improve for ATS</button>
+                    <button class="btn-reset-edit" onclick="resetEdit()">↩️ Reset</button>
+                </div>
+            </div>
+
+            <div class="editor-panel" id="panel-compare">
+                <div class="ats-improved-badge" id="improvementBadge" style="display:none;">✅ ATS Improvements Applied</div>
+                <p style="color:var(--muted);font-size:0.85em;margin-bottom:16px;">Left: your original resume. Right: ATS-optimized version with improvements highlighted.</p>
+                <div class="diff-view">
+                    <div class="diff-panel before">
+                        <h4>📄 Original Resume</h4>
+                        <div class="diff-text" id="diffBefore"></div>
+                    </div>
+                    <div class="diff-panel after">
+                        <h4>✨ ATS-Optimized Resume</h4>
+                        <div class="diff-text" id="diffAfter"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ROLE SELECTION -->
+        <div class="role-selection-card" id="roleSelectionCard" style="display:none;">
+            <h3>🎯 Select Your Preferred Role</h3>
+            <p>Our ML model predicted these top matches. Select the role you're most interested in — your MCQ test will be fetched from the database based on your choice.</p>
+            <div class="role-radio-group" id="roleRadioGroup"></div>
+            <button class="btn-confirm-role" id="confirmRoleBtn" onclick="confirmRoleSelection()" disabled>
+                ✅ Confirm Role & Take MCQ Test
+            </button>
+        </div>
+
+        <div class="mcq-section" id="mcqTestSection" style="display:none;">
+            <h3>🎓 Ready to test your knowledge?</h3>
+            <p>Your MCQ test is ready for:</p>
+            <div class="mcq-role-badge" id="mcqRoleBadge">--</div>
+            <br>
+            <button class="btn-take-test" onclick="goToMCQTest()">🎯 Take MCQ Test</button>
+        </div>
+
+        <div class="card">
+            <button class="btn-secondary" id="resetBtn">🔄 Analyze Another Resume</button>
+        </div>
+    </div>
+
+    <div class="footer">Powered by Machine Learning & Natural Language Processing</div>
+</div>
+
+<script>
+    const API_URL = 'http://localhost:5000/api';
+    const MAX_FILE_SIZE = 50 * 1024 * 1024;
+
+    let selectedFile = null;
+    let originalResumeText = '';
+    let editedResumeText = '';
+    let currentAtsData = null;
+    let currentAnalysis = null;
+
+    const uploadArea = document.getElementById('uploadArea');
+    const fileInput = document.getElementById('fileInput');
+    const fileInfo = document.getElementById('fileInfo');
+    const analyzeBtn = document.getElementById('analyzeBtn');
+    const errorMessage = document.getElementById('errorMessage');
+    const uploadCard = document.getElementById('uploadCard');
+    const loadingCard = document.getElementById('loadingCard');
+    const results = document.getElementById('results');
+    const resetBtn = document.getElementById('resetBtn');
+
+    uploadArea.addEventListener('click', () => fileInput.click());
+    uploadArea.addEventListener('dragover', (e) => { e.preventDefault(); uploadArea.classList.add('dragover'); });
+    uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
+    uploadArea.addEventListener('drop', (e) => {
+        e.preventDefault(); uploadArea.classList.remove('dragover');
+        if (e.dataTransfer.files.length > 0) handleFileSelect(e.dataTransfer.files[0]);
+    });
+    fileInput.addEventListener('change', (e) => { if (e.target.files.length > 0) handleFileSelect(e.target.files[0]); });
+
+    function handleFileSelect(file) {
+        errorMessage.classList.remove('show');
+        const validTypes = ['application/pdf','application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+        if (!validTypes.includes(file.type)) { showError('Please upload a PDF or DOCX file'); return; }
+        if (file.size > MAX_FILE_SIZE) { showError('File size must be less than 50MB'); return; }
+        selectedFile = file;
+        document.getElementById('fileName').textContent = file.name;
+        document.getElementById('fileSize').textContent = formatFileSize(file.size);
+        fileInfo.classList.add('show');
+        analyzeBtn.disabled = false;
+    }
+
+    function formatFileSize(bytes) {
+        if (bytes < 1024) return bytes + ' B';
+        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB';
+        return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+    }
+
+    function showError(msg) { errorMessage.textContent = msg; errorMessage.classList.add('show'); }
+
+    analyzeBtn.addEventListener('click', async () => {
+        if (!selectedFile) return;
+        errorMessage.classList.remove('show');
+        uploadCard.style.display = 'none';
+        loadingCard.classList.add('show');
+        results.classList.remove('show');
+        try {
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            const response = await fetch(`${API_URL}/upload-resume`, { method: 'POST', body: formData });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Failed to analyze resume');
+            loadingCard.classList.remove('show');
+            displayResults(data);
+            results.classList.add('show');
+        } catch (error) {
+            loadingCard.classList.remove('show');
+            uploadCard.style.display = 'block';
+            showError(error.message || 'Failed to analyze resume. Please try again.');
+        }
+    });
+
+    function displayResults(data) {
+        currentAtsData = data.ats_check;
+        currentAnalysis = data.analysis;
+
+        document.getElementById('summaryAtsScore').textContent = data.ats_check.score;
+        if (data.analysis) {
+            document.getElementById('summaryRole').textContent = data.analysis.predicted_role;
+            document.getElementById('summaryConfidence').textContent = `${(data.analysis.confidence * 100).toFixed(1)}% confidence`;
+        } else {
+            document.getElementById('summaryRole').textContent = 'N/A';
+            document.getElementById('summaryConfidence').textContent = 'Score below 70%';
+        }
+        document.getElementById('summaryCard').style.display = 'block';
+        displayATSResults(data.ats_check);
+        setupResumeEditor(data);
+        if (data.analysis) {
+            setupRoleSelection(data.analysis);
+            document.getElementById('roleSelectionCard').style.display = 'block';
+        }
+    }
+
+    function displayATSResults(atsCheck) {
+        const score = atsCheck.score;
+        const scoreCircle = document.getElementById('scoreCircle');
+        const atsScore = document.getElementById('atsScore');
+        scoreCircle.textContent = score;
+        scoreCircle.style.color = score >= 85 ? '#059669' : score >= 70 ? '#2563eb' : score >= 50 ? '#d97706' : '#dc2626';
+        document.getElementById('atsOverall').textContent = atsCheck.overall;
+        atsScore.className = 'ats-score-block';
+        if (score >= 85) atsScore.classList.add('excellent');
+        else if (score >= 70) atsScore.classList.add('good');
+        else if (score >= 50) atsScore.classList.add('fair');
+        else atsScore.classList.add('poor');
+
+        document.getElementById('atsDetails').innerHTML = Object.entries(atsCheck.details)
+            .map(([key, value]) => `<div class="detail-item"><strong>${formatKey(key)}</strong><span>${value}</span></div>`).join('');
+
+        if (atsCheck.issues && atsCheck.issues.length > 0) {
+            document.getElementById('issuesSection').style.display = 'block';
+            document.getElementById('issuesList').innerHTML = atsCheck.issues.map(i => `<div class="issue-item">⚠️ ${i}</div>`).join('');
+        } else { document.getElementById('issuesSection').style.display = 'none'; }
+
+        if (atsCheck.suggestions && atsCheck.suggestions.length > 0) {
+            document.getElementById('suggestionsSection').style.display = 'block';
+            document.getElementById('suggestionsList').innerHTML = atsCheck.suggestions.map(s => `<div class="suggestion-item">💡 ${s}</div>`).join('');
+        } else { document.getElementById('suggestionsSection').style.display = 'none'; }
+    }
+
+    // ===== RESUME EDITOR =====
+    function setupResumeEditor(data) {
+        originalResumeText = data.resume_text || 'Could not extract resume text.';
+        editedResumeText = originalResumeText;
+
+        const textarea = document.getElementById('resumeEditArea');
+        textarea.value = originalResumeText;
+        updateCharCount(originalResumeText);
+
+        // Set original in both panels initially
+        document.getElementById('diffBefore').textContent = originalResumeText;
+        document.getElementById('diffAfter').textContent = originalResumeText;
+
+        renderTipsFromBackend(data);
+        document.getElementById('resumeEditorCard').style.display = 'block';
+    }
+
+    function renderTipsFromBackend(data) {
+        const tips = [];
+        const ats = data.ats_check;
+        if (ats.issues) ats.issues.forEach(i => tips.push({ type: 'critical', label: '🚨 Issue', text: i }));
+        if (ats.suggestions) ats.suggestions.forEach(s => tips.push({ type: 'improvement', label: '💡 Suggestion', text: s }));
+
+        const container = document.getElementById('tipsList');
+        if (tips.length === 0) {
+            container.innerHTML = '<div class="tip-item suggestion"><span class="tip-label">✅ Great Resume!</span>No major issues found. Your resume is ATS-optimized!</div>';
+        } else {
+            container.innerHTML = tips.map(t => `
+                <div class="tip-item ${t.type}">
+                    <span class="tip-label">${t.label}</span>${t.text}
+                </div>`).join('');
+        }
+    }
+
+    // ===== AUTO IMPROVE — applies ATS fixes to actual resume text =====
+    function autoImprove() {
+        let improved = document.getElementById('resumeEditArea').value;
+        const ats = currentAtsData;
+        const analysis = currentAnalysis;
+        const textLower = improved.toLowerCase();
+        const additions = [];
+
+        // 1. Add missing contact info placeholders if not present
+        const hasEmail = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/.test(improved);
+        const hasPhone = /(\+\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/.test(improved);
+        const hasLinkedIn = textLower.includes('linkedin');
+
+        let contactAdditions = [];
+        if (!hasEmail) contactAdditions.push('[your.email@example.com]');
+        if (!hasPhone) contactAdditions.push('[+91-XXXXXXXXXX]');
+        if (!hasLinkedIn) contactAdditions.push('[linkedin.com/in/your-profile]');
+
+        if (contactAdditions.length > 0) {
+            improved = contactAdditions.join(' | ') + '\n\n' + improved;
+            additions.push('Added missing contact information at the top');
+        }
+
+        // 2. Add missing sections
+        const missingSections = [];
+        if (!textLower.includes('summary') && !textLower.includes('objective') && !textLower.includes('profile')) {
+            missingSections.push('\nPROFESSIONAL SUMMARY\n[Write a 2-3 sentence summary highlighting your key skills, experience, and career goals relevant to your target role.]\n');
+            additions.push('Added Professional Summary section');
+        }
+        if (!textLower.includes('skills') && !textLower.includes('competencies')) {
+            missingSections.push('\nKEY SKILLS\n[List your top technical and soft skills here, separated by commas]\n');
+            additions.push('Added Skills section');
+        }
+        if (!textLower.includes('education') && !textLower.includes('degree')) {
+            missingSections.push('\nEDUCATION\n[Degree Name] - [University Name] | [Year]\n');
+            additions.push('Added Education section');
+        }
+
+        if (missingSections.length > 0) {
+            improved = improved + '\n' + missingSections.join('\n');
+        }
+
+        // 3. Add role-specific keywords section if missing
+        if (analysis) {
+            const roleKeywords = {
+                'DATA-SCIENCE': ['Python', 'Machine Learning', 'SQL', 'TensorFlow', 'Pandas', 'NumPy', 'Data Analysis', 'Scikit-learn'],
+                'WEB-DEVELOPER': ['HTML5', 'CSS3', 'JavaScript', 'React.js', 'Node.js', 'REST API', 'Git', 'Responsive Design'],
+                'HR': ['Talent Acquisition', 'Onboarding', 'HRIS', 'Performance Management', 'Employee Relations', 'Payroll'],
+                'DESIGNER': ['Figma', 'Adobe XD', 'UI/UX Design', 'Wireframing', 'Prototyping', 'Typography', 'User Research'],
+                'ENGINEERING': ['CAD', 'Project Management', 'Quality Control', 'Technical Documentation', 'Six Sigma'],
+                'FINANCE': ['Financial Analysis', 'Excel', 'Budgeting', 'Forecasting', 'GAAP', 'Variance Analysis'],
+                'HEALTHCARE': ['Patient Care', 'EMR/EHR', 'Clinical Procedures', 'HIPAA Compliance', 'Triage'],
+                'SALES': ['CRM', 'Lead Generation', 'Negotiation', 'Pipeline Management', 'Revenue Growth', 'Client Retention'],
+                'INFORMATION-TECHNOLOGY': ['Network Administration', 'Cybersecurity', 'Cloud Computing', 'AWS', 'Linux', 'Troubleshooting'],
+                'CHEF': ['Mise en Place', 'HACCP', 'Food Safety', 'Menu Planning', 'Kitchen Management', 'Culinary Arts'],
+                'FITNESS': ['Personal Training', 'Nutrition Counseling', 'HIIT', 'Program Design', 'Client Assessment', 'CPR Certified'],
+                'BANKING': ['KYC', 'AML', 'Risk Management', 'Financial Products', 'Regulatory Compliance', 'Credit Analysis'],
+                'ACCOUNTANT': ['GAAP', 'Tax Preparation', 'Auditing', 'Tally', 'QuickBooks', 'Financial Reporting', 'GST'],
+                'ADVOCATE': ['Legal Research', 'Litigation', 'Contract Drafting', 'Due Diligence', 'Client Counseling'],
+                'TEACHER': ['Lesson Planning', 'Curriculum Development', 'Classroom Management', 'Student Assessment', 'Differentiated Instruction'],
+            };
+
+            const role = analysis.normalized_role || analysis.predicted_role.toUpperCase().replace(/ /g, '-');
+            const keywords = roleKeywords[role] || [];
+            const missingKw = keywords.filter(k => !textLower.includes(k.toLowerCase()));
+
+            if (missingKw.length > 0) {
+                // Check if skills section exists — append keywords there, or add new section
+                if (textLower.includes('skills') || textLower.includes('competencies')) {
+                    improved = improved + `\n\n[💡 ATS TIP: Consider adding these ${analysis.predicted_role} keywords to your Skills section: ${missingKw.join(', ')}]`;
+                } else {
+                    improved = improved + `\n\nRELEVANT SKILLS FOR ${analysis.predicted_role.toUpperCase()}\n${missingKw.join(', ')}\n`;
+                }
+                additions.push(`Added ${missingKw.length} missing ${analysis.predicted_role} keywords`);
+            }
+        }
+
+        // 4. Add action verb improvement note if needed
+        const actionVerbs = ['developed','managed','led','created','implemented','designed','analyzed','improved','achieved','delivered','increased','reduced','launched','built','optimized'];
+        const foundVerbs = actionVerbs.filter(v => textLower.includes(v));
+        if (foundVerbs.length < 4) {
+            const missingVerbs = actionVerbs.filter(v => !textLower.includes(v));
+            improved = improved + `\n\n[💡 ATS TIP: Strengthen your bullet points with action verbs like: ${missingVerbs.slice(0,6).join(', ')}]`;
+            additions.push('Added action verb suggestions');
+        }
+
+        // 5. Add quantification reminder if no numbers found
+        const hasNumbers = /\b\d+[\%\+]?\b/.test(improved);
+        if (!hasNumbers) {
+            improved = improved + '\n\n[💡 ATS TIP: Add quantified achievements e.g. "Increased sales by 30%", "Managed team of 10", "Reduced costs by $5K"]';
+            additions.push('Added quantification reminder');
+        }
+
+        // Update textarea and diff
+        document.getElementById('resumeEditArea').value = improved;
+        editedResumeText = improved;
+        updateCharCount(improved);
+
+        // Auto switch to compare tab to show the difference
+        document.getElementById('diffBefore').textContent = originalResumeText;
+        document.getElementById('diffAfter').textContent = improved;
+        document.getElementById('improvementBadge').style.display = 'inline-flex';
+
+        // Show what was added
+        const summary = additions.length > 0
+            ? `✅ ${additions.length} ATS improvements applied:\n• ${additions.join('\n• ')}`
+            : '✅ Your resume already looks ATS-optimized!';
+
+        alert(summary + '\n\nSwitch to "Before & After" tab to see the full comparison!');
+        switchTab('compare');
+    }
+
+    function updateCharCount(text) {
+        document.getElementById('charCount').textContent =
+            `${text.length} characters | ${text.split(/\s+/).filter(w => w).length} words`;
+    }
+
+    document.getElementById('resumeEditArea').addEventListener('input', function() {
+        updateCharCount(this.value);
+        editedResumeText = this.value;
+    });
+
+    function switchTab(tab) {
+        const tabs = ['tips', 'editor', 'compare'];
+        document.querySelectorAll('.editor-tab').forEach((t, i) => t.classList.toggle('active', tabs[i] === tab));
+        document.querySelectorAll('.editor-panel').forEach(p => p.classList.remove('active'));
+        document.getElementById(`panel-${tab}`).classList.add('active');
+        if (tab === 'compare') {
+            document.getElementById('diffBefore').textContent = originalResumeText;
+            document.getElementById('diffAfter').textContent = editedResumeText;
+        }
+    }
+
+    function resetEdit() {
+        if (confirm('Reset to original resume text? All edits will be lost.')) {
+            document.getElementById('resumeEditArea').value = originalResumeText;
+            editedResumeText = originalResumeText;
+            updateCharCount(originalResumeText);
+            document.getElementById('diffAfter').textContent = originalResumeText;
+            document.getElementById('improvementBadge').style.display = 'none';
+        }
+    }
+
+    // ===== ROLE SELECTION =====
+    function setupRoleSelection(analysis) {
+        window.allTop3 = analysis.top_3_roles;
+        window.currentRawRole = analysis.top_3_roles[0][0];
+        window.currentNormalizedRole = analysis.normalized_role;
+
+        const container = document.getElementById('roleRadioGroup');
+        container.innerHTML = analysis.top_3_roles.map(([role, prob], i) => `
+            <label class="role-radio-item ${i === 0 ? 'selected' : ''}" onclick="selectRole(this, '${role}')">
+                <input type="radio" name="roleSelect" value="${role}" ${i === 0 ? 'checked' : ''} />
+                <div class="role-radio-dot"></div>
+                <div class="role-radio-info">
+                    <div class="role-radio-name">${role}</div>
+                    <div class="role-radio-conf">${(prob * 100).toFixed(1)}% match confidence</div>
+                </div>
+                ${i === 0 ? '<span class="role-radio-badge">Best Match</span>' : ''}
+            </label>
+        `).join('');
+        document.getElementById('confirmRoleBtn').disabled = false;
+    }
+
+    function selectRole(el, rawRole) {
+        document.querySelectorAll('.role-radio-item').forEach(item => item.classList.remove('selected'));
+        el.classList.add('selected');
+        el.querySelector('input').checked = true;
+        window.currentRawRole = rawRole;
+        window.currentNormalizedRole = rawRole.toUpperCase().replace(/ /g, '-');
+    }
+
+    function confirmRoleSelection() {
+        document.getElementById('summaryRole').textContent = window.currentRawRole;
+        document.getElementById('mcqRoleBadge').textContent = window.currentRawRole;
+        document.getElementById('mcqTestSection').style.display = 'block';
+        document.getElementById('roleSelectionCard').style.display = 'none';
+        setTimeout(() => document.getElementById('mcqTestSection').scrollIntoView({ behavior: 'smooth', block: 'center' }), 300);
+    }
+
+    function goToMCQTest() {
+        const role = window.currentNormalizedRole || 'DEFAULT';
+        window.location.href = `/mcq_test?role=${encodeURIComponent(role)}`;
+    }
+
+    function formatKey(key) {
+        return key.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+    }
+
+    resetBtn.addEventListener('click', () => {
+        selectedFile = null; fileInput.value = '';
+        fileInfo.classList.remove('show'); analyzeBtn.disabled = true;
+        errorMessage.classList.remove('show'); uploadCard.style.display = 'block';
+        results.classList.remove('show');
+        document.getElementById('mcqTestSection').style.display = 'none';
+        document.getElementById('roleSelectionCard').style.display = 'none';
+        document.getElementById('resumeEditorCard').style.display = 'none';
+        originalResumeText = ''; editedResumeText = '';
+    });
+</script>
+</body>
+</html>

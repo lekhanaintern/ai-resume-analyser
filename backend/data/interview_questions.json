@@ -1,0 +1,298 @@
+{
+  "HR": [
+    "How do you handle employee conflicts?",
+    "Describe your recruitment process from start to finish.",
+    "What strategies do you use for employee retention?",
+    "How do you ensure compliance with labor laws?",
+    "What HRIS systems have you worked with?",
+    "How do you measure employee satisfaction?",
+    "Describe a time you had to terminate an employee.",
+    "What's your approach to performance management?"
+  ],
+  
+  "DESIGNER": [
+    "What design tools are you most proficient in?",
+    "How do you approach a new design project?",
+    "Explain your design process from concept to delivery.",
+    "How do you handle client feedback and criticism?",
+    "What design trends are you currently following?",
+    "How do you ensure your designs are user-friendly?",
+    "Describe a challenging design project you completed.",
+    "How do you balance creativity with business requirements?"
+  ],
+  
+  "INFORMATION-TECHNOLOGY": [
+    "What programming languages are you most proficient in?",
+    "Explain the difference between SQL and NoSQL databases.",
+    "How do you ensure code quality and maintainability?",
+    "Describe your experience with version control systems like Git.",
+    "What is your approach to debugging complex issues?",
+    "How do you stay updated with new technologies?",
+    "Explain your experience with cloud platforms.",
+    "How do you handle system security and vulnerabilities?"
+  ],
+  
+  "TEACHER": [
+    "What is your teaching philosophy?",
+    "How do you engage students who are struggling?",
+    "Describe your classroom management strategies.",
+    "How do you assess student learning and progress?",
+    "What technology do you incorporate in your teaching?",
+    "How do you differentiate instruction for diverse learners?",
+    "Describe a successful lesson plan you created.",
+    "How do you communicate with parents about student progress?"
+  ],
+  
+  "ADVOCATE": [
+    "What areas of law do you specialize in?",
+    "How do you prepare for a court case?",
+    "Describe your legal research process.",
+    "How do you handle difficult clients?",
+    "What legal software and tools do you use?",
+    "Explain a complex case you successfully handled.",
+    "How do you stay current with legal precedents?",
+    "What is your approach to negotiation and settlements?"
+  ],
+  
+  "BUSINESS-DEVELOPMENT": [
+    "How do you identify new business opportunities?",
+    "Describe your experience with client relationship management.",
+    "What strategies do you use for market research?",
+    "How do you handle objections during sales pitches?",
+    "What CRM tools are you familiar with?",
+    "How do you develop and maintain a sales pipeline?",
+    "Describe a successful business deal you closed.",
+    "How do you measure and track business development success?"
+  ],
+  
+  "HEALTHCARE": [
+    "What is your experience with patient care?",
+    "How do you handle medical emergencies?",
+    "Describe your knowledge of medical terminology and procedures.",
+    "What healthcare software systems have you used?",
+    "How do you ensure patient confidentiality and HIPAA compliance?",
+    "Explain your approach to patient communication.",
+    "How do you handle difficult or non-compliant patients?",
+    "What is your experience with electronic health records?"
+  ],
+  
+  "FITNESS": [
+    "What are your fitness training certifications?",
+    "How do you create personalized workout plans?",
+    "Describe your approach to nutrition counseling.",
+    "How do you motivate clients who are struggling?",
+    "What is your experience with different fitness programs?",
+    "How do you prevent and manage client injuries?",
+    "Explain your knowledge of anatomy and physiology.",
+    "How do you track and measure client progress?"
+  ],
+  
+  "AGRICULTURE": [
+    "What is your experience with crop management?",
+    "Describe your knowledge of agricultural equipment and machinery.",
+    "How do you handle pest and disease control?",
+    "What sustainable farming practices are you familiar with?",
+    "Explain your experience with irrigation systems.",
+    "How do you stay updated on agricultural technologies?",
+    "Describe your knowledge of soil management and fertilization.",
+    "What is your experience with agricultural regulations and compliance?"
+  ],
+  
+  "BPO": [
+    "What is your experience with call center operations?",
+    "How do you handle difficult or angry customers?",
+    "Describe your experience with CRM and ticketing systems.",
+    "What metrics do you use to measure call center performance?",
+    "How do you maintain quality while handling high call volumes?",
+    "Explain your experience with different communication channels.",
+    "How do you ensure compliance with service level agreements?",
+    "What strategies do you use for customer retention?"
+  ],
+  
+  "SALES": [
+    "What is your sales approach and methodology?",
+    "How do you identify and qualify leads?",
+    "Describe a time you exceeded your sales quota.",
+    "How do you handle rejection and maintain motivation?",
+    "What CRM and sales tools do you use?",
+    "Explain your process for closing deals.",
+    "How do you build long-term client relationships?",
+    "What is your experience with different sales channels?"
+  ],
+  
+  "CONSULTANT": [
+    "What is your consulting methodology?",
+    "How do you assess a client's needs and challenges?",
+    "Describe a successful consulting project you completed.",
+    "How do you present recommendations to stakeholders?",
+    "What tools do you use for data analysis and reporting?",
+    "How do you manage client expectations?",
+    "Explain your experience with change management.",
+    "How do you measure the success of your consulting work?"
+  ],
+  
+  "DIGITAL-MEDIA": [
+    "What digital marketing strategies have you implemented?",
+    "How do you measure social media campaign success?",
+    "Describe your experience with content creation and management.",
+    "What analytics tools do you use?",
+    "How do you stay updated with digital marketing trends?",
+    "Explain your experience with SEO and SEM.",
+    "How do you manage multiple social media platforms?",
+    "What is your approach to influencer marketing?"
+  ],
+  
+  "AUTOMOBILE": [
+    "What is your experience with vehicle diagnostics and repair?",
+    "How do you troubleshoot complex automotive problems?",
+    "Describe your knowledge of different vehicle systems.",
+    "What diagnostic tools and equipment are you proficient with?",
+    "How do you stay updated on new automotive technologies?",
+    "Explain your experience with electric and hybrid vehicles.",
+    "How do you ensure quality control in your work?",
+    "What is your approach to customer service in automotive?"
+  ],
+  
+  "CHEF": [
+    "What cuisines do you specialize in?",
+    "How do you create new menu items?",
+    "Describe your experience with kitchen management.",
+    "How do you ensure food safety and sanitation?",
+    "What is your approach to cost control and inventory management?",
+    "How do you handle high-pressure kitchen environments?",
+    "Explain your experience with dietary restrictions and allergies.",
+    "How do you train and manage kitchen staff?"
+  ],
+  
+  "FINANCE": [
+    "What financial analysis tools and software do you use?",
+    "How do you perform financial modeling and forecasting?",
+    "Describe your experience with budgeting and variance analysis.",
+    "What is your knowledge of financial regulations and compliance?",
+    "How do you assess investment opportunities?",
+    "Explain your experience with risk management.",
+    "How do you present financial data to non-financial stakeholders?",
+    "What accounting standards are you familiar with?"
+  ],
+  
+  "APPAREL": [
+    "What is your experience with fashion design and merchandising?",
+    "How do you stay updated with fashion trends?",
+    "Describe your knowledge of textiles and fabrics.",
+    "What design software do you use?",
+    "How do you manage the product development cycle?",
+    "Explain your experience with pattern making and garment construction.",
+    "How do you balance creativity with commercial viability?",
+    "What is your experience with retail and wholesale operations?"
+  ],
+  
+  "ENGINEERING": [
+    "What engineering disciplines do you specialize in?",
+    "Describe your experience with CAD software and design tools.",
+    "How do you approach complex engineering problems?",
+    "What project management methodologies do you use?",
+    "Explain your experience with testing and quality assurance.",
+    "How do you ensure compliance with engineering standards?",
+    "Describe a challenging engineering project you completed.",
+    "What is your experience with prototyping and manufacturing?"
+  ],
+  
+  "ACCOUNTANT": [
+    "What accounting software are you proficient in?",
+    "How do you ensure accuracy in financial records?",
+    "Describe your experience with tax preparation and filing.",
+    "What is your knowledge of GAAP and accounting standards?",
+    "How do you handle audits and compliance reviews?",
+    "Explain your experience with accounts payable and receivable.",
+    "How do you identify and prevent financial discrepancies?",
+    "What is your approach to month-end and year-end closing?"
+  ],
+  
+  "CONSTRUCTION": [
+    "What construction management software do you use?",
+    "How do you ensure project safety on construction sites?",
+    "Describe your experience with project scheduling and budgeting.",
+    "What is your knowledge of building codes and regulations?",
+    "How do you manage subcontractors and vendors?",
+    "Explain your approach to quality control in construction.",
+    "How do you handle project delays and challenges?",
+    "What is your experience with blueprint reading and interpretation?"
+  ],
+  
+  "PUBLIC-RELATIONS": [
+    "How do you develop and execute PR campaigns?",
+    "Describe your experience with media relations.",
+    "How do you handle crisis communications?",
+    "What metrics do you use to measure PR success?",
+    "How do you build relationships with journalists and influencers?",
+    "Explain your experience with press releases and media kits.",
+    "How do you manage brand reputation online?",
+    "What is your approach to event planning and management?"
+  ],
+  
+  "BANKING": [
+    "What banking products and services are you familiar with?",
+    "How do you assess loan applications and creditworthiness?",
+    "Describe your experience with regulatory compliance.",
+    "What is your knowledge of anti-money laundering procedures?",
+    "How do you handle customer accounts and transactions?",
+    "Explain your experience with banking software systems.",
+    "How do you identify and prevent fraud?",
+    "What is your approach to customer relationship management in banking?"
+  ],
+  
+  "ARTS": [
+    "What artistic mediums do you specialize in?",
+    "How do you approach a new artistic project?",
+    "Describe your creative process from concept to completion.",
+    "How do you market and sell your artwork?",
+    "What is your experience with art exhibitions and galleries?",
+    "How do you handle artistic criticism and feedback?",
+    "Explain your knowledge of art history and theory.",
+    "How do you balance artistic vision with commercial demands?"
+  ],
+  
+  "AVIATION": [
+    "What are your aviation certifications and licenses?",
+    "How do you handle emergency situations in flight?",
+    "Describe your experience with flight planning and navigation.",
+    "What is your knowledge of aviation regulations and safety?",
+    "How do you perform pre-flight inspections and checks?",
+    "Explain your experience with different aircraft types.",
+    "How do you maintain communication with air traffic control?",
+    "What is your approach to crew resource management?"
+  ],
+  
+  "DATA-SCIENCE": [
+    "What is the difference between supervised and unsupervised learning?",
+    "Explain the bias-variance tradeoff.",
+    "How do you handle missing data in a dataset?",
+    "What evaluation metrics do you use for classification problems?",
+    "Describe your experience with feature engineering.",
+    "How do you prevent overfitting in machine learning models?",
+    "What is your experience with deep learning frameworks?",
+    "How do you deploy and monitor ML models in production?"
+  ],
+  
+  "WEB-DEVELOPER": [
+    "What is the difference between HTML, CSS, and JavaScript?",
+    "Explain how React hooks work.",
+    "What is the purpose of responsive web design?",
+    "How do you optimize website performance?",
+    "Describe your experience with REST APIs.",
+    "What is your approach to cross-browser compatibility?",
+    "How do you ensure web accessibility?",
+    "Explain your experience with front-end build tools."
+  ],
+  
+  "DEFAULT": [
+    "Tell me about yourself.",
+    "What are your greatest strengths?",
+    "Where do you see yourself in 5 years?",
+    "Why should we hire you?",
+    "Describe a challenging project you worked on.",
+    "How do you handle stress and pressure?",
+    "What motivates you in your career?",
+    "Why are you interested in this position?"
+  ]
+}

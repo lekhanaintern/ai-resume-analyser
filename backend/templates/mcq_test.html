@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MCQ Test - AI Resume Analyzer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #3b6fd4;
+            --primary-end: #06b6d4;
+            --bg: #f0f2f8;
+            --white: #ffffff;
+            --navbar: #4361d8;
+            --navbar-end: #3b82f6;
+            --text: #1e293b;
+            --muted: #64748b;
+            --border: #e2e8f0;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --card-shadow: 0 4px 24px rgba(59,111,212,0.10);
+            --grad: linear-gradient(135deg, var(--primary) 0%, var(--primary-end) 100%);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: var(--bg);
+            min-height: 100vh;
+            color: var(--text);
+        }
+
+        /* NAVBAR */
+        .navbar {
+            background: linear-gradient(90deg, var(--navbar) 0%, var(--navbar-end) 100%);
+            padding: 0 32px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 12px rgba(59,111,212,0.18);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .navbar-brand { font-size: 1.25em; font-weight: 800; color: white; letter-spacing: -0.5px; }
+        .navbar-brand span { font-weight: 400; opacity: 0.85; }
+
+        .nav-back {
+            background: rgba(255,255,255,0.18);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 0.82em;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            transition: background 0.2s;
+            font-family: inherit;
+        }
+
+        .nav-back:hover { background: rgba(255,255,255,0.28); }
+
+        /* PAGE */
+        .page { max-width: 860px; margin: 0 auto; padding: 32px 20px 60px; }
+
+        /* PAGE TITLE */
+        .page-title { text-align: center; margin-bottom: 28px; }
+        .page-title h1 {
+            font-size: 1.9em; font-weight: 800;
+            background: var(--grad);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 4px;
+        }
+        .page-title p { color: var(--muted); font-size: 0.9em; }
+
+        /* CARD */
+        .card {
+            background: var(--white);
+            border-radius: 16px;
+            padding: 28px;
+            box-shadow: var(--card-shadow);
+            border: 1px solid var(--border);
+            margin-bottom: 20px;
+        }
+
+        /* HIDDEN */
+        .hidden { display: none !important; }
+
+        /* INFO BOX */
+        .info-box {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 12px;
+            padding: 20px 24px;
+            margin-bottom: 24px;
+        }
+
+        .info-box p {
+            font-size: 0.88em;
+            color: #1e40af;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .info-box p:first-child { font-weight: 700; font-size: 0.92em; margin-bottom: 10px; }
+        .info-box p:last-child { margin-bottom: 0; }
+
+        /* BUTTONS */
+        .btn-primary {
+            background: var(--grad);
+            color: white;
+            border: none;
+            padding: 13px 36px;
+            font-size: 1em;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: 700;
+            font-family: inherit;
+            transition: all 0.25s;
+            box-shadow: 0 4px 16px rgba(59,111,212,0.3);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(59,111,212,0.4);
+        }
+
+        .btn-primary:disabled { background: #cbd5e1; cursor: not-allowed; box-shadow: none; }
+
+        .btn-secondary {
+            background: #f1f5f9;
+            color: var(--muted);
+            border: 1px solid var(--border);
+            padding: 12px 28px;
+            font-size: 0.95em;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: 600;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+
+        .btn-secondary:hover { background: #e2e8f0; color: var(--text); }
+
+        /* START SECTION */
+        .start-section { text-align: center; padding: 20px 0; }
+
+        /* PROGRESS */
+        .progress-section { margin-bottom: 24px; }
+
+        .progress-bar {
+            width: 100%;
+            height: 32px;
+            background: #e2e8f0;
+            border-radius: 16px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--grad);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 0.82em;
+            transition: width 0.35s ease;
+            min-width: 36px;
+        }
+
+        .progress-text {
+            text-align: center;
+            margin-top: 8px;
+            color: var(--muted);
+            font-size: 0.85em;
+        }
+
+        /* QUESTION CARD */
+        .question-card {
+            background: white;
+            border: 1.5px solid var(--border);
+            border-radius: 14px;
+            padding: 24px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 10px rgba(59,111,212,0.06);
+            transition: box-shadow 0.2s;
+        }
+
+        .question-card:hover { box-shadow: 0 4px 20px rgba(59,111,212,0.12); }
+
+        .question-number {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 14px;
+            font-weight: 700;
+            font-size: 0.9em;
+            color: var(--primary);
+        }
+
+        .difficulty-badge {
+            padding: 3px 10px;
+            border-radius: 10px;
+            font-size: 0.75em;
+            font-weight: 700;
+        }
+
+        .difficulty-easy { background: #d1fae5; color: #065f46; }
+        .difficulty-medium { background: #fef3c7; color: #92400e; }
+        .difficulty-hard { background: #fee2e2; color: #991b1b; }
+
+        .question-text {
+            font-size: 1em;
+            color: var(--text);
+            margin-bottom: 18px;
+            line-height: 1.65;
+            font-weight: 500;
+        }
+
+        /* OPTIONS */
+        .options { display: flex; flex-direction: column; gap: 10px; }
+
+        .option {
+            background: #f8fbff;
+            border: 1.5px solid var(--border);
+            border-radius: 10px;
+            padding: 13px 18px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            font-size: 0.92em;
+        }
+
+        .option:hover {
+            border-color: var(--primary);
+            background: #eff6ff;
+            transform: translateX(4px);
+        }
+
+        .option input[type="radio"] {
+            margin-right: 12px;
+            width: 18px; height: 18px;
+            cursor: pointer;
+            accent-color: var(--primary);
+            flex-shrink: 0;
+        }
+
+        .option.selected {
+            border-color: var(--primary);
+            background: var(--grad);
+            color: white;
+            font-weight: 600;
+        }
+
+        .option.correct {
+            border-color: var(--success);
+            background: var(--success);
+            color: white;
+            font-weight: 600;
+        }
+
+        .option.incorrect {
+            border-color: var(--danger);
+            background: var(--danger);
+            color: white;
+            font-weight: 600;
+        }
+
+        /* EXPLANATION */
+        .explanation {
+            background: #fffbeb;
+            border-left: 4px solid var(--warning);
+            padding: 12px 16px;
+            margin-top: 14px;
+            border-radius: 6px;
+            font-size: 0.86em;
+            line-height: 1.5;
+            display: none;
+        }
+
+        .explanation.show { display: block; }
+        .explanation strong { color: #92400e; }
+
+        /* CONTROLS */
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            margin-top: 24px;
+            flex-wrap: wrap;
+        }
+
+        /* LOADING */
+        .loading { display: none; text-align: center; padding: 48px; }
+        .loading.show { display: block; }
+
+        .spinner {
+            border: 4px solid #e2e8f0;
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            width: 48px; height: 48px;
+            animation: spin 0.9s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .loading h3 { color: var(--primary); font-size: 1em; margin-bottom: 4px; }
+        .loading p { color: var(--muted); font-size: 0.88em; }
+
+        /* SCORE BANNER */
+        .score-banner {
+            background: var(--grad);
+            color: white;
+            border-radius: 14px;
+            padding: 36px;
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .score-banner h2 {
+            font-size: 4em;
+            font-weight: 800;
+            margin-bottom: 8px;
+            line-height: 1;
+        }
+
+        .score-banner p { font-size: 1.05em; opacity: 0.9; margin: 6px 0; }
+
+        .pass-status {
+            font-size: 1.3em;
+            font-weight: 700;
+            margin-top: 14px;
+        }
+
+        /* REVIEW HEADING */
+        .review-heading {
+            font-size: 1em;
+            font-weight: 700;
+            color: var(--text);
+            margin: 24px 0 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        @media (max-width: 600px) {
+            .controls { flex-direction: column; align-items: center; }
+            .btn-primary, .btn-secondary { width: 100%; text-align: center; }
+            .score-banner h2 { font-size: 3em; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- NAVBAR -->
+    <nav class="navbar">
+        <div class="navbar-brand">AI Resume<span>Analyzer</span></div>
+        <button class="nav-back" onclick="goBackToResume()">← Back to Analyzer</button>
+    </nav>
+
+    <div class="page">
+        <div class="page-title">
+            <h1>🎯 MCQ Test</h1>
+            <p id="headerSubtitle">Test Your Knowledge</p>
+        </div>
+
+        <!-- START SECTION -->
+        <div class="card" id="startSection">
+            <div class="info-box">
+                <p>📝 Instructions</p>
+                <p>📌 You will be asked 10 multiple choice questions</p>
+                <p>✅ Select the best answer for each question</p>
+                <p>🎯 You need 60% to pass the test</p>
+                <p>⏱️ Take your time and read carefully</p>
+            </div>
+            <div class="start-section">
+                <button class="btn-primary" id="startTestBtn" onclick="startTest()">🚀 Start Test</button>
+            </div>
+        </div>
+
+        <!-- LOADING -->
+        <div class="card loading" id="loadingSection">
+            <div class="spinner"></div>
+            <h3>Loading questions...</h3>
+            <p>Fetching questions for your role</p>
+        </div>
+
+        <!-- TEST SECTION -->
+        <div id="testSection" class="hidden">
+            <div class="card">
+                <div class="progress-section">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressBar" style="width:0%;">0%</div>
+                    </div>
+                    <p class="progress-text" id="progressText">0 of 10 questions answered</p>
+                </div>
+            </div>
+
+            <div id="questionsContainer"></div>
+
+            <div class="controls">
+                <button class="btn-primary" id="submitBtn" onclick="submitTest()">✅ Submit Test</button>
+            </div>
+        </div>
+
+        <!-- RESULTS SECTION -->
+        <div id="resultsSection" class="hidden">
+            <div class="score-banner">
+                <h2 id="scorePercentage">0%</h2>
+                <p id="scoreDetails">You answered 0 out of 10 questions correctly</p>
+                <p class="pass-status" id="passStatus"></p>
+            </div>
+
+            <div class="review-heading">📊 Detailed Review</div>
+            <div id="reviewContainer"></div>
+
+            <div class="controls">
+                <button class="btn-primary" onclick="retakeTest()">🔄 Take New Test</button>
+                <button class="btn-secondary" onclick="goBackToResume()">📄 Back to Analyzer</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    const API_BASE_URL = 'http://localhost:5000';
+
+    let currentQuestions = [];
+    let userAnswers = {};
+    let currentQuestionIds = [];
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const detectedRole = urlParams.get('role') || 'DEFAULT';
+    document.getElementById('headerSubtitle').textContent = `Role: ${detectedRole}`;
+    console.log('Role from URL:', detectedRole);
+
+    async function startTest() {
+        try {
+            document.getElementById('startSection').classList.add('hidden');
+            document.getElementById('loadingSection').classList.add('show');
+
+            const response = await fetch(`${API_BASE_URL}/api/get-mcq-test?role=${detectedRole}`, {
+                method: 'GET',
+                credentials: 'include'
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                currentQuestions = data.questions;
+                currentQuestionIds = data.questions.map(q => q.id);
+                displayQuestions(data);
+            } else {
+                alert('Error: ' + (data.error || 'Could not load questions'));
+                document.getElementById('loadingSection').classList.remove('show');
+                document.getElementById('startSection').classList.remove('hidden');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Failed to load test. Make sure the backend is running on http://localhost:5000');
+            document.getElementById('loadingSection').classList.remove('show');
+            document.getElementById('startSection').classList.remove('hidden');
+        }
+    }
+
+    function displayQuestions(data) {
+        document.getElementById('loadingSection').classList.remove('show');
+        document.getElementById('testSection').classList.remove('hidden');
+        document.getElementById('headerSubtitle').textContent = `Test for ${data.job_role}`;
+
+        const container = document.getElementById('questionsContainer');
+        container.innerHTML = '';
+        userAnswers = {};
+
+        data.questions.forEach((q, index) => {
+            const card = document.createElement('div');
+            card.className = 'question-card';
+            const difficultyClass = `difficulty-${q.difficulty || 'medium'}`;
+
+            card.innerHTML = `
+                <div class="question-number">
+                    <span>Question ${index + 1} of ${data.total_questions}</span>
+                    <span class="difficulty-badge ${difficultyClass}">${(q.difficulty || 'medium').toUpperCase()}</span>
+                </div>
+                <div class="question-text">${q.question}</div>
+                <div class="options" id="options-${q.id}">
+                    ${q.options.map((opt) => `
+                        <label class="option" onclick="selectAnswer(${q.id}, '${opt.replace(/'/g, "\\'")}', this)">
+                            <input type="radio" name="q${q.id}" value="${opt}">
+                            <span>${opt}</span>
+                        </label>
+                    `).join('')}
+                </div>
+            `;
+            container.appendChild(card);
+        });
+
+        updateProgress();
+    }
+
+    function selectAnswer(questionId, answer, element) {
+        userAnswers[questionId] = answer;
+        const optionsContainer = document.getElementById(`options-${questionId}`);
+        optionsContainer.querySelectorAll('.option').forEach(opt => opt.classList.remove('selected'));
+        element.classList.add('selected');
+        updateProgress();
+    }
+
+    function updateProgress() {
+        const total = currentQuestions.length;
+        const answered = Object.keys(userAnswers).length;
+        const percentage = total > 0 ? (answered / total) * 100 : 0;
+        const progressBar = document.getElementById('progressBar');
+        progressBar.style.width = percentage + '%';
+        progressBar.textContent = `${Math.round(percentage)}%`;
+        document.getElementById('progressText').textContent = `${answered} of ${total} questions answered`;
+    }
+
+    async function submitTest() {
+        if (Object.keys(userAnswers).length < currentQuestions.length) {
+            if (!confirm(`You have only answered ${Object.keys(userAnswers).length} out of ${currentQuestions.length} questions. Submit anyway?`)) return;
+        }
+
+        try {
+            document.getElementById('submitBtn').disabled = true;
+            document.getElementById('submitBtn').textContent = 'Submitting...';
+
+            const response = await fetch(`${API_BASE_URL}/api/submit-test`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ answers: userAnswers, question_ids: currentQuestionIds })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                displayResults(data);
+            } else {
+                alert('Error: ' + (data.error || 'Could not submit test'));
+                document.getElementById('submitBtn').disabled = false;
+                document.getElementById('submitBtn').textContent = '✅ Submit Test';
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Failed to submit test. Please try again.');
+            document.getElementById('submitBtn').disabled = false;
+            document.getElementById('submitBtn').textContent = '✅ Submit Test';
+        }
+    }
+
+    function displayResults(data) {
+        document.getElementById('testSection').classList.add('hidden');
+        document.getElementById('resultsSection').classList.remove('hidden');
+
+        document.getElementById('scorePercentage').textContent = Math.round(data.score) + '%';
+        document.getElementById('scoreDetails').textContent =
+            `You answered ${data.correct_answers} out of ${data.total_questions} questions correctly`;
+
+        const passStatus = document.getElementById('passStatus');
+        if (data.passed) {
+            passStatus.textContent = '🎉 Congratulations! You Passed!';
+        } else {
+            passStatus.textContent = "📚 Keep Learning! You'll do better next time!";
+        }
+
+        const reviewContainer = document.getElementById('reviewContainer');
+        reviewContainer.innerHTML = '';
+
+        data.results.forEach((result, index) => {
+            const card = document.createElement('div');
+            card.className = 'question-card';
+            const isCorrect = result.is_correct;
+
+            card.innerHTML = `
+                <div class="question-number">Question ${index + 1}
+                    <span class="difficulty-badge ${isCorrect ? 'difficulty-easy' : 'difficulty-hard'}">${isCorrect ? '✅ CORRECT' : '❌ WRONG'}</span>
+                </div>
+                <div class="question-text">${result.question}</div>
+                <div class="options">
+                    ${result.options.map(opt => {
+                        let className = 'option';
+                        if (opt === result.correct_answer) className += ' correct';
+                        else if (opt === result.user_answer && !isCorrect) className += ' incorrect';
+                        return `<div class="${className}"><span>${opt}</span></div>`;
+                    }).join('')}
+                </div>
+                <div class="explanation show">
+                    <strong>${isCorrect ? '✅ Correct!' : '❌ Incorrect'}</strong> — ${result.explanation}
+                </div>
+            `;
+            reviewContainer.appendChild(card);
+        });
+
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function retakeTest() {
+        document.getElementById('resultsSection').classList.add('hidden');
+        document.getElementById('startSection').classList.remove('hidden');
+        currentQuestions = [];
+        userAnswers = {};
+        currentQuestionIds = [];
+    }
+
+    function goBackToResume() {
+        window.location.href = 'index.html';
+    }
+    </script>
+</body>
+</html>
