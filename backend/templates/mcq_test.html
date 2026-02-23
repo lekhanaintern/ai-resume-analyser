@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MCQ Test - AI Resume Analyzer</title>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root {
             --primary: #3b6fd4;
@@ -32,7 +33,6 @@
             color: var(--text);
         }
 
-        /* NAVBAR */
         .navbar {
             background: linear-gradient(90deg, var(--navbar) 0%, var(--navbar-end) 100%);
             padding: 0 32px;
@@ -65,10 +65,8 @@
 
         .nav-back:hover { background: rgba(255,255,255,0.28); }
 
-        /* PAGE */
         .page { max-width: 860px; margin: 0 auto; padding: 32px 20px 60px; }
 
-        /* PAGE TITLE */
         .page-title { text-align: center; margin-bottom: 28px; }
         .page-title h1 {
             font-size: 1.9em; font-weight: 800;
@@ -80,7 +78,6 @@
         }
         .page-title p { color: var(--muted); font-size: 0.9em; }
 
-        /* CARD */
         .card {
             background: var(--white);
             border-radius: 16px;
@@ -90,10 +87,8 @@
             margin-bottom: 20px;
         }
 
-        /* HIDDEN */
         .hidden { display: none !important; }
 
-        /* INFO BOX */
         .info-box {
             background: #eff6ff;
             border: 1px solid #bfdbfe;
@@ -114,7 +109,6 @@
         .info-box p:first-child { font-weight: 700; font-size: 0.92em; margin-bottom: 10px; }
         .info-box p:last-child { margin-bottom: 0; }
 
-        /* BUTTONS */
         .btn-primary {
             background: var(--grad);
             color: white;
@@ -151,10 +145,8 @@
 
         .btn-secondary:hover { background: #e2e8f0; color: var(--text); }
 
-        /* START SECTION */
         .start-section { text-align: center; padding: 20px 0; }
 
-        /* PROGRESS */
         .progress-section { margin-bottom: 24px; }
 
         .progress-bar {
@@ -186,7 +178,6 @@
             font-size: 0.85em;
         }
 
-        /* QUESTION CARD */
         .question-card {
             background: white;
             border: 1.5px solid var(--border);
@@ -228,7 +219,6 @@
             font-weight: 500;
         }
 
-        /* OPTIONS */
         .options { display: flex; flex-direction: column; gap: 10px; }
 
         .option {
@@ -278,7 +268,6 @@
             font-weight: 600;
         }
 
-        /* EXPLANATION */
         .explanation {
             background: #fffbeb;
             border-left: 4px solid var(--warning);
@@ -293,7 +282,6 @@
         .explanation.show { display: block; }
         .explanation strong { color: #92400e; }
 
-        /* CONTROLS */
         .controls {
             display: flex;
             justify-content: center;
@@ -302,7 +290,6 @@
             flex-wrap: wrap;
         }
 
-        /* LOADING */
         .loading { display: none; text-align: center; padding: 48px; }
         .loading.show { display: block; }
 
@@ -316,15 +303,10 @@
         }
 
         @keyframes spin { to { transform: rotate(360deg); } }
-        @keyframes fadeUp {
-            from { opacity: 0; transform: translateY(12px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
 
         .loading h3 { color: var(--primary); font-size: 1em; margin-bottom: 4px; }
         .loading p { color: var(--muted); font-size: 0.88em; }
 
-        /* SCORE BANNER */
         .score-banner {
             background: var(--grad);
             color: white;
@@ -349,7 +331,73 @@
             margin-top: 14px;
         }
 
-        /* REVIEW HEADING */
+        .save-status {
+            display: none;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 16px;
+            border-radius: 10px;
+            font-size: 0.82em;
+            font-weight: 600;
+            margin-top: 14px;
+            justify-content: center;
+        }
+        .save-status.saved   { display: flex; background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
+        .save-status.failed  { display: flex; background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+        .save-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+        .save-status.saved  .save-dot { background: #10b981; }
+        .save-status.failed .save-dot { background: #ef4444; }
+
+        .history-section { margin-top: 32px; }
+        .history-heading {
+            font-size: 1em;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e0f2fe;
+        }
+
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.88em;
+        }
+
+        .history-table th {
+            background: #f0f7ff;
+            color: var(--primary);
+            padding: 10px 14px;
+            text-align: left;
+            font-weight: 700;
+            font-size: 0.8em;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .history-table td {
+            padding: 12px 14px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text);
+        }
+
+        .history-table tr:last-child td { border-bottom: none; }
+        .history-table tr:hover td { background: #f8fbff; }
+
+        .score-pill {
+            display: inline-block;
+            padding: 3px 12px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 0.85em;
+        }
+
+        .score-pill.pass { background: #d1fae5; color: #065f46; }
+        .score-pill.fail { background: #fee2e2; color: #991b1b; }
+
         .review-heading {
             font-size: 1em;
             font-weight: 700;
@@ -360,16 +408,23 @@
             gap: 8px;
         }
 
+        .no-history {
+            text-align: center;
+            color: var(--muted);
+            padding: 24px;
+            font-size: 0.88em;
+        }
+
         @media (max-width: 600px) {
             .controls { flex-direction: column; align-items: center; }
             .btn-primary, .btn-secondary { width: 100%; text-align: center; }
             .score-banner h2 { font-size: 3em; }
+            .history-table { font-size: 0.78em; }
         }
     </style>
 </head>
 <body>
 
-    <!-- NAVBAR -->
     <nav class="navbar">
         <div class="navbar-brand">AI Resume<span>Analyzer</span></div>
         <button class="nav-back" onclick="goBackToResume()">← Back to Analyzer</button>
@@ -392,6 +447,14 @@
             </div>
             <div class="start-section">
                 <button class="btn-primary" id="startTestBtn" onclick="startTest()">🚀 Start Test</button>
+            </div>
+
+            <!-- HISTORY: only shows THIS session's attempts -->
+            <div class="history-section" id="historySection">
+                <div class="history-heading">📋 Your Results This Session</div>
+                <div id="historyContent">
+                    <div class="no-history">No attempts yet this session. Take your first test above! 🚀</div>
+                </div>
             </div>
         </div>
 
@@ -425,7 +488,13 @@
             <div class="score-banner">
                 <h2 id="scorePercentage">0%</h2>
                 <p id="scoreDetails">You answered 0 out of 10 questions correctly</p>
+                <p id="wrongDetails"></p>
                 <p class="pass-status" id="passStatus"></p>
+            </div>
+
+            <div class="save-status" id="saveStatus">
+                <div class="save-dot"></div>
+                <span id="saveStatusText"></span>
             </div>
 
             <div class="review-heading">📊 Detailed Review</div>
@@ -439,17 +508,120 @@
     </div>
 
     <script>
-    const API_BASE_URL = 'http://localhost:5000';
+    // ============================================================
+    // SUPABASE CONFIG
+    // ============================================================
+    const SUPABASE_URL = 'https://kxqzncqubkzxdjqkmstq.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4cXpuY3F1Ymt6eGRqcWttc3RxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE2NDg3MDksImV4cCI6MjA4NzIyNDcwOX0.82b2UA_f3BPpwwvymmcXqBiBxDCvC1EYf7nvryUefPI';
+    const { createClient } = supabase;
+    const dbClient = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    let currentQuestions = [];
-    let userAnswers = {};
+    // ============================================================
+    // SESSION ID — generated fresh every page visit, lives in memory only
+    // Results are saved to Supabase with this ID, but history display
+    // only shows records matching THIS session — so no other user
+    // ever sees your results, and you never see theirs.
+    // ============================================================
+    const SESSION_ID = 'sess_' + Math.random().toString(36).substr(2, 12) + '_' + Date.now();
+
+    // In-memory store for this session's attempts only
+    const sessionHistory = [];
+
+    // ============================================================
+    // STATE
+    // ============================================================
+    const API_BASE_URL = 'http://localhost:5000';
+    let currentQuestions   = [];
+    let userAnswers        = {};
     let currentQuestionIds = [];
 
-    const urlParams = new URLSearchParams(window.location.search);
+    const urlParams    = new URLSearchParams(window.location.search);
     const detectedRole = urlParams.get('role') || 'DEFAULT';
     document.getElementById('headerSubtitle').textContent = `Role: ${detectedRole}`;
-    console.log('Role from URL:', detectedRole);
 
+    // ============================================================
+    // SUPABASE — SAVE RESULT (stores session_id so data stays scoped)
+    // ============================================================
+    async function saveMCQResultToSupabase(data) {
+        try {
+            const { error } = await dbClient.from('mcq_results').insert([{
+                session_id      : SESSION_ID,
+                job_role        : detectedRole,
+                total_questions : data.total_questions,
+                correct_answers : data.correct_answers,
+                wrong_answers   : data.wrong_answers,
+                score_percentage: data.score
+            }]);
+
+            if (error) {
+                console.error('Supabase save error:', error.message);
+                showSaveStatus('failed', '❌ Failed to save result: ' + error.message);
+            } else {
+                console.log('Result saved to Supabase.');
+                showSaveStatus('saved', '✅ Result saved successfully!');
+            }
+        } catch (err) {
+            console.error('Supabase error:', err);
+            showSaveStatus('failed', '❌ Could not save result.');
+        }
+    }
+
+    // ============================================================
+    // HISTORY — built from in-memory sessionHistory array only.
+    // Never fetches from Supabase, so no cross-user data leaks.
+    // ============================================================
+    function renderSessionHistory() {
+        const container = document.getElementById('historyContent');
+
+        if (sessionHistory.length === 0) {
+            container.innerHTML = '<div class="no-history">No attempts yet this session. Take your first test above! 🚀</div>';
+            return;
+        }
+
+        container.innerHTML = `
+            <table class="history-table">
+                <thead>
+                    <tr>
+                        <th>Role</th>
+                        <th>Score</th>
+                        <th>Correct</th>
+                        <th>Wrong</th>
+                        <th>Total</th>
+                        <th>Time</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${sessionHistory.map(row => {
+                        const isPassed   = row.score_percentage >= 60;
+                        const scoreClass = isPassed ? 'pass' : 'fail';
+                        return `
+                            <tr>
+                                <td><strong>${row.job_role}</strong></td>
+                                <td><span class="score-pill ${scoreClass}">${Math.round(row.score_percentage)}%</span></td>
+                                <td style="color:#10b981;font-weight:700;">✅ ${row.correct_answers}</td>
+                                <td style="color:#ef4444;font-weight:700;">❌ ${row.wrong_answers}</td>
+                                <td>${row.total_questions}</td>
+                                <td style="color:var(--muted);">${row.time}</td>
+                            </tr>
+                        `;
+                    }).join('')}
+                </tbody>
+            </table>
+        `;
+    }
+
+    // ============================================================
+    // SAVE STATUS BADGE
+    // ============================================================
+    function showSaveStatus(type, message) {
+        const el = document.getElementById('saveStatus');
+        el.className = 'save-status ' + type;
+        document.getElementById('saveStatusText').textContent = message;
+    }
+
+    // ============================================================
+    // START TEST
+    // ============================================================
     async function startTest() {
         try {
             document.getElementById('startSection').classList.add('hidden');
@@ -463,7 +635,7 @@
             const data = await response.json();
 
             if (data.success) {
-                currentQuestions = data.questions;
+                currentQuestions   = data.questions;
                 currentQuestionIds = data.questions.map(q => q.id);
                 displayQuestions(data);
             } else {
@@ -479,6 +651,21 @@
         }
     }
 
+    // ============================================================
+    // SHUFFLE HELPER — Fisher-Yates algorithm
+    // ============================================================
+    function shuffleArray(arr) {
+        const a = [...arr];
+        for (let i = a.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [a[i], a[j]] = [a[j], a[i]];
+        }
+        return a;
+    }
+
+    // ============================================================
+    // DISPLAY QUESTIONS (options shuffled every time)
+    // ============================================================
     function displayQuestions(data) {
         document.getElementById('loadingSection').classList.remove('show');
         document.getElementById('testSection').classList.remove('hidden');
@@ -493,6 +680,9 @@
             card.className = 'question-card';
             const difficultyClass = `difficulty-${q.difficulty || 'medium'}`;
 
+            // Shuffle options so correct answer position changes every attempt
+            const shuffledOptions = shuffleArray(q.options);
+
             card.innerHTML = `
                 <div class="question-number">
                     <span>Question ${index + 1} of ${data.total_questions}</span>
@@ -500,7 +690,7 @@
                 </div>
                 <div class="question-text">${q.question}</div>
                 <div class="options" id="options-${q.id}">
-                    ${q.options.map((opt) => `
+                    ${shuffledOptions.map((opt) => `
                         <label class="option" onclick="selectAnswer(${q.id}, '${opt.replace(/'/g, "\\'")}', this)">
                             <input type="radio" name="q${q.id}" value="${opt}">
                             <span>${opt}</span>
@@ -523,8 +713,8 @@
     }
 
     function updateProgress() {
-        const total = currentQuestions.length;
-        const answered = Object.keys(userAnswers).length;
+        const total      = currentQuestions.length;
+        const answered   = Object.keys(userAnswers).length;
         const percentage = total > 0 ? (answered / total) * 100 : 0;
         const progressBar = document.getElementById('progressBar');
         progressBar.style.width = percentage + '%';
@@ -532,6 +722,9 @@
         document.getElementById('progressText').textContent = `${answered} of ${total} questions answered`;
     }
 
+    // ============================================================
+    // SUBMIT TEST
+    // ============================================================
     async function submitTest() {
         if (Object.keys(userAnswers).length < currentQuestions.length) {
             if (!confirm(`You have only answered ${Object.keys(userAnswers).length} out of ${currentQuestions.length} questions. Submit anyway?`)) return;
@@ -551,6 +744,19 @@
             const data = await response.json();
 
             if (data.success) {
+                // Save to Supabase (with session_id for scoping)
+                await saveMCQResultToSupabase(data);
+
+                // Add to in-memory session history
+                sessionHistory.unshift({
+                    job_role        : detectedRole,
+                    score_percentage: data.score,
+                    correct_answers : data.correct_answers,
+                    wrong_answers   : data.wrong_answers,
+                    total_questions : data.total_questions,
+                    time            : new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
+                });
+
                 displayResults(data);
             } else {
                 alert('Error: ' + (data.error || 'Could not submit test'));
@@ -565,20 +771,23 @@
         }
     }
 
+    // ============================================================
+    // DISPLAY RESULTS
+    // ============================================================
     function displayResults(data) {
         document.getElementById('testSection').classList.add('hidden');
         document.getElementById('resultsSection').classList.remove('hidden');
 
         document.getElementById('scorePercentage').textContent = Math.round(data.score) + '%';
         document.getElementById('scoreDetails').textContent =
-            `You answered ${data.correct_answers} out of ${data.total_questions} questions correctly`;
+            `✅ Correct: ${data.correct_answers} out of ${data.total_questions}`;
+        document.getElementById('wrongDetails').textContent =
+            `❌ Wrong: ${data.wrong_answers} out of ${data.total_questions}`;
 
         const passStatus = document.getElementById('passStatus');
-        if (data.passed) {
-            passStatus.textContent = '🎉 Congratulations! You Passed!';
-        } else {
-            passStatus.textContent = "📚 Keep Learning! You'll do better next time!";
-        }
+        passStatus.textContent = data.passed
+            ? '🎉 Congratulations! You Passed!'
+            : "📚 Keep Learning! You'll do better next time!";
 
         const reviewContainer = document.getElementById('reviewContainer');
         reviewContainer.innerHTML = '';
@@ -596,14 +805,11 @@
                 <div class="options">
                     ${result.options.map(opt => {
                         let className = 'option';
-                        if (opt === result.correct_answer) className += ' correct';
-                        else if (opt === result.user_answer && !isCorrect) className += ' incorrect';
+                        if (opt === result.user_answer) className += isCorrect ? ' correct' : ' incorrect';
                         return `<div class="${className}"><span>${opt}</span></div>`;
                     }).join('')}
                 </div>
-                <div class="explanation show">
-                    <strong>${isCorrect ? '✅ Correct!' : '❌ Incorrect'}</strong> — ${result.explanation}
-                </div>
+                ${!isCorrect ? '<div class="explanation show"><strong>❌ Incorrect</strong> — Review this topic and try again next time!</div>' : ''}
             `;
             reviewContainer.appendChild(card);
         });
@@ -611,16 +817,25 @@
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
+    // ============================================================
+    // RETAKE TEST
+    // ============================================================
     function retakeTest() {
         document.getElementById('resultsSection').classList.add('hidden');
         document.getElementById('startSection').classList.remove('hidden');
-        currentQuestions = [];
-        userAnswers = {};
+        document.getElementById('saveStatus').className = 'save-status';
+        currentQuestions   = [];
+        userAnswers        = {};
         currentQuestionIds = [];
+        document.getElementById('submitBtn').disabled = false;
+        document.getElementById('submitBtn').textContent = '✅ Submit Test';
+
+        // Re-render history from in-memory session data only
+        renderSessionHistory();
     }
 
     function goBackToResume() {
-        window.location.href = 'index.html';
+        window.location.href = '/';
     }
     </script>
 </body>
