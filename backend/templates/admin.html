@@ -1,0 +1,1979 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - AI Resume Analyzer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #3b6fd4;
+            --primary-end: #06b6d4;
+            --bg: #f0f2f8;
+            --white: #ffffff;
+            --navbar: #4361d8;
+            --navbar-end: #3b82f6;
+            --text: #1e293b;
+            --muted: #64748b;
+            --border: #e2e8f0;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --card-shadow: 0 4px 24px rgba(59,111,212,0.10);
+            --grad: linear-gradient(135deg, var(--primary) 0%, var(--primary-end) 100%);
+            --sidebar-w: 240px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: var(--bg);
+            min-height: 100vh;
+            color: var(--text);
+        }
+
+        /* ── NAVBAR ── */
+        .navbar {
+            background: linear-gradient(90deg, var(--navbar) 0%, var(--navbar-end) 100%);
+            padding: 0 24px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 12px rgba(59,111,212,0.18);
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            z-index: 200;
+        }
+        .navbar-left { display: flex; align-items: center; gap: 16px; }
+        .navbar-brand { font-size: 1.2em; font-weight: 800; color: white; letter-spacing: -0.5px; }
+        .navbar-brand span { font-weight: 400; opacity: 0.85; }
+        .admin-badge {
+            background: rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.35);
+            color: white;
+            padding: 3px 12px;
+            border-radius: 20px;
+            font-size: 0.75em;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+        .navbar-right { display: flex; align-items: center; gap: 12px; }
+        .nav-user {
+            color: rgba(255,255,255,0.9);
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+        .btn-logout {
+            background: rgba(255,255,255,0.18);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 0.82em;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            transition: background 0.2s;
+            font-family: inherit;
+        }
+        .btn-logout:hover { background: rgba(255,255,255,0.28); }
+
+        /* ── LAYOUT ── */
+        .layout {
+            display: flex;
+            min-height: 100vh;
+            padding-top: 60px;
+        }
+
+        /* ── SIDEBAR ── */
+        .sidebar {
+            width: var(--sidebar-w);
+            background: var(--white);
+            border-right: 1px solid var(--border);
+            position: fixed;
+            top: 60px; bottom: 0; left: 0;
+            overflow-y: auto;
+            padding: 20px 0;
+            box-shadow: 2px 0 12px rgba(59,111,212,0.06);
+            z-index: 100;
+        }
+        .sidebar-section {
+            padding: 0 12px;
+            margin-bottom: 8px;
+        }
+        .sidebar-label {
+            font-size: 0.7em;
+            font-weight: 800;
+            color: var(--muted);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            padding: 8px 12px 4px;
+        }
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 0.88em;
+            font-weight: 600;
+            color: var(--muted);
+            transition: all 0.18s;
+            margin-bottom: 2px;
+            border: none;
+            background: none;
+            width: 100%;
+            text-align: left;
+            font-family: inherit;
+        }
+        .nav-item:hover { background: #f1f5f9; color: var(--text); }
+        .nav-item.active {
+            background: linear-gradient(135deg, rgba(59,111,212,0.12) 0%, rgba(6,182,212,0.08) 100%);
+            color: var(--primary);
+        }
+        .nav-item .nav-icon { font-size: 1.1em; width: 20px; text-align: center; }
+        .nav-badge {
+            margin-left: auto;
+            background: var(--primary);
+            color: white;
+            font-size: 0.7em;
+            font-weight: 700;
+            padding: 2px 7px;
+            border-radius: 10px;
+            min-width: 20px;
+            text-align: center;
+        }
+
+        /* ── MAIN CONTENT ── */
+        .main {
+            margin-left: var(--sidebar-w);
+            flex: 1;
+            padding: 28px 28px 60px;
+            min-height: calc(100vh - 60px);
+        }
+
+        /* ── PAGE SECTIONS ── */
+        .page-section { display: none; }
+        .page-section.active { display: block; }
+
+        .page-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 24px;
+        }
+        .page-header h2 {
+            font-size: 1.5em;
+            font-weight: 800;
+            color: var(--text);
+        }
+        .page-header p { color: var(--muted); font-size: 0.88em; margin-top: 2px; }
+
+        /* ── STATS GRID ── */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .stat-card {
+            background: var(--white);
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: var(--card-shadow);
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .stat-icon {
+            width: 48px; height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4em;
+            flex-shrink: 0;
+        }
+        .stat-icon.blue   { background: rgba(59,111,212,0.12); }
+        .stat-icon.green  { background: rgba(16,185,129,0.12); }
+        .stat-icon.orange { background: rgba(245,158,11,0.12); }
+        .stat-icon.red    { background: rgba(239,68,68,0.12); }
+        .stat-info {}
+        .stat-value {
+            font-size: 1.8em;
+            font-weight: 800;
+            color: var(--text);
+            line-height: 1;
+        }
+        .stat-label { font-size: 0.8em; color: var(--muted); font-weight: 600; margin-top: 4px; }
+
+        /* ── CARDS ── */
+        .card {
+            background: var(--white);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: var(--card-shadow);
+            border: 1px solid var(--border);
+            margin-bottom: 20px;
+        }
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        .card-title { font-size: 1em; font-weight: 700; color: var(--text); }
+        .card-subtitle { font-size: 0.8em; color: var(--muted); margin-top: 2px; }
+
+        /* ── TABLE ── */
+        .table-wrap { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; }
+        th {
+            text-align: left;
+            font-size: 0.75em;
+            font-weight: 700;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 10px 14px;
+            border-bottom: 1px solid var(--border);
+        }
+        td {
+            padding: 12px 14px;
+            font-size: 0.875em;
+            border-bottom: 1px solid #f1f5f9;
+            vertical-align: middle;
+        }
+        tr:last-child td { border-bottom: none; }
+        tr:hover td { background: #f8fbff; }
+
+        /* ── BADGES ── */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.75em;
+            font-weight: 700;
+        }
+        .badge-active  { background: rgba(16,185,129,0.12); color: #059669; }
+        .badge-inactive{ background: rgba(239,68,68,0.10); color: #dc2626; }
+        .badge-admin   { background: rgba(59,111,212,0.12); color: var(--primary); }
+        .badge-candidate{ background: rgba(6,182,212,0.10); color: #0891b2; }
+        .badge-easy    { background: rgba(16,185,129,0.10); color: #059669; }
+        .badge-medium  { background: rgba(245,158,11,0.10); color: #d97706; }
+        .badge-hard    { background: rgba(239,68,68,0.10); color: #dc2626; }
+        .badge-pass    { background: rgba(16,185,129,0.12); color: #059669; }
+        .badge-fail    { background: rgba(239,68,68,0.10); color: #dc2626; }
+
+        /* ── BUTTONS ── */
+        .btn-primary {
+            background: var(--grad);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 0.875em;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: 700;
+            font-family: inherit;
+            transition: all 0.2s;
+            box-shadow: 0 3px 12px rgba(59,111,212,0.25);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(59,111,212,0.35); }
+        .btn-sm {
+            padding: 5px 12px;
+            font-size: 0.78em;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: inherit;
+            font-weight: 600;
+            border: 1px solid var(--border);
+            background: white;
+            transition: all 0.15s;
+        }
+        .btn-sm:hover { background: #f1f5f9; }
+        .btn-sm.danger { color: var(--danger); border-color: rgba(239,68,68,0.3); }
+        .btn-sm.danger:hover { background: rgba(239,68,68,0.08); }
+        .btn-sm.success { color: var(--success); border-color: rgba(16,185,129,0.3); }
+        .btn-sm.success:hover { background: rgba(16,185,129,0.08); }
+        .btn-sm.primary { color: var(--primary); border-color: rgba(59,111,212,0.3); }
+        .btn-sm.primary:hover { background: rgba(59,111,212,0.08); }
+
+        /* ── SEARCH & FILTER ROW ── */
+        .filter-row {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .search-box {
+            position: relative;
+            flex: 1;
+            min-width: 200px;
+        }
+        .search-box input {
+            width: 100%;
+            padding: 9px 14px 9px 36px;
+            border: 1.5px solid var(--border);
+            border-radius: 10px;
+            font-size: 0.875em;
+            font-family: inherit;
+            outline: none;
+            background: white;
+            transition: border-color 0.2s;
+        }
+        .search-box input:focus { border-color: var(--primary); }
+        .search-icon {
+            position: absolute;
+            left: 11px; top: 50%;
+            transform: translateY(-50%);
+            color: var(--muted);
+            font-size: 0.9em;
+        }
+        select.filter-select {
+            padding: 9px 14px;
+            border: 1.5px solid var(--border);
+            border-radius: 10px;
+            font-size: 0.875em;
+            font-family: inherit;
+            outline: none;
+            background: white;
+            color: var(--text);
+            cursor: pointer;
+        }
+        select.filter-select:focus { border-color: var(--primary); }
+
+        /* ── MODAL ── */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.4);
+            z-index: 500;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .modal-overlay.show { display: flex; }
+        .modal {
+            background: white;
+            border-radius: 20px;
+            padding: 32px;
+            width: 100%;
+            max-width: 560px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 24px;
+        }
+        .modal-title { font-size: 1.1em; font-weight: 800; }
+        .modal-close {
+            width: 30px; height: 30px;
+            border: none;
+            background: #f1f5f9;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .form-group { margin-bottom: 16px; }
+        .form-group label {
+            display: block;
+            font-size: 0.82em;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 6px;
+        }
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1.5px solid var(--border);
+            border-radius: 10px;
+            font-size: 0.9em;
+            font-family: inherit;
+            outline: none;
+            color: var(--text);
+            background: #f8fbff;
+            transition: border-color 0.2s;
+        }
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus { border-color: var(--primary); background: white; }
+        .form-group textarea { min-height: 80px; resize: vertical; }
+        .option-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 8px;
+            align-items: center;
+        }
+        .option-row input { flex: 1; }
+        .option-label {
+            font-size: 0.75em;
+            font-weight: 700;
+            color: var(--muted);
+            width: 22px;
+            flex-shrink: 0;
+        }
+
+        /* ── ALERT ── */
+        .alert {
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-size: 0.85em;
+            font-weight: 600;
+            margin-bottom: 16px;
+            display: none;
+        }
+        .alert.show { display: block; }
+        .alert.success { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
+        .alert.error   { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+        .alert.info    { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
+
+        /* ── LOADING ── */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: var(--muted);
+            font-size: 0.9em;
+        }
+        .spinner {
+            display: inline-block;
+            width: 20px; height: 20px;
+            border: 2px solid var(--border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-bottom: 8px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ── EMPTY STATE ── */
+        .empty-state {
+            text-align: center;
+            padding: 48px 20px;
+            color: var(--muted);
+        }
+        .empty-state .empty-icon { font-size: 3em; margin-bottom: 12px; }
+        .empty-state p { font-size: 0.9em; }
+
+        /* ── PROGRESS BAR ── */
+        .mini-progress {
+            height: 6px;
+            background: var(--border);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 6px;
+        }
+        .mini-progress-fill {
+            height: 100%;
+            background: var(--grad);
+            border-radius: 4px;
+            transition: width 0.4s;
+        }
+
+        /* ── ROLE GRID ── */
+        .role-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 12px;
+        }
+        .role-chip {
+            background: #f8fbff;
+            border: 1.5px solid var(--border);
+            border-radius: 12px;
+            padding: 14px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.18s;
+        }
+        .role-chip:hover, .role-chip.selected {
+            border-color: var(--primary);
+            background: rgba(59,111,212,0.06);
+        }
+        .role-chip .role-count {
+            font-size: 1.4em;
+            font-weight: 800;
+            color: var(--primary);
+        }
+        .role-chip .role-name {
+            font-size: 0.75em;
+            color: var(--muted);
+            font-weight: 600;
+            margin-top: 4px;
+        }
+
+        /* ── TOGGLE ── */
+        .toggle-wrap {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .toggle {
+            width: 36px; height: 20px;
+            background: #cbd5e1;
+            border-radius: 10px;
+            position: relative;
+            cursor: pointer;
+            transition: background 0.2s;
+            border: none;
+            flex-shrink: 0;
+        }
+        .toggle.on { background: var(--success); }
+        .toggle::after {
+            content: '';
+            position: absolute;
+            width: 14px; height: 14px;
+            background: white;
+            border-radius: 50%;
+            top: 3px; left: 3px;
+            transition: left 0.2s;
+        }
+        .toggle.on::after { left: 19px; }
+
+        /* ── PAGINATION ── */
+        .pagination {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border);
+        }
+        .pagination-info { font-size: 0.8em; color: var(--muted); }
+        .pagination-btns { display: flex; gap: 6px; }
+        .page-btn {
+            width: 32px; height: 32px;
+            border: 1px solid var(--border);
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.8em;
+            font-weight: 600;
+            font-family: inherit;
+            transition: all 0.15s;
+        }
+        .page-btn:hover, .page-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+        .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        /* ── QUESTION PREVIEW ── */
+        .q-preview {
+            background: #f8fbff;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 14px;
+            margin-bottom: 8px;
+        }
+        .q-text { font-size: 0.85em; font-weight: 600; margin-bottom: 8px; }
+        .q-options { display: flex; flex-direction: column; gap: 4px; }
+        .q-option {
+            font-size: 0.78em;
+            color: var(--muted);
+            padding: 4px 8px;
+            border-radius: 6px;
+        }
+        .q-option.correct { background: rgba(16,185,129,0.1); color: #059669; font-weight: 600; }
+
+        /* ── CHART BARS ── */
+        .bar-chart { padding: 8px 0; }
+        .bar-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .bar-label { font-size: 0.78em; color: var(--muted); font-weight: 600; width: 130px; flex-shrink: 0; text-align: right; }
+        .bar-track { flex: 1; height: 10px; background: var(--border); border-radius: 5px; overflow: hidden; }
+        .bar-fill { height: 100%; background: var(--grad); border-radius: 5px; transition: width 0.6s; }
+        .bar-val { font-size: 0.78em; font-weight: 700; color: var(--text); width: 35px; }
+
+        @media (max-width: 900px) {
+            .sidebar { display: none; }
+            .main { margin-left: 0; padding: 16px; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar">
+    <div class="navbar-left">
+        <div class="navbar-brand">AI <span>Resume</span>Analyzer</div>
+        <div class="admin-badge">🛡️ ADMIN</div>
+    </div>
+    <div class="navbar-right">
+        <span class="nav-user" id="navUsername">👤 Admin</span>
+        <a href="/logout" class="btn-logout">🚪 Sign Out</a>
+    </div>
+</nav>
+
+<!-- LAYOUT -->
+<div class="layout">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+        <div class="sidebar-section">
+            <div class="sidebar-label">Main</div>
+            <button class="nav-item active" onclick="showPage('dashboard')">
+                <span class="nav-icon">📊</span> Dashboard
+            </button>
+            <button class="nav-item" onclick="showPage('users')">
+                <span class="nav-icon">👥</span> Users
+                <span class="nav-badge" id="sideUserCount">—</span>
+            </button>
+        </div>
+        <div class="sidebar-section">
+            <div class="sidebar-label">Question Bank</div>
+            <button class="nav-item" onclick="showPage('questions')">
+                <span class="nav-icon">📝</span> All Questions
+                <span class="nav-badge" id="sideQCount">—</span>
+            </button>
+            <button class="nav-item" onclick="showPage('add-question')">
+                <span class="nav-icon">➕</span> Add Question
+            </button>
+            <button class="nav-item" onclick="showPage('roles')">
+                <span class="nav-icon">🎯</span> By Role
+            </button>
+        </div>
+        <div class="sidebar-section">
+            <div class="sidebar-label">Analytics</div>
+            <button class="nav-item" onclick="showPage('results')">
+                <span class="nav-icon">📈</span> Test Results
+            </button>
+            <button class="nav-item" onclick="showPage('subscriptions')">
+                <span class="nav-icon">💳</span> Subscriptions
+            </button>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="main">
+
+        <!-- ═══════════════════════════════════ DASHBOARD ═══ -->
+        <div class="page-section active" id="page-dashboard">
+            <div class="page-header">
+                <div>
+                    <h2>Dashboard Overview</h2>
+                    <p>Welcome back! Here's what's happening today.</p>
+                </div>
+                <button class="btn-primary" onclick="loadAll()">🔄 Refresh</button>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon blue">👥</div>
+                    <div class="stat-info">
+                        <div class="stat-value" id="stat-users">—</div>
+                        <div class="stat-label">Total Users</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon green">📝</div>
+                    <div class="stat-info">
+                        <div class="stat-value" id="stat-questions">—</div>
+                        <div class="stat-label">Total Questions</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon orange">✅</div>
+                    <div class="stat-info">
+                        <div class="stat-value" id="stat-active">—</div>
+                        <div class="stat-label">Active Questions</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon red">🚫</div>
+                    <div class="stat-info">
+                        <div class="stat-value" id="stat-inactive">—</div>
+                        <div class="stat-label">Inactive Questions</div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+                <!-- Questions by Role Chart -->
+                <div class="card">
+                    <div class="card-header">
+                        <div>
+                            <div class="card-title">📊 Questions by Role</div>
+                            <div class="card-subtitle">Distribution across job categories</div>
+                        </div>
+                    </div>
+                    <div class="bar-chart" id="roleChart">
+                        <div class="loading"><div class="spinner"></div><br>Loading...</div>
+                    </div>
+                </div>
+
+                <!-- Difficulty breakdown -->
+                <div class="card">
+                    <div class="card-header">
+                        <div>
+                            <div class="card-title">🎯 Difficulty Breakdown</div>
+                            <div class="card-subtitle">Easy / Medium / Hard</div>
+                        </div>
+                    </div>
+                    <div id="difficultyChart" style="padding:8px 0;">
+                        <div class="loading"><div class="spinner"></div><br>Loading...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Test Results -->
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">📋 Recent Test Results</div>
+                        <div class="card-subtitle">Latest MCQ submissions</div>
+                    </div>
+                    <button class="btn-sm primary" onclick="showPage('results')">View All</button>
+                </div>
+                <div id="recentResults">
+                    <div class="loading"><div class="spinner"></div><br>Loading...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══════════════════════════════════ USERS ═══ -->
+        <div class="page-section" id="page-users">
+            <div class="page-header">
+                <div>
+                    <h2>User Management</h2>
+                    <p>All registered users in the system</p>
+                </div>
+            </div>
+            <div class="alert info show" id="userAlert" style="display:none;"></div>
+            <div class="card">
+                <div class="filter-row">
+                    <div class="search-box">
+                        <span class="search-icon">🔍</span>
+                        <input type="text" id="userSearch" placeholder="Search by name or username..." oninput="filterUsers()">
+                    </div>
+                    <select class="filter-select" id="roleFilter" onchange="filterUsers()">
+                        <option value="">All Roles</option>
+                        <option value="candidate">Candidate</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                </div>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Name</th>
+                                <th>Username</th>
+                                <th>Email</th>
+                                <th>Role</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usersTableBody">
+                            <tr><td colspan="6"><div class="loading"><div class="spinner"></div><br>Loading users...</div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="pagination" id="userPagination" style="display:none;">
+                    <div class="pagination-info" id="userPagInfo"></div>
+                    <div class="pagination-btns" id="userPagBtns"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══════════════════════════════════ QUESTIONS ═══ -->
+        <div class="page-section" id="page-questions">
+            <div class="page-header">
+                <div>
+                    <h2>Question Bank</h2>
+                    <p>Manage all MCQ questions</p>
+                </div>
+                <button class="btn-primary" onclick="showPage('add-question')">➕ Add Question</button>
+            </div>
+            <div class="card">
+                <div class="filter-row">
+                    <div class="search-box">
+                        <span class="search-icon">🔍</span>
+                        <input type="text" id="qSearch" placeholder="Search questions..." oninput="filterQuestions()">
+                    </div>
+                    <select class="filter-select" id="qRoleFilter" onchange="filterQuestions()">
+                        <option value="">All Roles</option>
+                    </select>
+                    <select class="filter-select" id="qStatusFilter" onchange="filterQuestions()">
+                        <option value="">All Status</option>
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                    </select>
+                    <select class="filter-select" id="qDiffFilter" onchange="filterQuestions()">
+                        <option value="">All Difficulty</option>
+                        <option value="easy">Easy</option>
+                        <option value="medium">Medium</option>
+                        <option value="hard">Hard</option>
+                    </select>
+                </div>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Question</th>
+                                <th>Role</th>
+                                <th>Difficulty</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="questionsTableBody">
+                            <tr><td colspan="6"><div class="loading"><div class="spinner"></div><br>Loading questions...</div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="pagination">
+                    <div class="pagination-info" id="qPagInfo"></div>
+                    <div class="pagination-btns" id="qPagBtns"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══════════════════════════════════ ADD QUESTION ═══ -->
+        <div class="page-section" id="page-add-question">
+            <div class="page-header">
+                <div>
+                    <h2>Add New Question</h2>
+                    <p>Add a question to the MCQ question bank</p>
+                </div>
+                <button class="btn-sm" onclick="showPage('questions')">← Back to Questions</button>
+            </div>
+            <div class="card" style="max-width:700px;">
+                <div class="alert" id="addQAlert"></div>
+                <div class="form-group">
+                    <label>📋 Question Text *</label>
+                    <textarea id="aqQuestion" placeholder="Enter the question..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>🎯 Job Role *</label>
+                    <select id="aqRole">
+                        <option value="">Select a role...</option>
+                        <option value="HR">HR</option>
+                        <option value="DESIGNER">DESIGNER</option>
+                        <option value="INFORMATION-TECHNOLOGY">INFORMATION-TECHNOLOGY</option>
+                        <option value="TEACHER">TEACHER</option>
+                        <option value="ADVOCATE">ADVOCATE</option>
+                        <option value="BUSINESS-DEVELOPMENT">BUSINESS-DEVELOPMENT</option>
+                        <option value="HEALTHCARE">HEALTHCARE</option>
+                        <option value="FITNESS">FITNESS</option>
+                        <option value="AGRICULTURE">AGRICULTURE</option>
+                        <option value="BPO">BPO</option>
+                        <option value="SALES">SALES</option>
+                        <option value="CONSULTANT">CONSULTANT</option>
+                        <option value="DIGITAL-MEDIA">DIGITAL-MEDIA</option>
+                        <option value="AUTOMOBILE">AUTOMOBILE</option>
+                        <option value="CHEF">CHEF</option>
+                        <option value="FINANCE">FINANCE</option>
+                        <option value="APPAREL">APPAREL</option>
+                        <option value="ENGINEERING">ENGINEERING</option>
+                        <option value="ACCOUNTANT">ACCOUNTANT</option>
+                        <option value="CONSTRUCTION">CONSTRUCTION</option>
+                        <option value="PUBLIC-RELATIONS">PUBLIC-RELATIONS</option>
+                        <option value="BANKING">BANKING</option>
+                        <option value="ARTS">ARTS</option>
+                        <option value="AVIATION">AVIATION</option>
+                        <option value="DATA-SCIENCE">DATA-SCIENCE</option>
+                        <option value="WEB-DEVELOPER">WEB-DEVELOPER</option>
+                        <option value="DEFAULT">DEFAULT (General)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>🔘 Answer Options * (Mark the correct one)</label>
+                    <div id="optionsList">
+                        <div class="option-row">
+                            <span class="option-label">A.</span>
+                            <input type="text" class="option-input" placeholder="Option A">
+                            <input type="radio" name="correctOpt" value="0" title="Mark as correct"> ✓
+                        </div>
+                        <div class="option-row">
+                            <span class="option-label">B.</span>
+                            <input type="text" class="option-input" placeholder="Option B">
+                            <input type="radio" name="correctOpt" value="1" title="Mark as correct"> ✓
+                        </div>
+                        <div class="option-row">
+                            <span class="option-label">C.</span>
+                            <input type="text" class="option-input" placeholder="Option C">
+                            <input type="radio" name="correctOpt" value="2" title="Mark as correct"> ✓
+                        </div>
+                        <div class="option-row">
+                            <span class="option-label">D.</span>
+                            <input type="text" class="option-input" placeholder="Option D">
+                            <input type="radio" name="correctOpt" value="3" title="Mark as correct"> ✓
+                        </div>
+                    </div>
+                    <small style="color:var(--muted);font-size:0.78em;margin-top:6px;display:block;">Click the ✓ radio button next to the correct answer</small>
+                </div>
+                <div class="form-group">
+                    <label>📊 Difficulty *</label>
+                    <select id="aqDifficulty">
+                        <option value="easy">Easy</option>
+                        <option value="medium" selected>Medium</option>
+                        <option value="hard">Hard</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>💡 Explanation (optional)</label>
+                    <textarea id="aqExplanation" placeholder="Brief explanation of the correct answer..."></textarea>
+                </div>
+                <button class="btn-primary" onclick="submitAddQuestion()" id="addQBtn">➕ Add Question</button>
+            </div>
+        </div>
+
+        <!-- ═══════════════════════════════════ BY ROLE ═══ -->
+        <div class="page-section" id="page-roles">
+            <div class="page-header">
+                <div>
+                    <h2>Questions by Role</h2>
+                    <p>Click a role to filter questions for that category</p>
+                </div>
+            </div>
+            <div class="card">
+                <div class="role-grid" id="roleGrid">
+                    <div class="loading"><div class="spinner"></div><br>Loading...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══════════════════════════════════ TEST RESULTS ═══ -->
+        <div class="page-section" id="page-results">
+            <div class="page-header">
+                <div>
+                    <h2>Test Results</h2>
+                    <p>MCQ test submissions from all candidates</p>
+                </div>
+            </div>
+            <div class="card">
+                <div class="filter-row">
+                    <div class="search-box">
+                        <span class="search-icon">🔍</span>
+                        <input type="text" id="resultSearch" placeholder="Search by username or role..." oninput="filterResults()">
+                    </div>
+                    <select class="filter-select" id="resultFilter" onchange="filterResults()">
+                        <option value="">All Results</option>
+                        <option value="pass">Passed (≥60%)</option>
+                        <option value="fail">Failed (&lt;60%)</option>
+                    </select>
+                </div>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Username</th>
+                                <th>Job Role</th>
+                                <th>Score</th>
+                                <th>Correct/Total</th>
+                                <th>Status</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody id="resultsTableBody">
+                            <tr><td colspan="7"><div class="loading"><div class="spinner"></div><br>Loading results...</div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══════════════════════════════════ SUBSCRIPTIONS ═══ -->
+        <div class="page-section" id="page-subscriptions">
+            <div class="page-header">
+                <div>
+                    <h2>💳 Subscription Management</h2>
+                    <p>Assign plans to candidates and track their usage</p>
+                </div>
+                <button class="btn-primary" onclick="loadSubscriptions()">🔄 Refresh</button>
+            </div>
+
+            <!-- ── PENDING REQUESTS (shown when there are any) ── -->
+            <div id="pendingRequestsSection" style="display:none;margin-bottom:24px;">
+                <div class="card" style="border:2px solid #fde68a;background:#fffbeb;">
+                    <div class="card-header">
+                        <div>
+                            <div class="card-title">🔔 Pending Plan Requests <span id="pendingCount" class="nav-badge" style="background:#f59e0b;font-size:.8em;"></span></div>
+                            <div class="card-subtitle">Candidates waiting for plan approval</div>
+                        </div>
+                    </div>
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Username</th>
+                                    <th>Current Plan</th>
+                                    <th>Requesting</th>
+                                    <th>Message</th>
+                                    <th>Requested</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="pendingRequestsBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Plan overview cards -->
+            <div id="planCards" style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px;">
+                <div class="loading"><div class="spinner"></div></div>
+            </div>
+
+            <!-- Assign Plan Form -->
+            <div class="card" style="margin-bottom:20px;">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">🎯 Assign / Change Plan</div>
+                        <div class="card-subtitle">Select a user and upgrade or downgrade their subscription</div>
+                    </div>
+                </div>
+                <div class="alert" id="subAlert"></div>
+                <!-- Billing Cycle Toggle -->
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+                    <span style="font-size:.85em;font-weight:700;color:var(--muted);">Billing Cycle:</span>
+                    <div style="display:flex;background:#f1f5f9;border-radius:8px;padding:3px;gap:2px;">
+                        <button id="cycleMonthly" onclick="setBillingCycle('monthly')"
+                            style="padding:5px 18px;border-radius:6px;border:none;font-family:inherit;font-size:.85em;font-weight:700;cursor:pointer;background:var(--primary);color:#fff;transition:all .2s;">
+                            Monthly
+                        </button>
+                        <button id="cycleYearly" onclick="setBillingCycle('yearly')"
+                            style="padding:5px 18px;border-radius:6px;border:none;font-family:inherit;font-size:.85em;font-weight:700;cursor:pointer;background:transparent;color:var(--muted);transition:all .2s;">
+                            Yearly <span style="font-size:.75em;background:#10b981;color:#fff;padding:1px 6px;border-radius:10px;margin-left:3px;">Save 17%</span>
+                        </button>
+                    </div>
+                    <span id="billingNote" style="font-size:.78em;color:var(--muted);"></span>
+                </div>
+
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:12px;align-items:end;flex-wrap:wrap;">
+                    <div class="form-group" style="margin:0">
+                        <label>👤 User (Candidate)</label>
+                        <select id="assignUser" style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:.9em;font-family:inherit;outline:none;background:#f8fbff;">
+                            <option value="">Select user...</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="margin:0">
+                        <label>📋 Plan</label>
+                        <select id="assignPlan" onchange="onPlanChange()" style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:.9em;font-family:inherit;outline:none;background:#f8fbff;">
+                            <option value="">Select plan...</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="margin:0">
+                        <label>📅 Expires (auto-set or override)</label>
+                        <input type="date" id="assignExpires" style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:.9em;font-family:inherit;outline:none;background:#f8fbff;">
+                    </div>
+                    <button class="btn-primary" onclick="submitAssignPlan()" style="height:42px;white-space:nowrap;">✅ Assign Plan</button>
+                </div>
+            </div>
+
+            <!-- Active Subscriptions Table -->
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">📋 Active Subscriptions</div>
+                        <div class="card-subtitle">All user subscriptions and their usage</div>
+                    </div>
+                    <div class="search-box" style="width:240px;">
+                        <span class="search-icon">🔍</span>
+                        <input type="text" id="subSearch" placeholder="Search username..." oninput="filterSubscriptions()">
+                    </div>
+                </div>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Username</th>
+                                <th>Plan</th>
+                                <th>Status</th>
+                                <th>Resumes Used</th>
+                                <th>MCQ Used</th>
+                                <th>Expires</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="subsTableBody">
+                            <tr><td colspan="7"><div class="loading"><div class="spinner"></div><br>Loading...</div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- All Requests History -->
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">📜 Request History</div>
+                        <div class="card-subtitle">All plan change requests</div>
+                    </div>
+                </div>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>Username</th><th>From</th><th>To</th><th>Status</th><th>Date</th><th>Admin Note</th></tr>
+                        </thead>
+                        <tbody id="requestHistoryBody">
+                            <tr><td colspan="6"><div class="loading"><div class="spinner"></div><br>Loading...</div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </main>
+</div>
+
+<!-- QUESTION PREVIEW MODAL -->
+<div class="modal-overlay" id="previewModal">
+    <div class="modal">
+        <div class="modal-header">
+            <div class="modal-title">👁️ Question Preview</div>
+            <button class="modal-close" onclick="closeModal('previewModal')">✕</button>
+        </div>
+        <div id="previewContent"></div>
+    </div>
+</div>
+
+<!-- DELETE CONFIRM MODAL -->
+<div class="modal-overlay" id="deleteModal">
+    <div class="modal" style="max-width:400px;">
+        <div class="modal-header">
+            <div class="modal-title">⚠️ Confirm Action</div>
+            <button class="modal-close" onclick="closeModal('deleteModal')">✕</button>
+        </div>
+        <p style="color:var(--muted);font-size:0.9em;margin-bottom:24px;" id="deleteMsg">Are you sure?</p>
+        <div style="display:flex;gap:10px;">
+            <button class="btn-primary" id="deleteConfirmBtn" style="flex:1;">Confirm</button>
+            <button class="btn-sm" onclick="closeModal('deleteModal')" style="flex:1;padding:10px;">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<script>
+const API = '';
+
+// ─── STATE ───────────────────────────────────────────────
+let allUsers      = [];
+let allQuestions  = [];
+let allResults    = [];
+let allRoles      = [];
+let qPage         = 1;
+let uPage         = 1;
+const PER_PAGE    = 15;
+
+// Cache TTL = 60s — avoids refetching on every tab switch
+const CACHE_TTL = 60000;
+const _cacheTs  = {};
+function isFresh(key) { return !!(_cacheTs[key] && Date.now() - _cacheTs[key] < CACHE_TTL); }
+function markFresh(key) { _cacheTs[key] = Date.now(); }
+function invalidate(key) { delete _cacheTs[key]; }
+
+// ─── NAVIGATION ──────────────────────────────────────────
+function showPage(name) {
+    document.querySelectorAll('.page-section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.getElementById(`page-${name}`).classList.add('active');
+    const btn = [...document.querySelectorAll('.nav-item')].find(b => b.textContent.includes(
+        name === 'dashboard'     ? 'Dashboard' :
+        name === 'users'         ? 'Users' :
+        name === 'questions'     ? 'All Questions' :
+        name === 'add-question'  ? 'Add Question' :
+        name === 'roles'         ? 'By Role' :
+        name === 'results'       ? 'Test Results' :
+        name === 'subscriptions' ? 'Subscriptions' : ''
+    ));
+    if (btn) btn.classList.add('active');
+
+    if (name === 'users')         loadUsers();
+    if (name === 'questions')     loadQuestions();
+    if (name === 'roles')         loadRoleGrid();
+    if (name === 'results')       loadResults();
+    if (name === 'subscriptions') loadSubscriptions();
+}
+
+// ─── LOAD ALL (dashboard) — single API call ──────────────
+async function loadAll() {
+    // Reset to loading state
+    ['stat-users','stat-questions','stat-active','stat-inactive','sideUserCount','sideQCount'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = '—';
+    });
+    document.getElementById('roleChart').innerHTML       = '<div class="loading"><div class="spinner"></div><br>Loading...</div>';
+    document.getElementById('difficultyChart').innerHTML = '<div class="loading"><div class="spinner"></div><br>Loading...</div>';
+    document.getElementById('recentResults').innerHTML   = '<div class="loading"><div class="spinner"></div><br>Loading...</div>';
+
+    try {
+        const d = await api('/api/admin/dashboard');
+        if (!d.success) {
+            throw new Error(d.error || 'Dashboard API returned failure');
+        }
+
+        // ── Stats (flat structure) ──────────────────────────
+        document.getElementById('stat-users').textContent     = d.user_total ?? 0;
+        document.getElementById('sideUserCount').textContent  = d.user_total ?? 0;
+        document.getElementById('stat-questions').textContent = d.q_total    ?? 0;
+        document.getElementById('stat-active').textContent    = d.q_active   ?? 0;
+        document.getElementById('stat-inactive').textContent  = d.q_inactive ?? 0;
+        document.getElementById('sideQCount').textContent     = d.q_total    ?? 0;
+
+        // ── Role chart ──────────────────────────────────────
+        const roles = d.roles || [];
+        const max   = Math.max(...roles.map(x => x.count), 1);
+        document.getElementById('roleChart').innerHTML = roles.length
+            ? roles.map(role => `
+                <div class="bar-row">
+                    <div class="bar-label">${role.role}</div>
+                    <div class="bar-track"><div class="bar-fill" style="width:${(role.count/max*100).toFixed(0)}%"></div></div>
+                    <div class="bar-val">${role.count}</div>
+                </div>`).join('')
+            : '<p style="color:var(--muted);padding:12px">No data</p>';
+
+        // ── Difficulty chart ─────────────────────────────────
+        const diff = d.difficulty || {};
+        const dmax = Math.max(diff.easy||0, diff.medium||0, diff.hard||0, 1);
+        document.getElementById('difficultyChart').innerHTML = `
+            <div class="bar-row">
+                <div class="bar-label" style="color:#059669">🟢 Easy</div>
+                <div class="bar-track"><div class="bar-fill" style="width:${((diff.easy||0)/dmax*100).toFixed(0)}%;background:#10b981"></div></div>
+                <div class="bar-val">${diff.easy||0}</div>
+            </div>
+            <div class="bar-row">
+                <div class="bar-label" style="color:#d97706">🟡 Medium</div>
+                <div class="bar-track"><div class="bar-fill" style="width:${((diff.medium||0)/dmax*100).toFixed(0)}%;background:#f59e0b"></div></div>
+                <div class="bar-val">${diff.medium||0}</div>
+            </div>
+            <div class="bar-row">
+                <div class="bar-label" style="color:#dc2626">🔴 Hard</div>
+                <div class="bar-track"><div class="bar-fill" style="width:${((diff.hard||0)/dmax*100).toFixed(0)}%;background:#ef4444"></div></div>
+                <div class="bar-val">${diff.hard||0}</div>
+            </div>`;
+
+        // ── Recent Results ───────────────────────────────────
+        const results = d.results || [];
+        if (results.length) {
+            renderRecentResults(results);
+        } else {
+            document.getElementById('recentResults').innerHTML =
+                '<div class="empty-state"><div class="empty-icon">📭</div><p>No test results yet</p></div>';
+        }
+
+        // Cache users so Users tab doesn't need a separate fetch
+        allUsers = d.users || [];
+
+    } catch(e) {
+        console.error('Dashboard load error:', e);
+        ['roleChart','difficultyChart','recentResults'].forEach(id => {
+            document.getElementById(id).innerHTML =
+                '<div class="empty-state"><div class="empty-icon">⚠️</div><p>Error loading data. <a href="#" onclick="loadAll()">Retry</a></p></div>';
+        });
+    }
+}
+
+function renderRecentResults(results) {
+    document.getElementById('recentResults').innerHTML = `
+        <div class="table-wrap">
+        <table>
+            <thead><tr><th>Username</th><th>Role</th><th>Score</th><th>Status</th><th>Date</th></tr></thead>
+            <tbody>${results.map(res => `
+                <tr>
+                    <td><strong>${res.username || '—'}</strong></td>
+                    <td>${res.job_role || '—'}</td>
+                    <td>
+                        <div>${Math.round(res.score_percentage || 0)}%</div>
+                        <div class="mini-progress"><div class="mini-progress-fill" style="width:${res.score_percentage||0}%"></div></div>
+                    </td>
+                    <td><span class="badge ${(res.score_percentage||0)>=60?'badge-pass':'badge-fail'}">${(res.score_percentage||0)>=60?'✅ Pass':'❌ Fail'}</span></td>
+                    <td style="color:var(--muted);font-size:0.8em">${fmtDate(res.created_at)}</td>
+                </tr>
+            `).join('')}</tbody>
+        </table></div>`;
+}
+
+async function api(path, opts={}) {
+    const r = await fetch(API + path, { credentials: 'include', ...opts });
+    if (r.status === 401 || r.redirected) { window.location.href = '/login'; throw new Error('Not authenticated'); }
+    const ct = r.headers.get('content-type') || '';
+    if (!ct.includes('application/json')) { window.location.href = '/login'; throw new Error('Not authenticated'); }
+    return r.json();
+}
+
+// ─── USERS ────────────────────────────────────────────────
+async function loadUsers() {
+    if (isFresh('users') && allUsers.length) { renderUsers(); return; }
+    document.getElementById('usersTableBody').innerHTML = '<tr><td colspan="6"><div class="loading"><div class="spinner"></div><br>Loading users...</div></td></tr>';
+    try {
+        const r = await api('/api/admin/users');
+        allUsers = r.users || [];
+        markFresh('users');
+        renderUsers();
+    } catch(e) { console.error(e); }
+}
+
+function filterUsers() {
+    uPage = 1;
+    renderUsers();
+}
+
+function renderUsers() {
+    const search = document.getElementById('userSearch').value.toLowerCase();
+    const role   = document.getElementById('roleFilter').value;
+    let data = allUsers.filter(u =>
+        (!search || (u.name||'').toLowerCase().includes(search) || (u.username||'').toLowerCase().includes(search)) &&
+        (!role   || u.role === role)
+    );
+    const total  = data.length;
+    const pages  = Math.ceil(total / PER_PAGE);
+    const slice  = data.slice((uPage-1)*PER_PAGE, uPage*PER_PAGE);
+
+    document.getElementById('sideUserCount').textContent = allUsers.length;
+    if (!slice.length) {
+        document.getElementById('usersTableBody').innerHTML = '<tr><td colspan="6"><div class="empty-state"><div class="empty-icon">👤</div><p>No users found</p></div></td></tr>';
+    } else {
+        document.getElementById('usersTableBody').innerHTML = slice.map((u, i) => `
+            <tr>
+                <td style="color:var(--muted)">${(uPage-1)*PER_PAGE+i+1}</td>
+                <td><strong>${u.name || '—'}</strong></td>
+                <td><code style="background:#f1f5f9;padding:2px 6px;border-radius:4px;font-size:0.85em">${u.username}</code></td>
+                <td style="color:var(--muted)">${u.email || '—'}</td>
+                <td><span class="badge ${u.role==='admin'?'badge-admin':'badge-candidate'}">${u.role==='admin'?'🛡️ Admin':'🧑‍💼 Candidate'}</span></td>
+                <td>
+                    <button class="btn-sm danger" onclick="confirmDeleteUser('${u.id}', '${u.username}')">🗑️ Delete</button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    const pagEl  = document.getElementById('userPagination');
+    const pagInfo = document.getElementById('userPagInfo');
+    const pagBtns = document.getElementById('userPagBtns');
+    pagEl.style.display = pages > 1 ? 'flex' : 'none';
+    pagInfo.textContent = `Showing ${slice.length} of ${total} users`;
+    pagBtns.innerHTML = renderPageBtns(uPage, pages, 'uPage');
+}
+
+// ─── QUESTIONS ────────────────────────────────────────────
+async function loadQuestions() {
+    if (isFresh('questions') && allQuestions.length) { renderQuestions(); return; }
+    document.getElementById('questionsTableBody').innerHTML = '<tr><td colspan="6"><div class="loading"><div class="spinner"></div><br>Loading questions...</div></td></tr>';
+    try {
+        const r = await api('/api/admin/questions');
+        allQuestions = r.questions || [];
+        markFresh('questions');
+        // Update badge with true total from API
+        const trueTotal = r.total ?? allQuestions.length;
+        document.getElementById('sideQCount').textContent = trueTotal;
+        document.getElementById('stat-questions').textContent = trueTotal;
+        // Populate role filter dropdown
+        const roles = [...new Set(allQuestions.map(q => q.job_role))].sort();
+        const sel = document.getElementById('qRoleFilter');
+        sel.innerHTML = '<option value="">All Roles</option>' + roles.map(r => `<option value="${r}">${r}</option>`).join('');
+        qPage = 1;
+        renderQuestions();
+    } catch(e) { console.error(e); }
+}
+
+function filterQuestions() { qPage = 1; renderQuestions(); }
+
+function renderQuestions() {
+    const search = document.getElementById('qSearch').value.toLowerCase();
+    const role   = document.getElementById('qRoleFilter').value;
+    const status = document.getElementById('qStatusFilter').value;
+    const diff   = document.getElementById('qDiffFilter').value;
+
+    let data = allQuestions.filter(q =>
+        (!search || q.question.toLowerCase().includes(search)) &&
+        (!role   || q.job_role === role) &&
+        (!status || q.status === status) &&
+        (!diff   || q.difficulty === diff)
+    );
+
+    const total = data.length;
+    const pages = Math.ceil(total / PER_PAGE);
+    const slice = data.slice((qPage-1)*PER_PAGE, qPage*PER_PAGE);
+
+    // sideQCount is set by loadQuestions with true total — don't overwrite here
+    document.getElementById('qPagInfo').textContent   = `Showing ${slice.length} of ${total} questions`;
+
+    if (!slice.length) {
+        document.getElementById('questionsTableBody').innerHTML = '<tr><td colspan="6"><div class="empty-state"><div class="empty-icon">📭</div><p>No questions found</p></div></td></tr>';
+    } else {
+        document.getElementById('questionsTableBody').innerHTML = slice.map(q => `
+            <tr>
+                <td style="color:var(--muted);font-size:0.8em">${q.id}</td>
+                <td style="max-width:320px;">
+                    <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:320px;font-weight:600;">${q.question}</div>
+                </td>
+                <td><span style="font-size:0.78em;background:#f1f5f9;padding:2px 8px;border-radius:6px;font-weight:600;">${q.job_role}</span></td>
+                <td><span class="badge badge-${q.difficulty||'medium'}">${q.difficulty||'medium'}</span></td>
+                <td>
+                    <button class="toggle ${q.status==='active'?'on':''}" onclick="toggleStatus(${q.id}, '${q.status}', this)" title="${q.status}"></button>
+                    <span style="font-size:0.75em;color:var(--muted);margin-left:6px">${q.status==='active'?'Active':'Inactive'}</span>
+                </td>
+                <td style="white-space:nowrap;">
+                    <button class="btn-sm primary" onclick="previewQuestion(${q.id})">👁️</button>
+                    <button class="btn-sm danger" onclick="confirmDeleteQuestion(${q.id})">🗑️</button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    document.getElementById('qPagBtns').innerHTML = renderPageBtns(qPage, pages, 'qPage');
+}
+
+// ─── TOGGLE QUESTION STATUS ───────────────────────────────
+async function toggleStatus(id, currentStatus, btn) {
+    const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
+    try {
+        const r = await api('/api/admin/toggle-question-status', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ id, status: newStatus })
+        });
+        if (r.success) {
+            btn.classList.toggle('on', newStatus === 'active');
+            btn.title = newStatus;
+            btn.nextElementSibling.textContent = newStatus === 'active' ? 'Active' : 'Inactive';
+            // update local data
+            const q = allQuestions.find(q => q.id === id);
+            if (q) q.status = newStatus;
+            // refresh stats
+            document.getElementById('stat-active').textContent   = allQuestions.filter(q => q.status === 'active').length;
+            document.getElementById('stat-inactive').textContent = allQuestions.filter(q => q.status === 'inactive').length;
+        }
+    } catch(e) { console.error(e); }
+}
+
+// ─── PREVIEW QUESTION ─────────────────────────────────────
+function previewQuestion(id) {
+    const q = allQuestions.find(q => q.id === id);
+    if (!q) return;
+    const opts = Array.isArray(q.options) ? q.options : JSON.parse(q.options || '[]');
+    document.getElementById('previewContent').innerHTML = `
+        <div class="q-preview">
+            <div class="q-text">${q.question}</div>
+            <div class="q-options">
+                ${opts.map(o => `
+                    <div class="q-option ${o===q.correct_answer?'correct':''}">
+                        ${o===q.correct_answer?'✅ ':''} ${o}
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:12px;">
+            <span class="badge badge-${q.difficulty}">${q.difficulty}</span>
+            <span style="font-size:0.8em;color:var(--muted)">Role: <strong>${q.job_role}</strong></span>
+            <span class="badge ${q.status==='active'?'badge-active':'badge-inactive'}">${q.status}</span>
+        </div>
+        ${q.explanation ? `<div style="margin-top:12px;padding:12px;background:#eff6ff;border-radius:8px;font-size:0.85em;color:#1e40af;"><strong>💡 Explanation:</strong> ${q.explanation}</div>` : ''}
+    `;
+    openModal('previewModal');
+}
+
+// ─── DELETE QUESTION ──────────────────────────────────────
+function confirmDeleteQuestion(id) {
+    document.getElementById('deleteMsg').textContent = `Are you sure you want to delete question ID ${id}? This cannot be undone.`;
+    document.getElementById('deleteConfirmBtn').onclick = () => deleteQuestion(id);
+    openModal('deleteModal');
+}
+
+async function deleteQuestion(id) {
+    closeModal('deleteModal');
+    try {
+        const r = await api('/api/admin/delete-question', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ id })
+        });
+        if (r.success) {
+            allQuestions = allQuestions.filter(q => q.id !== id);
+            renderQuestions();
+        }
+    } catch(e) { console.error(e); }
+}
+
+// ─── DELETE USER ──────────────────────────────────────────
+function confirmDeleteUser(id, username) {
+    document.getElementById('deleteMsg').textContent = `Delete user "${username}"? This cannot be undone.`;
+    document.getElementById('deleteConfirmBtn').onclick = () => deleteUser(id, username);
+    openModal('deleteModal');
+}
+
+async function deleteUser(id, username) {
+    closeModal('deleteModal');
+    try {
+        const r = await api('/api/admin/delete-user', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ id })
+        });
+        if (r.success) {
+            allUsers = allUsers.filter(u => String(u.id) !== String(id));
+            renderUsers();
+        }
+    } catch(e) { console.error(e); }
+}
+
+// ─── ROLE GRID ────────────────────────────────────────────
+async function loadRoleGrid() {
+    try {
+        const r = await api('/api/admin/role-stats');
+        if (!r.success) return;
+        document.getElementById('roleGrid').innerHTML = r.roles.map(role => `
+            <div class="role-chip" onclick="goToRoleFilter('${role.role}')">
+                <div class="role-count">${role.count}</div>
+                <div class="role-name">${role.role}</div>
+            </div>
+        `).join('');
+    } catch(e) { console.error(e); }
+}
+
+function goToRoleFilter(role) {
+    showPage('questions');
+    setTimeout(() => {
+        document.getElementById('qRoleFilter').value = role;
+        filterQuestions();
+    }, 100);
+}
+
+// ─── ADD QUESTION ─────────────────────────────────────────
+async function submitAddQuestion() {
+    const question = document.getElementById('aqQuestion').value.trim();
+    const role     = document.getElementById('aqRole').value;
+    const diff     = document.getElementById('aqDifficulty').value;
+    const expl     = document.getElementById('aqExplanation').value.trim();
+    const optInputs= document.querySelectorAll('.option-input');
+    const correctR = document.querySelector('input[name="correctOpt"]:checked');
+    const alertEl  = document.getElementById('addQAlert');
+
+    const opts = [...optInputs].map(i => i.value.trim());
+    if (!question || !role || opts.some(o => !o) || !correctR) {
+        showAlert(alertEl, '⚠️ Please fill all fields and mark the correct answer.', 'error');
+        return;
+    }
+    const correctAnswer = opts[parseInt(correctR.value)];
+
+    document.getElementById('addQBtn').disabled = true;
+    document.getElementById('addQBtn').textContent = 'Adding...';
+
+    try {
+        const r = await api('/api/admin/add-question', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ job_role:role, question, options:opts, correct_answer:correctAnswer, difficulty:diff, explanation:expl })
+        });
+        if (r.success) {
+            showAlert(alertEl, '✅ Question added successfully!', 'success');
+            document.getElementById('aqQuestion').value  = '';
+            document.getElementById('aqRole').value      = '';
+            document.getElementById('aqExplanation').value = '';
+            [...optInputs].forEach(i => i.value = '');
+            correctR.checked = false;
+            allQuestions = []; // reset cache
+        } else {
+            showAlert(alertEl, '❌ ' + (r.error || 'Failed to add question.'), 'error');
+        }
+    } catch(e) {
+        showAlert(alertEl, '❌ Server error. Please try again.', 'error');
+    }
+    document.getElementById('addQBtn').disabled = false;
+    document.getElementById('addQBtn').innerHTML = '➕ Add Question';
+}
+
+// ─── RESULTS ─────────────────────────────────────────────
+async function loadResults() {
+    if (isFresh('results') && allResults.length) { renderResults(); return; }
+    document.getElementById('resultsTableBody').innerHTML = '<tr><td colspan="7"><div class="loading"><div class="spinner"></div><br>Loading results...</div></td></tr>';
+    try {
+        const r = await api('/api/admin/results?limit=200');
+        allResults = r.results || [];
+        filterResults();
+    } catch(e) { console.error(e); }
+}
+
+function filterResults() {
+    const search = document.getElementById('resultSearch').value.toLowerCase();
+    const filter = document.getElementById('resultFilter').value;
+    let data = allResults.filter(res =>
+        (!search || (res.username||'').toLowerCase().includes(search) || (res.job_role||'').toLowerCase().includes(search)) &&
+        (!filter || (filter==='pass' ? (res.score_percentage||0)>=60 : (res.score_percentage||0)<60))
+    );
+    if (!data.length) {
+        document.getElementById('resultsTableBody').innerHTML = '<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">📭</div><p>No results found</p></div></td></tr>';
+        return;
+    }
+    document.getElementById('resultsTableBody').innerHTML = data.map((res,i) => `
+        <tr>
+            <td style="color:var(--muted)">${i+1}</td>
+            <td><strong>${res.username || '—'}</strong></td>
+            <td><span style="font-size:0.78em;background:#f1f5f9;padding:2px 8px;border-radius:6px;font-weight:600;">${res.job_role||'—'}</span></td>
+            <td>
+                <strong>${Math.round(res.score_percentage||0)}%</strong>
+                <div class="mini-progress" style="width:80px"><div class="mini-progress-fill" style="width:${res.score_percentage||0}%"></div></div>
+            </td>
+            <td>${res.correct_answers||0} / ${res.total_questions||0}</td>
+            <td><span class="badge ${(res.score_percentage||0)>=60?'badge-pass':'badge-fail'}">${(res.score_percentage||0)>=60?'✅ Pass':'❌ Fail'}</span></td>
+            <td style="color:var(--muted);font-size:0.8em">${fmtDate(res.created_at)}</td>
+        </tr>
+    `).join('');
+}
+
+// ─── SUBSCRIPTIONS ───────────────────────────────────────
+let allSubs  = [];
+let allPlans = [];
+
+async function loadSubscriptions() {
+    if (isFresh('subscriptions') && allSubs.length) { filterSubscriptions(); return; }
+    try {
+        const [subsR, plansR, usersR, reqR] = await Promise.all([
+            api('/api/admin/subscriptions'),
+            api('/api/admin/plans'),
+            allUsers.length ? Promise.resolve({ users: allUsers }) : api('/api/admin/users'),
+            api('/api/admin/plan-requests')
+        ]);
+
+        allPlans = plansR.plans || [];
+        allSubs  = subsR.subscriptions || [];
+        const allRequests = reqR.requests || [];
+
+        // Cache users if they weren't loaded yet
+        if (!allUsers.length && usersR.users?.length) {
+            allUsers = usersR.users;
+        }
+
+        // ── Pending Requests section ──────────────────────────
+        const pending = allRequests.filter(r => r.status === 'pending');
+        const pendSec = document.getElementById('pendingRequestsSection');
+        if (pending.length) {
+            pendSec.style.display = 'block';
+            document.getElementById('pendingCount').textContent = pending.length;
+            document.getElementById('pendingRequestsBody').innerHTML = pending.map(req => `
+                <tr>
+                    <td><code style="background:#fef3c7;padding:2px 7px;border-radius:4px;font-size:.85em">${req.username}</code></td>
+                    <td><span class="badge badge-candidate">${req.current_plan || 'Free'}</span></td>
+                    <td><span class="badge badge-admin">→ ${req.requested_plan_name}</span></td>
+                    <td style="max-width:200px;font-size:.8em;color:var(--muted)">${req.message || '—'}</td>
+                    <td style="color:var(--muted);font-size:.8em">${fmtDate(req.created_at)}</td>
+                    <td style="white-space:nowrap;">
+                        <button class="btn-sm success" onclick="resolveRequest('${req.id}','approve','${req.username}','${req.requested_plan_name}')">✅ Approve</button>
+                        <button class="btn-sm danger"  onclick="promptRejectRequest('${req.id}','${req.username}')">❌ Reject</button>
+                    </td>
+                </tr>`).join('');
+        } else {
+            pendSec.style.display = 'none';
+        }
+
+        // ── Sidebar notification dot ──────────────────────────
+        const subNavBtn = [...document.querySelectorAll('.nav-item')].find(b => b.textContent.includes('Subscriptions'));
+        if (subNavBtn) {
+            let dot = subNavBtn.querySelector('.pending-dot');
+            if (pending.length && !dot) {
+                dot = document.createElement('span');
+                dot.className = 'pending-dot';
+                dot.style.cssText = 'width:8px;height:8px;background:#f59e0b;border-radius:50%;margin-left:auto;flex-shrink:0;';
+                subNavBtn.appendChild(dot);
+            } else if (!pending.length && dot) {
+                dot.remove();
+            }
+        }
+
+        // ── Users for assign dropdown (candidates only) ───────
+        // Detect the correct key in the API response (users / data / result / list)
+        const usersArray = usersR.users || usersR.data || usersR.result || usersR.list || allUsers || [];
+        console.log('[assignUser] usersR raw:', usersR);
+        console.log('[assignUser] resolved array length:', usersArray.length);
+        if (usersArray.length) console.log('[assignUser] sample user object:', usersArray[0]);
+
+        // Filter out admins — handle role field being missing, uppercase, or differently named
+        const candidates = usersArray.filter(u => {
+            const role = (u.role || u.user_role || u.type || '').toString().toLowerCase();
+            return role !== 'admin';
+        });
+        console.log('[assignUser] candidates after filter:', candidates.length);
+
+        document.getElementById('assignUser').innerHTML =
+            '<option value="">Select user...</option>' +
+            candidates.map(u => `<option value="${u.username}">${u.name || u.username} (${u.username})</option>`).join('');
+
+        renderPlanDropdown();
+
+        // ── Plan overview cards ───────────────────────────────
+        const planColors = ['#3b6fd4', '#10b981', '#f59e0b'];
+        const planIcons  = ['🆓', '⭐', '💎'];
+        document.getElementById('planCards').innerHTML = allPlans.map((p, i) => {
+            const usersOnPlan = allSubs.filter(s => s.plan_id === p.id && s.status === 'active').length;
+            return `
+            <div style="background:${planColors[i]||'#6366f1'};border-radius:16px;padding:22px;color:#fff;">
+                <div style="font-size:2em;margin-bottom:6px">${planIcons[i]||'📋'}</div>
+                <div style="font-size:1.2em;font-weight:800;margin-bottom:2px">${p.name}</div>
+                <div style="font-size:.8em;opacity:.8;margin-bottom:14px">₹${p.price_monthly}/mo</div>
+                <div style="display:flex;gap:16px;font-size:.78em;opacity:.9;">
+                    <span>📄 ${p.max_resumes === -1 ? '∞' : p.max_resumes} resumes</span>
+                    <span>📝 ${p.max_mcq_tests === -1 ? '∞' : p.max_mcq_tests} tests</span>
+                </div>
+                <div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.25);font-size:.82em;font-weight:700;">
+                    👥 ${usersOnPlan} active ${usersOnPlan === 1 ? 'subscriber' : 'subscribers'}
+                </div>
+            </div>`;
+        }).join('');
+
+        // ── Request history ───────────────────────────────────
+        const badgeMap = { pending:'badge-candidate', approved:'badge-active', rejected:'badge-inactive' };
+        document.getElementById('requestHistoryBody').innerHTML = allRequests.length
+            ? allRequests.map(req => `<tr>
+                <td><code style="background:#f1f5f9;padding:2px 6px;border-radius:4px;font-size:.85em">${req.username}</code></td>
+                <td style="color:var(--muted);font-size:.82em">${req.current_plan||'Free'}</td>
+                <td style="font-weight:600">${req.requested_plan_name}</td>
+                <td><span class="badge ${badgeMap[req.status]||''}">${req.status}</span></td>
+                <td style="color:var(--muted);font-size:.8em">${fmtDate(req.created_at)}</td>
+                <td style="color:var(--muted);font-size:.8em">${req.admin_note||'—'}</td>
+              </tr>`).join('')
+            : '<tr><td colspan="6"><div class="empty-state"><div class="empty-icon">📭</div><p>No requests yet</p></div></td></tr>';
+
+        markFresh('subscriptions');
+        filterSubscriptions();
+    } catch(e) {
+        console.error('[loadSubscriptions]', e);
+    }
+}
+
+async function resolveRequest(requestId, action, username, planName) {
+    const note = action === 'reject' ? (prompt(`Reason for rejecting ${username}'s ${planName} request (optional):`) || '') : '';
+    try {
+        const r = await api('/api/admin/resolve-plan-request', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ request_id: requestId, action, admin_note: note })
+        });
+        if (r.success) {
+            showAlert(document.getElementById('subAlert'),
+                action === 'approve'
+                    ? `✅ ${planName} plan approved for ${username}!`
+                    : `❌ Request from ${username} rejected.`,
+                action === 'approve' ? 'success' : 'error');
+            loadSubscriptions();
+        }
+    } catch(e) { console.error(e); }
+}
+
+function promptRejectRequest(requestId, username) {
+    resolveRequest(requestId, 'reject', username, '');
+}
+
+function filterSubscriptions() {
+    const q = (document.getElementById('subSearch')?.value || '').toLowerCase();
+    const data = allSubs.filter(s => !q || (s.username || '').toLowerCase().includes(q));
+
+    if (!data.length) {
+        document.getElementById('subsTableBody').innerHTML =
+            '<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">💳</div><p>No subscriptions found</p></div></td></tr>';
+        return;
+    }
+
+    document.getElementById('subsTableBody').innerHTML = data.map(s => {
+        const plan   = s.subscription_plans || {};
+        const rMax   = plan.max_resumes   === -1 ? '∞' : (plan.max_resumes   || '—');
+        const mMax   = plan.max_mcq_tests === -1 ? '∞' : (plan.max_mcq_tests || '—');
+        const rUsed  = s.resumes_used || 0;
+        const mUsed  = s.mcq_used    || 0;
+        const rPct   = rMax === '∞' || rMax === '—' ? 0 : Math.min(100, (rUsed / rMax) * 100);
+        const mPct   = mMax === '∞' || mMax === '—' ? 0 : Math.min(100, (mUsed / mMax) * 100);
+        const statusCls = s.status === 'active' ? 'badge-active' : 'badge-inactive';
+
+        return `<tr>
+            <td><code style="background:#f1f5f9;padding:2px 6px;border-radius:4px;font-size:.85em">${s.username}</code></td>
+            <td><span class="badge" style="background:rgba(59,111,212,.1);color:var(--primary)">${plan.name || '—'}</span></td>
+            <td><span class="badge ${statusCls}">${s.status}</span></td>
+            <td>
+                <span style="font-weight:700">${rUsed} / ${rMax}</span>
+                <div class="mini-progress" style="width:90px;margin-top:4px"><div class="mini-progress-fill" style="width:${rPct}%"></div></div>
+            </td>
+            <td>
+                <span style="font-weight:700">${mUsed} / ${mMax}</span>
+                <div class="mini-progress" style="width:90px;margin-top:4px"><div class="mini-progress-fill" style="width:${mPct}%;background:#10b981"></div></div>
+            </td>
+            <td style="color:var(--muted);font-size:.82em">${s.expires_at ? fmtDate(s.expires_at) : 'Never'}</td>
+            <td style="white-space:nowrap;">
+                <button class="btn-sm success" onclick="resetUsage('${s.username}')" title="Reset usage counters">🔄 Reset</button>
+                <button class="btn-sm danger"  onclick="confirmRevokeSubscription('${s.username}')" title="Revoke subscription">🚫 Revoke</button>
+            </td>
+        </tr>`;
+    }).join('');
+}
+
+// ─── BILLING CYCLE ───────────────────────────────────────
+let billingCycle = 'monthly';
+
+function setBillingCycle(cycle) {
+    billingCycle = cycle;
+    const mBtn = document.getElementById('cycleMonthly');
+    const yBtn = document.getElementById('cycleYearly');
+    const note = document.getElementById('billingNote');
+    if (cycle === 'monthly') {
+        mBtn.style.background = 'var(--primary)'; mBtn.style.color = '#fff';
+        yBtn.style.background = 'transparent';    yBtn.style.color = 'var(--muted)';
+        note.textContent = '';
+    } else {
+        yBtn.style.background = 'var(--primary)'; yBtn.style.color = '#fff';
+        mBtn.style.background = 'transparent';     mBtn.style.color = 'var(--muted)';
+        note.textContent = '2 months FREE — billed annually';
+    }
+    renderPlanDropdown();
+    onPlanChange(); // refresh auto-expiry
+}
+
+function renderPlanDropdown() {
+    const sel = document.getElementById('assignPlan');
+    if (!sel) return;
+    const prev = sel.value;
+    sel.innerHTML = '<option value="">Select plan...</option>' +
+        allPlans.map(p => {
+            const monthly  = p.price_monthly || 0;
+            const yearly   = p.price_yearly  || Math.round(monthly * 10); // fallback: 10mo price
+            const resumes  = p.max_resumes   === -1 ? '∞' : p.max_resumes;
+            const tests    = p.max_mcq_tests === -1 ? '∞' : p.max_mcq_tests;
+            if (billingCycle === 'yearly' && monthly > 0) {
+                return `<option value="${p.id}">${p.name} — ₹${yearly}/yr · ${resumes} resumes · ${tests} tests</option>`;
+            }
+            return `<option value="${p.id}">${p.name} — ₹${monthly}/mo · ${resumes} resumes · ${tests} tests</option>`;
+        }).join('');
+    sel.value = prev; // restore selection
+}
+
+function onPlanChange() {
+    // Auto-set expiry date based on billing cycle
+    const expiresEl = document.getElementById('assignExpires');
+    const planId    = document.getElementById('assignPlan').value;
+    if (!planId) { expiresEl.value = ''; return; }
+    const today = new Date();
+    if (billingCycle === 'yearly') {
+        today.setFullYear(today.getFullYear() + 1);
+    } else {
+        today.setMonth(today.getMonth() + 1);
+    }
+    expiresEl.value = today.toISOString().split('T')[0];
+}
+
+async function submitAssignPlan() {
+    const username   = document.getElementById('assignUser').value;
+    const plan_id    = document.getElementById('assignPlan').value;
+    const expires_at = document.getElementById('assignExpires').value || null;
+    const alertEl    = document.getElementById('subAlert');
+
+    if (!username || !plan_id) {
+        showAlert(alertEl, '⚠️ Please select both a user and a plan.', 'error');
+        return;
+    }
+    try {
+        const r = await api('/api/admin/assign-plan', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, plan_id, expires_at, billing_cycle: billingCycle })
+        });
+        if (r.success) {
+            showAlert(alertEl, `✅ Plan assigned to ${username} successfully!`, 'success');
+            document.getElementById('assignUser').value   = '';
+            document.getElementById('assignPlan').value   = '';
+            document.getElementById('assignExpires').value = '';
+            invalidate('subscriptions');
+            loadSubscriptions();
+        } else {
+            showAlert(alertEl, '❌ ' + (r.error || 'Assignment failed'), 'error');
+        }
+    } catch(e) {
+        showAlert(alertEl, '❌ Server error: ' + e.message, 'error');
+    }
+}
+
+async function resetUsage(username) {
+    if (!confirm(`Reset usage counters for "${username}"?`)) return;
+    try {
+        const r = await api('/api/admin/reset-usage', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username })
+        });
+        if (r.success) { loadSubscriptions(); }
+    } catch(e) { console.error(e); }
+}
+
+function confirmRevokeSubscription(username) {
+    document.getElementById('deleteMsg').textContent = `Revoke subscription for "${username}"? They will fall back to the Free plan.`;
+    document.getElementById('deleteConfirmBtn').onclick = () => revokeSubscription(username);
+    openModal('deleteModal');
+}
+
+async function revokeSubscription(username) {
+    closeModal('deleteModal');
+    try {
+        const r = await api('/api/admin/revoke-subscription', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username })
+        });
+        if (r.success) { loadSubscriptions(); }
+    } catch(e) { console.error(e); }
+}
+
+// ─── HELPERS ──────────────────────────────────────────────
+function renderPageBtns(cur, total, varName) {
+    if (total <= 1) return '';
+    let html = `<button class="page-btn" ${cur===1?'disabled':''} onclick="${varName}--;${varName==='qPage'?'renderQuestions':'renderUsers'}()">‹</button>`;
+    for (let i=1;i<=total;i++) {
+        if (i===1||i===total||Math.abs(i-cur)<=1) {
+            html += `<button class="page-btn ${i===cur?'active':''}" onclick="${varName}=${i};${varName==='qPage'?'renderQuestions':'renderUsers'}()">${i}</button>`;
+        } else if (Math.abs(i-cur)===2) {
+            html += `<span style="padding:0 4px;color:var(--muted)">…</span>`;
+        }
+    }
+    html += `<button class="page-btn" ${cur===total?'disabled':''} onclick="${varName}++;${varName==='qPage'?'renderQuestions':'renderUsers'}()">›</button>`;
+    return html;
+}
+
+function showAlert(el, msg, type) {
+    el.textContent = msg;
+    el.className   = `alert ${type} show`;
+    el.style.display = 'block';
+    setTimeout(() => { el.style.display = 'none'; }, 4000);
+}
+
+function fmtDate(iso) {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    return d.toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
+}
+
+function openModal(id)  { document.getElementById(id).classList.add('show'); }
+function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+
+// ─── INIT ─────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+    loadAll();
+    // close modal on overlay click
+    document.querySelectorAll('.modal-overlay').forEach(el => {
+        el.addEventListener('click', e => { if (e.target === el) el.classList.remove('show'); });
+    });
+});
+</script>
+</body>
+</html>

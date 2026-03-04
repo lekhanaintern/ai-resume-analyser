@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MCQ Test - AI Resume Analyzer</title>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root {
             --primary: #3b6fd4;
@@ -207,9 +206,9 @@
             font-weight: 700;
         }
 
-        .difficulty-easy { background: #d1fae5; color: #065f46; }
+        .difficulty-easy   { background: #d1fae5; color: #065f46; }
         .difficulty-medium { background: #fef3c7; color: #92400e; }
-        .difficulty-hard { background: #fee2e2; color: #991b1b; }
+        .difficulty-hard   { background: #fee2e2; color: #991b1b; }
 
         .question-text {
             font-size: 1em;
@@ -247,26 +246,9 @@
             flex-shrink: 0;
         }
 
-        .option.selected {
-            border-color: var(--primary);
-            background: var(--grad);
-            color: white;
-            font-weight: 600;
-        }
-
-        .option.correct {
-            border-color: var(--success);
-            background: var(--success);
-            color: white;
-            font-weight: 600;
-        }
-
-        .option.incorrect {
-            border-color: var(--danger);
-            background: var(--danger);
-            color: white;
-            font-weight: 600;
-        }
+        .option.selected  { border-color: var(--primary); background: var(--grad); color: white; font-weight: 600; }
+        .option.correct   { border-color: var(--success); background: var(--success); color: white; font-weight: 600; }
+        .option.incorrect { border-color: var(--danger);  background: var(--danger);  color: white; font-weight: 600; }
 
         .explanation {
             background: #fffbeb;
@@ -305,7 +287,7 @@
         @keyframes spin { to { transform: rotate(360deg); } }
 
         .loading h3 { color: var(--primary); font-size: 1em; margin-bottom: 4px; }
-        .loading p { color: var(--muted); font-size: 0.88em; }
+        .loading p  { color: var(--muted); font-size: 0.88em; }
 
         .score-banner {
             background: var(--grad);
@@ -316,20 +298,10 @@
             margin-bottom: 24px;
         }
 
-        .score-banner h2 {
-            font-size: 4em;
-            font-weight: 800;
-            margin-bottom: 8px;
-            line-height: 1;
-        }
+        .score-banner h2 { font-size: 4em; font-weight: 800; margin-bottom: 8px; line-height: 1; }
+        .score-banner p  { font-size: 1.05em; opacity: 0.9; margin: 6px 0; }
 
-        .score-banner p { font-size: 1.05em; opacity: 0.9; margin: 6px 0; }
-
-        .pass-status {
-            font-size: 1.3em;
-            font-weight: 700;
-            margin-top: 14px;
-        }
+        .pass-status { font-size: 1.3em; font-weight: 700; margin-top: 14px; }
 
         .save-status {
             display: none;
@@ -342,78 +314,36 @@
             margin-top: 14px;
             justify-content: center;
         }
-        .save-status.saved   { display: flex; background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
-        .save-status.failed  { display: flex; background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+        .save-status.saved  { display: flex; background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
+        .save-status.failed { display: flex; background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
         .save-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
         .save-status.saved  .save-dot { background: #10b981; }
         .save-status.failed .save-dot { background: #ef4444; }
 
-        .history-section { margin-top: 32px; }
-        .history-heading {
-            font-size: 1em;
-            font-weight: 700;
-            color: var(--text);
-            margin-bottom: 16px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding-bottom: 10px;
-            border-bottom: 2px solid #e0f2fe;
+        .history-section  { margin-top: 32px; }
+        .history-heading  {
+            font-size: 1em; font-weight: 700; color: var(--text);
+            margin-bottom: 16px; display: flex; align-items: center; gap: 8px;
+            padding-bottom: 10px; border-bottom: 2px solid #e0f2fe;
         }
 
-        .history-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.88em;
-        }
-
+        .history-table { width: 100%; border-collapse: collapse; font-size: 0.88em; }
         .history-table th {
-            background: #f0f7ff;
-            color: var(--primary);
-            padding: 10px 14px;
-            text-align: left;
-            font-weight: 700;
-            font-size: 0.8em;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+            background: #f0f7ff; color: var(--primary); padding: 10px 14px;
+            text-align: left; font-weight: 700; font-size: 0.8em;
+            text-transform: uppercase; letter-spacing: 0.5px;
         }
-
-        .history-table td {
-            padding: 12px 14px;
-            border-bottom: 1px solid var(--border);
-            color: var(--text);
-        }
-
+        .history-table td { padding: 12px 14px; border-bottom: 1px solid var(--border); color: var(--text); }
         .history-table tr:last-child td { border-bottom: none; }
         .history-table tr:hover td { background: #f8fbff; }
 
-        .score-pill {
-            display: inline-block;
-            padding: 3px 12px;
-            border-radius: 20px;
-            font-weight: 700;
-            font-size: 0.85em;
-        }
-
+        .score-pill { display: inline-block; padding: 3px 12px; border-radius: 20px; font-weight: 700; font-size: 0.85em; }
         .score-pill.pass { background: #d1fae5; color: #065f46; }
         .score-pill.fail { background: #fee2e2; color: #991b1b; }
 
-        .review-heading {
-            font-size: 1em;
-            font-weight: 700;
-            color: var(--text);
-            margin: 24px 0 16px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
+        .review-heading { font-size: 1em; font-weight: 700; color: var(--text); margin: 24px 0 16px; display: flex; align-items: center; gap: 8px; }
 
-        .no-history {
-            text-align: center;
-            color: var(--muted);
-            padding: 24px;
-            font-size: 0.88em;
-        }
+        .no-history { text-align: center; color: var(--muted); padding: 24px; font-size: 0.88em; }
 
         @media (max-width: 600px) {
             .controls { flex-direction: column; align-items: center; }
@@ -449,7 +379,6 @@
                 <button class="btn-primary" id="startTestBtn" onclick="startTest()">🚀 Start Test</button>
             </div>
 
-            <!-- HISTORY: only shows THIS session's attempts -->
             <div class="history-section" id="historySection">
                 <div class="history-heading">📋 Your Results This Session</div>
                 <div id="historyContent">
@@ -475,9 +404,7 @@
                     <p class="progress-text" id="progressText">0 of 10 questions answered</p>
                 </div>
             </div>
-
             <div id="questionsContainer"></div>
-
             <div class="controls">
                 <button class="btn-primary" id="submitBtn" onclick="submitTest()">✅ Submit Test</button>
             </div>
@@ -509,85 +436,48 @@
 
     <script>
     // ============================================================
-    // SUPABASE CONFIG
+    // CONFIG — relative URL works on any host/port
     // ============================================================
-    const SUPABASE_URL = 'https://kxqzncqubkzxdjqkmstq.supabase.co';
-    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4cXpuY3F1Ymt6eGRqcWttc3RxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE2NDg3MDksImV4cCI6MjA4NzIyNDcwOX0.82b2UA_f3BPpwwvymmcXqBiBxDCvC1EYf7nvryUefPI';
-    const { createClient } = supabase;
-    const dbClient = createClient(SUPABASE_URL, SUPABASE_KEY);
-
-    // ============================================================
-    // SESSION ID — generated fresh every page visit, lives in memory only
-    // Results are saved to Supabase with this ID, but history display
-    // only shows records matching THIS session — so no other user
-    // ever sees your results, and you never see theirs.
-    // ============================================================
-    const SESSION_ID = 'sess_' + Math.random().toString(36).substr(2, 12) + '_' + Date.now();
-
-    // In-memory store for this session's attempts only
-    const sessionHistory = [];
+    const API_BASE_URL = '';   // ← was 'http://localhost:5000', now relative
 
     // ============================================================
     // STATE
     // ============================================================
-    const API_BASE_URL = 'http://localhost:5000';
     let currentQuestions   = [];
     let userAnswers        = {};
     let currentQuestionIds = [];
+    let currentUsername    = '';   // captured from /api/get-mcq-test response
+    let currentDbRole      = '';   // normalized role from backend
+
+    const sessionHistory = [];
 
     const urlParams    = new URLSearchParams(window.location.search);
     const detectedRole = urlParams.get('role') || 'DEFAULT';
     document.getElementById('headerSubtitle').textContent = `Role: ${detectedRole}`;
 
     // ============================================================
-    // SUPABASE — SAVE RESULT (stores session_id so data stays scoped)
+    // SAVE STATUS BADGE
     // ============================================================
-    async function saveMCQResultToSupabase(data) {
-        try {
-            const { error } = await dbClient.from('mcq_results').insert([{
-                session_id      : SESSION_ID,
-                job_role        : detectedRole,
-                total_questions : data.total_questions,
-                correct_answers : data.correct_answers,
-                wrong_answers   : data.wrong_answers,
-                score_percentage: data.score
-            }]);
-
-            if (error) {
-                console.error('Supabase save error:', error.message);
-                showSaveStatus('failed', '❌ Failed to save result: ' + error.message);
-            } else {
-                console.log('Result saved to Supabase.');
-                showSaveStatus('saved', '✅ Result saved successfully!');
-            }
-        } catch (err) {
-            console.error('Supabase error:', err);
-            showSaveStatus('failed', '❌ Could not save result.');
-        }
+    function showSaveStatus(type, message) {
+        const el = document.getElementById('saveStatus');
+        el.className = 'save-status ' + type;
+        document.getElementById('saveStatusText').textContent = message;
     }
 
     // ============================================================
-    // HISTORY — built from in-memory sessionHistory array only.
-    // Never fetches from Supabase, so no cross-user data leaks.
+    // HISTORY — in-memory only, no cross-user data
     // ============================================================
     function renderSessionHistory() {
         const container = document.getElementById('historyContent');
-
         if (sessionHistory.length === 0) {
             container.innerHTML = '<div class="no-history">No attempts yet this session. Take your first test above! 🚀</div>';
             return;
         }
-
         container.innerHTML = `
             <table class="history-table">
                 <thead>
                     <tr>
-                        <th>Role</th>
-                        <th>Score</th>
-                        <th>Correct</th>
-                        <th>Wrong</th>
-                        <th>Total</th>
-                        <th>Time</th>
+                        <th>Role</th><th>Score</th><th>Correct</th><th>Wrong</th><th>Total</th><th>Time</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -602,21 +492,10 @@
                                 <td style="color:#ef4444;font-weight:700;">❌ ${row.wrong_answers}</td>
                                 <td>${row.total_questions}</td>
                                 <td style="color:var(--muted);">${row.time}</td>
-                            </tr>
-                        `;
+                            </tr>`;
                     }).join('')}
                 </tbody>
-            </table>
-        `;
-    }
-
-    // ============================================================
-    // SAVE STATUS BADGE
-    // ============================================================
-    function showSaveStatus(type, message) {
-        const el = document.getElementById('saveStatus');
-        el.className = 'save-status ' + type;
-        document.getElementById('saveStatusText').textContent = message;
+            </table>`;
     }
 
     // ============================================================
@@ -627,7 +506,7 @@
             document.getElementById('startSection').classList.add('hidden');
             document.getElementById('loadingSection').classList.add('show');
 
-            const response = await fetch(`${API_BASE_URL}/api/get-mcq-test?role=${detectedRole}`, {
+            const response = await fetch(`${API_BASE_URL}/api/get-mcq-test?role=${encodeURIComponent(detectedRole)}`, {
                 method: 'GET',
                 credentials: 'include'
             });
@@ -637,6 +516,8 @@
             if (data.success) {
                 currentQuestions   = data.questions;
                 currentQuestionIds = data.questions.map(q => q.id);
+                currentUsername    = data.username  || '';   // ← from Flask session
+                currentDbRole      = data.db_role   || detectedRole;
                 displayQuestions(data);
             } else {
                 alert('Error: ' + (data.error || 'Could not load questions'));
@@ -645,14 +526,14 @@
             }
         } catch (error) {
             console.error('Error:', error);
-            alert('Failed to load test. Make sure the backend is running on http://localhost:5000');
+            alert('Failed to load test. Please try again.');
             document.getElementById('loadingSection').classList.remove('show');
             document.getElementById('startSection').classList.remove('hidden');
         }
     }
 
     // ============================================================
-    // SHUFFLE HELPER — Fisher-Yates algorithm
+    // SHUFFLE HELPER
     // ============================================================
     function shuffleArray(arr) {
         const a = [...arr];
@@ -664,7 +545,7 @@
     }
 
     // ============================================================
-    // DISPLAY QUESTIONS (options shuffled every time)
+    // DISPLAY QUESTIONS
     // ============================================================
     function displayQuestions(data) {
         document.getElementById('loadingSection').classList.remove('show');
@@ -679,8 +560,6 @@
             const card = document.createElement('div');
             card.className = 'question-card';
             const difficultyClass = `difficulty-${q.difficulty || 'medium'}`;
-
-            // Shuffle options so correct answer position changes every attempt
             const shuffledOptions = shuffleArray(q.options);
 
             card.innerHTML = `
@@ -696,8 +575,7 @@
                             <span>${opt}</span>
                         </label>
                     `).join('')}
-                </div>
-            `;
+                </div>`;
             container.appendChild(card);
         });
 
@@ -723,7 +601,7 @@
     }
 
     // ============================================================
-    // SUBMIT TEST
+    // SUBMIT TEST — sends username + job_role so backend saves them
     // ============================================================
     async function submitTest() {
         if (Object.keys(userAnswers).length < currentQuestions.length) {
@@ -738,16 +616,20 @@
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
-                body: JSON.stringify({ answers: userAnswers, question_ids: currentQuestionIds })
+                body: JSON.stringify({
+                    answers:      userAnswers,
+                    question_ids: currentQuestionIds,
+                    username:     currentUsername,    // ← saved from get-mcq-test
+                    job_role:     currentDbRole       // ← normalized role from backend
+                })
             });
 
             const data = await response.json();
 
             if (data.success) {
-                // Save to Supabase (with session_id for scoping)
-                await saveMCQResultToSupabase(data);
+                // Backend handles saving to DB with correct username
+                showSaveStatus('saved', '✅ Result saved successfully!');
 
-                // Add to in-memory session history
                 sessionHistory.unshift({
                     job_role        : detectedRole,
                     score_percentage: data.score,
@@ -779,10 +661,8 @@
         document.getElementById('resultsSection').classList.remove('hidden');
 
         document.getElementById('scorePercentage').textContent = Math.round(data.score) + '%';
-        document.getElementById('scoreDetails').textContent =
-            `✅ Correct: ${data.correct_answers} out of ${data.total_questions}`;
-        document.getElementById('wrongDetails').textContent =
-            `❌ Wrong: ${data.wrong_answers} out of ${data.total_questions}`;
+        document.getElementById('scoreDetails').textContent    = `✅ Correct: ${data.correct_answers} out of ${data.total_questions}`;
+        document.getElementById('wrongDetails').textContent    = `❌ Wrong: ${data.wrong_answers} out of ${data.total_questions}`;
 
         const passStatus = document.getElementById('passStatus');
         passStatus.textContent = data.passed
@@ -793,8 +673,8 @@
         reviewContainer.innerHTML = '';
 
         data.results.forEach((result, index) => {
-            const card = document.createElement('div');
-            card.className = 'question-card';
+            const card      = document.createElement('div');
+            card.className  = 'question-card';
             const isCorrect = result.is_correct;
 
             card.innerHTML = `
@@ -804,13 +684,16 @@
                 <div class="question-text">${result.question}</div>
                 <div class="options">
                     ${result.options.map(opt => {
-                        let className = 'option';
-                        if (opt === result.user_answer) className += isCorrect ? ' correct' : ' incorrect';
-                        return `<div class="${className}"><span>${opt}</span></div>`;
+                        let cls = 'option';
+                        if (opt === result.correct_answer) cls += ' correct';
+                        else if (opt === result.user_answer && !isCorrect) cls += ' incorrect';
+                        return `<div class="${cls}"><span>${opt}</span></div>`;
                     }).join('')}
                 </div>
-                ${!isCorrect ? '<div class="explanation show"><strong>❌ Incorrect</strong> — Review this topic and try again next time!</div>' : ''}
-            `;
+                ${result.explanation
+                    ? `<div class="explanation show"><strong>💡 Explanation:</strong> ${result.explanation}</div>`
+                    : (!isCorrect ? '<div class="explanation show"><strong>❌ Incorrect</strong> — Review this topic and try again next time!</div>' : '')
+                }`;
             reviewContainer.appendChild(card);
         });
 
@@ -827,10 +710,8 @@
         currentQuestions   = [];
         userAnswers        = {};
         currentQuestionIds = [];
-        document.getElementById('submitBtn').disabled = false;
+        document.getElementById('submitBtn').disabled  = false;
         document.getElementById('submitBtn').textContent = '✅ Submit Test';
-
-        // Re-render history from in-memory session data only
         renderSessionHistory();
     }
 
