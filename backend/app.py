@@ -334,6 +334,80 @@ def logout():
     session.clear()
     return redirect(url_for('login'))
 
+@app.route('/oauth-callback', methods=['POST'])
+def oauth_callback():
+    import requests as http_requests
+    data         = request.get_json()
+    access_token = data.get('access_token')
+
+    if not access_token:
+        return jsonify({"error": "No token provided"}), 400
+
+    # Verify token with Supabase and get user info
+    resp = http_requests.get(
+        f"{SUPABASE_URL}/auth/v1/user",
+        headers={
+            "apikey":        SUPABASE_KEY,
+            "Authorization": f"Bearer {access_token}"
+        }
+    )
+
+    if resp.status_code != 200:
+        return jsonify({"error": "Invalid token"}), 401
+
+    user      = resp.json()
+    email     = user.get('email', '')
+    user_meta = user.get('user_metadata', {})
+    name      = user_meta.get('full_name') or user_meta.get('name') or email.split('@')[0]
+
+    # Check if user already exists in your users table
+    existing = supabase.table("users").select("*").eq("email", email).execute()
+
+    if existing.data:
+        db_user = existing.data[0]
+        username = db_user['username']
+        role     = db_user.get('role', 'candidate')
+    else:
+        # Auto-create a new user from OAuth
+        username = email.split('@')[0].replace('.', '_').lower()
+        # Make sure username is unique
+        check = supabase.table("users").select("id").eq("username", username).execute()
+        if check.data:
+            username = username + '_' + str(user['id'])[:4]
+
+        supabase.table("users").insert({
+            "name":     name,
+            "username": username,
+            "email":    email,
+            "password": "",  # No password for OAuth users
+            "role":     "candidate"
+        }).execute()
+        role = "candidate"
+
+        # Give them a free plan
+        try:
+            free_id = _get_free_plan_id()
+            if free_id:
+                supabase.table("user_subscriptions").insert({
+                    "username":     username,
+                    "plan_id":      free_id,
+                    "status":       "active",
+                    "resumes_used": 0,
+                    "mcq_used":     0,
+                }).execute()
+        except Exception as sub_err:
+            print(f"[oauth] Could not create subscription: {sub_err}")
+
+    # Set session
+    session.permanent = True
+    session['user_username'] = username
+    session['user_name']     = name
+    session['user_role']     = role
+    session.modified = True
+
+    redirect_url = '/admin' if role == 'admin' else '/'
+    return jsonify({"redirect": redirect_url})
+
 
 @app.route('/api/me', methods=['GET'])
 def get_me():
@@ -379,6 +453,62 @@ def admin_get_plans():
         plans = supabase.table("subscription_plans").select("*").eq("is_active", True).execute()
         return jsonify({'success': True, 'plans': plans.data or []})
     except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# ============================================================
+# UPDATE PLAN PRICE & LIMITS
+# POST /api/admin/update-plan
+# Body: { id, name, price_monthly, price_yearly, max_resumes, max_mcq_tests }
+# ============================================================
+@app.route('/api/admin/update-plan', methods=['POST'])
+@admin_required
+def admin_update_plan():
+    try:
+        data = request.get_json(force=True, silent=True) or {}
+
+        plan_id       = data.get('id')
+        name          = (data.get('name') or '').strip()
+        price_monthly = data.get('price_monthly')
+        price_yearly  = data.get('price_yearly')
+        max_resumes   = data.get('max_resumes')
+        max_mcq_tests = data.get('max_mcq_tests')
+
+        # Validate
+        if not plan_id:
+            return jsonify({'error': 'Plan ID is required'}), 400
+        if not name:
+            return jsonify({'error': 'Plan name is required'}), 400
+        if price_monthly is None or int(price_monthly) < 0:
+            return jsonify({'error': 'price_monthly must be 0 or greater'}), 400
+        if price_yearly is None or int(price_yearly) < 0:
+            return jsonify({'error': 'price_yearly must be 0 or greater'}), 400
+        if max_resumes is None or int(max_resumes) < -1:
+            return jsonify({'error': 'max_resumes must be -1 (unlimited) or greater'}), 400
+        if max_mcq_tests is None or int(max_mcq_tests) < -1:
+            return jsonify({'error': 'max_mcq_tests must be -1 (unlimited) or greater'}), 400
+
+        # Check plan exists
+        existing = supabase.table("subscription_plans").select("id").eq("id", plan_id).execute()
+        if not existing.data:
+            return jsonify({'error': 'Plan not found'}), 404
+
+        # Update
+        supabase.table("subscription_plans").update({
+            "name":          name,
+            "price_monthly": int(price_monthly),
+            "price_yearly":  int(price_yearly),
+            "max_resumes":   int(max_resumes),
+            "max_mcq_tests": int(max_mcq_tests),
+        }).eq("id", plan_id).execute()
+
+        _cache_clear()  # Invalidate stats cache
+
+        print(f"[update-plan] Plan '{name}' (id={plan_id}) updated by admin '{session.get('user_username')}'")
+        return jsonify({'success': True})
+
+    except Exception as e:
+        print(f"[update-plan] ERROR: {e}")
         return jsonify({'error': str(e)}), 500
 
 
@@ -1463,7 +1593,7 @@ def extract_actual_skills(resume_text: str) -> list:
         # Sales
         'lead generation','pipeline management','account management','cold calling','upselling',
         # Other
-        'customer service','data entry','microsoft office','word','powerpoint','outlook',
+        'customer service','data entry','microsoft office','ms word','powerpoint','outlook',
         'quality control','six sigma','autocad','solidworks','lean manufacturing',
     ]
 
@@ -1473,6 +1603,14 @@ def extract_actual_skills(resume_text: str) -> list:
         if skill.lower() in text_lower and skill.lower() not in seen:
             found.append(skill)
             seen.add(skill.lower())
+
+    # Also scan ROLE_KEYWORDS pool so role-specific terms are caught with proper capitalisation
+    for kw_list in ROLE_KEYWORDS.values():
+        for kw in kw_list:
+            kw_lower = kw.lower()
+            if kw_lower not in seen and kw_lower in text_lower:
+                found.append(kw)
+                seen.add(kw_lower)
 
     return found
 
@@ -1587,6 +1725,93 @@ ROLE_ACTION_PHRASES = {
 }
 
 
+def build_role_specific_skills(role_key: str, actual_skills: list, existing_skills_text: str) -> str:
+    """
+    Build a skills section that contains ONLY skills from the uploaded resume
+    that are relevant to the target role.
+
+    Strategy (in priority order):
+    1. Role-keyword matched skills from the detected actual_skills list
+    2. Skills explicitly written in the resume's skills section that overlap with role keywords
+    3. If very few matches, pad with transferable skills from actual_skills (soft skills, tools)
+       — still only from the resume, never invented.
+
+    Returns a clean comma-separated skills string, or grouped by category if enough items.
+    """
+    rk = role_key or 'DEFAULT'
+    role_kw_lower = {k.lower() for k in ROLE_KEYWORDS.get(rk, [])}
+
+    # ── 1. From auto-detected skills (extract_actual_skills pool) ─────────────
+    role_matched = [s for s in actual_skills if s.lower() in role_kw_lower]
+
+    # ── 2. Also scan the raw skills text from the resume for role keywords ─────
+    # (catches things like "Python (Advanced)" that the simple detector might miss)
+    raw_skill_words = set()
+    if existing_skills_text:
+        # Tokenise: split on commas, newlines, bullets, pipes
+        for token in re.split(r'[,\n\r|•\-–/]', existing_skills_text):
+            token = token.strip().strip('•-– ')
+            if token and len(token) < 50:
+                raw_skill_words.add(token.lower())
+
+    # Match raw skill tokens against role keywords
+    extra_matched = []
+    for token_lower in raw_skill_words:
+        for rk_word in role_kw_lower:
+            if rk_word in token_lower or token_lower in rk_word:
+                # Use the original capitalisation from the text if possible
+                for token in re.split(r'[,\n\r|•\-–/]', existing_skills_text):
+                    token = token.strip()
+                    if token.lower().strip('•-– ') == token_lower:
+                        extra_matched.append(token)
+                        break
+                break
+
+    # Combine and deduplicate (role_matched first, then extras)
+    seen = set()
+    combined = []
+    for s in role_matched + extra_matched:
+        key = s.lower().strip()
+        if key and key not in seen:
+            seen.add(key)
+            combined.append(s)
+
+    # ── 3. If fewer than 4 role-specific skills found, supplement with role keywords ─
+    # First try transferable skills from resume, then pad with role-specific keywords
+    if len(combined) < 4:
+        transferable_keywords = {
+            'communication', 'teamwork', 'leadership', 'problem solving', 'critical thinking',
+            'time management', 'project management', 'microsoft office', 'excel',
+            'powerpoint', 'presentation', 'negotiation', 'research', 'data analysis',
+            'customer service', 'team leadership', 'collaboration', 'adaptability',
+            'attention to detail', 'organizational skills', 'planning', 'reporting',
+        }
+        for s in actual_skills:
+            if s.lower() in transferable_keywords and s.lower() not in seen:
+                combined.append(s)
+                seen.add(s.lower())
+            if len(combined) >= 6:
+                break
+
+    # If still fewer than 4, pad with role-specific keywords (clearly relevant to the role)
+    if len(combined) < 4:
+        role_kw_list = ROLE_KEYWORDS.get(rk, [])
+        for kw in role_kw_list:
+            if kw.lower() not in seen:
+                combined.append(kw)
+                seen.add(kw.lower())
+            if len(combined) >= 8:
+                break
+
+    if not combined:
+        # Absolute fallback — use role keywords so each role shows different, relevant skills
+        role_kw_list = list(ROLE_KEYWORDS.get(rk, []))
+        combined = role_kw_list[:6] if role_kw_list else (actual_skills[:6] if actual_skills else ['See experience section'])
+
+    # Format: one clean comma-separated line (ATS-friendly, no bullets)
+    return ', '.join(combined)
+
+
 def build_role_specific_summary(role_key: str, actual_skills: list, existing_summary: str) -> str:
     """
     Build a genuinely role-specific summary that:
@@ -1600,8 +1825,7 @@ def build_role_specific_summary(role_key: str, actual_skills: list, existing_sum
     relevant = [s for s in actual_skills if s.lower() in role_kw_lower]
     others   = [s for s in actual_skills if s.lower() not in role_kw_lower]
 
-    # Each role gets its OWN slice — role 1 gets relevant[:3], role 2 gets relevant[3:6], etc.
-    # But since this is called per-role, we just take the top relevant ones for THIS role
+    # Take the top relevant ones for THIS role
     top_skills = relevant[:4] if relevant else others[:4]
     skills_str = ', '.join(top_skills) if top_skills else 'core professional competencies'
 
@@ -1657,10 +1881,9 @@ def rewrite_resume_for_role(resume_text: str, target_role: str) -> str:
     exp = secs.get('experience', '').strip()
     exp = strengthen_verbs(exp) if exp else ''
 
-    # 8. Skills — ONLY what's in the actual resume, filtered to what's relevant
+    # 8. Skills — filtered to ONLY skills from the resume relevant to this role
     existing_skills = secs.get('skills', '').strip()
-    # Keep original skills section as-is (no fabrication)
-    skills_section = existing_skills if existing_skills else ', '.join(actual_skills[:15]) if actual_skills else 'See experience section'
+    skills_section = build_role_specific_skills(role_key, actual_skills, existing_skills)
 
     # 9. Other sections preserved as-is
     education    = secs.get('education', '').strip()
@@ -1716,17 +1939,34 @@ def rewrite_resume_for_role(resume_text: str, target_role: str) -> str:
 
 
 # ============================================================
-# NEW ENDPOINT: Generate role-specific resume
+# NLP ENGINE — import at startup
+# ============================================================
+try:
+    from nlp_engine import enhance_resume_for_role as _nlp_enhance
+    NLP_ENGINE_AVAILABLE = True
+    print("[NLP] nlp_engine loaded successfully.")
+except ImportError as _e:
+    NLP_ENGINE_AVAILABLE = False
+    print(f"[NLP] nlp_engine not found, falling back to rule-based: {_e}")
+
+
+# ============================================================
+# ENDPOINT: Generate role-specific resume (NLP-powered)
 # POST /api/generate-role-resume
 # Body: { resume_text, target_role }
-# Returns: { resume_text, role, role_display }
+# Returns: {
+#   resume_text, role, role_display,
+#   skill_gap, section_scores, ats_result, stats, change_log
+# }
 # ============================================================
 @app.route('/api/generate-role-resume', methods=['POST'])
 def generate_role_resume():
     """
-    Generates a version of the uploaded resume tailored to a specific role.
-    Uses ONLY skills already in the resume — no fabrication.
-    Only rewrites the summary/objective to target the specified role.
+    NLP-powered resume tailoring engine.
+    - Rewrites bullets with strong verbs + injected metrics
+    - Generates human-sounding role-specific summary
+    - Builds categorized skills section (Core / Tools / Soft)
+    - Returns skill gap analysis, section scores, ATS compliance
     """
     try:
         body = request.get_json(force=True, silent=True)
@@ -1741,16 +1981,43 @@ def generate_role_resume():
         if not target_role:
             return jsonify({'error': 'target_role is required'}), 400
 
-        role_key    = get_role_key(target_role) or normalize_role(target_role) or 'DEFAULT'
+        # ── NLP path ──────────────────────────────────────────────
+        if NLP_ENGINE_AVAILABLE:
+            import traceback as _tb
+            try:
+                result = _nlp_enhance(resume_text, target_role)
+                return jsonify({
+                    'success':        True,
+                    'resume_text':    result['enhanced_resume'],
+                    'role':           result['role_key'],
+                    'role_display':   result['role_title'],
+                    # Rich NLP data for the frontend dashboard
+                    'nlp': {
+                        'skill_gap':          result['skill_gap'],
+                        'section_scores':     result['section_scores'],
+                        'ats_result':         result['ats_result'],
+                        'stats':              result['stats'],
+                        'change_log':         result['change_log'],
+                        'summary':            result['summary'],
+                        'skills_text':        result['skills_text'],
+                        'contact':            result['contact'],
+                    }
+                })
+            except Exception as nlp_err:
+                print(f'[NLP] Engine error, falling back: {nlp_err}')
+                print(_tb.format_exc())
+                # Fall through to legacy path
+
+        # ── Legacy fallback ───────────────────────────────────────
+        role_key     = get_role_key(target_role) or normalize_role(target_role) or 'DEFAULT'
         role_display = role_key.replace('-', ' ').title()
-
-        rewritten = rewrite_resume_for_role(resume_text, target_role)
-
+        rewritten    = rewrite_resume_for_role(resume_text, target_role)
         return jsonify({
             'success':      True,
             'resume_text':  rewritten,
             'role':         role_key,
             'role_display': role_display,
+            'nlp':          None   # signals legacy mode to frontend
         })
 
     except Exception as e:
@@ -1758,6 +2025,42 @@ def generate_role_resume():
         print(f'[generate-role-resume] Error: {e}')
         print(traceback.format_exc())
         return jsonify({'error': f'Generation failed: {str(e)}'}), 500
+
+
+# ============================================================
+# ENDPOINT: Full NLP Resume Analysis (no rewrite — analysis only)
+# POST /api/nlp-analyze
+# Body: { resume_text, target_role }
+# ============================================================
+@app.route('/api/nlp-analyze', methods=['POST'])
+def nlp_analyze():
+    """
+    Returns the full NLP analysis WITHOUT rewriting the resume.
+    Useful for showing the skill gap dashboard before/after.
+    """
+    if not NLP_ENGINE_AVAILABLE:
+        return jsonify({'error': 'NLP engine not available'}), 503
+    try:
+        body = request.get_json(force=True, silent=True)
+        if not body:
+            return jsonify({'error': 'Invalid request body'}), 400
+        resume_text = (body.get('resume_text') or '').strip()
+        target_role = (body.get('target_role') or '').strip()
+        if not resume_text or not target_role:
+            return jsonify({'error': 'resume_text and target_role required'}), 400
+
+        result = _nlp_enhance(resume_text, target_role)
+        return jsonify({
+            'success':       True,
+            'skill_gap':     result['skill_gap'],
+            'section_scores':result['section_scores'],
+            'ats_result':    result['ats_result'],
+            'stats':         result['stats'],
+            'change_log':    result['change_log'],
+            'role_title':    result['role_title'],
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 # ============================================================
@@ -1812,18 +2115,9 @@ def rewrite_resume_nlp(resume_text: str, ats_check: dict, analysis: dict) -> str
         )
         summary = summary + '\n' + _break_into_short_lines(extra, max_words=30)
 
-    # ── 5. Skills section ─────────────────────────────────────────────────────
+    # ── 5. Skills section — filtered to role-relevant skills from the resume ────
     existing_skills = secs.get('skills', '').strip()
-    if existing_skills:
-        # Reformat skills as clean comma-separated or bullet lines
-        raw_skills = re.sub(r'[\n\r]+', ', ', existing_skills)
-        raw_skills = re.sub(r',\s*,', ',', raw_skills).strip(', ')
-        skills_text = raw_skills
-    elif actual_skills:
-        skills_text = ', '.join(actual_skills[:18])
-    else:
-        role_kw = ROLE_KEYWORDS.get(role_key or 'DEFAULT', [])
-        skills_text = ', '.join(role_kw[:12]) if role_kw else 'Communication, Teamwork, Problem Solving, Microsoft Office, Time Management'
+    skills_text = build_role_specific_skills(role_key, actual_skills, existing_skills)
 
     # ── 6. Experience — fix verbs + break long paragraphs into bullets ────────
     exp_raw = secs.get('experience', '').strip()
@@ -2551,6 +2845,115 @@ def admin_add_question():
         }).execute()
         return jsonify({'success': True})
     except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# ============================================================
+# BULK UPLOAD QUESTIONS
+# POST /api/admin/bulk-upload-questions
+# Body: { questions: [ { job_role, question, options, correct_answer, difficulty, explanation } ] }
+# Returns: { success, inserted, failed, errors }
+# ============================================================
+@app.route('/api/admin/bulk-upload-questions', methods=['POST'])
+@admin_required
+def admin_bulk_upload_questions():
+    VALID_ROLES = {
+        'HR', 'DESIGNER', 'INFORMATION-TECHNOLOGY', 'TEACHER', 'ADVOCATE',
+        'BUSINESS-DEVELOPMENT', 'HEALTHCARE', 'FITNESS', 'AGRICULTURE', 'BPO',
+        'SALES', 'CONSULTANT', 'DIGITAL-MEDIA', 'AUTOMOBILE', 'CHEF', 'FINANCE',
+        'APPAREL', 'ENGINEERING', 'ACCOUNTANT', 'CONSTRUCTION', 'PUBLIC-RELATIONS',
+        'BANKING', 'ARTS', 'AVIATION', 'DATA-SCIENCE', 'WEB-DEVELOPER', 'DEFAULT'
+    }
+    VALID_DIFFICULTIES = {'easy', 'medium', 'hard'}
+
+    try:
+        data      = request.get_json(force=True, silent=True)
+        questions = (data or {}).get('questions', [])
+
+        if not questions or not isinstance(questions, list):
+            return jsonify({'error': 'questions array is required'}), 400
+        if len(questions) > 500:
+            return jsonify({'error': 'Maximum 500 questions per batch'}), 400
+
+        to_insert  = []
+        errors     = []
+
+        for idx, q in enumerate(questions):
+            row_num  = idx + 1
+            job_role = (q.get('job_role') or '').strip().upper()
+            question = (q.get('question') or '').strip()
+            options  = q.get('options')
+            correct  = (q.get('correct_answer') or '').strip()
+            diff     = (q.get('difficulty') or 'medium').strip().lower()
+            expl     = (q.get('explanation') or '').strip()
+
+            # Validate
+            if not question or len(question) < 5:
+                errors.append(f'Row {row_num}: question too short or missing')
+                continue
+            if job_role not in VALID_ROLES:
+                errors.append(f'Row {row_num}: invalid job_role "{job_role}"')
+                continue
+            if not isinstance(options, list) or len(options) != 4:
+                errors.append(f'Row {row_num}: options must be a list of 4')
+                continue
+            if any(not str(o).strip() for o in options):
+                errors.append(f'Row {row_num}: all 4 options must be non-empty')
+                continue
+            if not correct:
+                errors.append(f'Row {row_num}: correct_answer is required')
+                continue
+            if correct not in options:
+                errors.append(f'Row {row_num}: correct_answer not found in options')
+                continue
+            if diff not in VALID_DIFFICULTIES:
+                errors.append(f'Row {row_num}: difficulty must be easy/medium/hard')
+                continue
+
+            to_insert.append({
+                "job_role":       job_role,
+                "question":       question,
+                "options":        [str(o).strip() for o in options],
+                "correct_answer": correct,
+                "difficulty":     diff,
+                "explanation":    expl,
+                "status":         "active"
+            })
+
+        if not to_insert:
+            return jsonify({'success': False, 'inserted': 0, 'failed': len(questions), 'errors': errors}), 400
+
+        # Insert in chunks of 100 to avoid Supabase limits
+        CHUNK = 100
+        inserted = 0
+        insert_errors = []
+
+        for i in range(0, len(to_insert), CHUNK):
+            chunk = to_insert[i:i + CHUNK]
+            try:
+                supabase.table("mcq_questions").insert(chunk).execute()
+                inserted += len(chunk)
+            except Exception as chunk_err:
+                insert_errors.append(str(chunk_err))
+                # Try one-by-one as fallback for this chunk
+                for single in chunk:
+                    try:
+                        supabase.table("mcq_questions").insert(single).execute()
+                        inserted += 1
+                    except Exception as single_err:
+                        errors.append(f'Insert error: {str(single_err)[:80]}')
+
+        _cache_clear()  # Invalidate admin stats cache
+
+        return jsonify({
+            'success':  True,
+            'inserted': inserted,
+            'failed':   len(questions) - inserted,
+            'errors':   (errors + insert_errors)[:20]  # cap at 20 error messages
+        })
+
+    except Exception as e:
+        print(f'[bulk-upload] ERROR: {e}')
         return jsonify({'error': str(e)}), 500
 
 

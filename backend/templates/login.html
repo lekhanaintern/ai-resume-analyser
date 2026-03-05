@@ -487,18 +487,59 @@
     }
   }
 
-  // ── OAuth (placeholder — wire to Supabase OAuth later) ──
-  function handleOAuth(provider, btn) {
-    btn.classList.add('loading');
-    const lbl = btn.querySelector('.label');
-    const orig = lbl.textContent;
-    lbl.textContent = `Connecting to ${provider}…`;
-    setTimeout(() => {
-      lbl.textContent = orig;
-      btn.classList.remove('loading');
-      showToast(`${provider} OAuth requires Supabase setup. See integration guide.`);
-    }, 1800);
+  // ── Supabase config — REPLACE these two values with your own ──
+  const SUPABASE_URL  = 'https://kxqzncqubkzxdjqkmstq.supabase.co';
+  const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4cXpuY3F1Ymt6eGRqcWttc3RxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE2NDg3MDksImV4cCI6MjA4NzIyNDcwOX0.82b2UA_f3BPpwwvymmcXqBiBxDCvC1EYf7nvryUefPI';
+
+  // ── OAuth via Supabase ──
+  function handleOAuth(provider, btnEl) {
+    btnEl.classList.add('loading');
+    const lbl = btnEl.querySelector('.label');
+    lbl.textContent = 'Connecting to ' + provider + '...';
+
+    const providerMap = { Google: 'google', Apple: 'apple', Yahoo: 'yahoo' };
+    const providerKey = providerMap[provider];
+
+    // Direct redirect to Supabase OAuth
+    const redirectTo = encodeURIComponent(window.location.origin + window.location.pathname);
+    const oauthURL   = SUPABASE_URL + '/auth/v1/authorize?provider=' + providerKey + '&redirect_to=' + redirectTo;
+
+    window.location.href = oauthURL;
   }
+
+  // ── After OAuth redirect back: exchange token with Flask ──
+  // Supabase puts #access_token=...&refresh_token=... in the URL hash
+  (async function handleOAuthCallback() {
+    const hash = window.location.hash;
+    if (!hash.includes('access_token')) return;
+
+    const params      = new URLSearchParams(hash.slice(1));
+    const accessToken = params.get('access_token');
+    if (!accessToken) return;
+
+    showToast('Verifying your account…');
+
+    try {
+      // Send the Supabase token to your Flask backend to create a session
+      const res = await fetch('/oauth-callback', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ access_token: accessToken }),
+        credentials: 'same-origin'
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        showToast('Signed in! Redirecting…', 'success');
+        setTimeout(() => window.location.href = data.redirect || '/', 800);
+      } else {
+        showToast('Sign-in failed. Please try again.', 'error');
+      }
+    } catch (err) {
+      console.error('[OAuth callback]', err);
+      showToast('Could not connect to server.', 'error');
+    }
+  })();
 
   // Clear errors on input
   document.getElementById('username').addEventListener('input', clearError);

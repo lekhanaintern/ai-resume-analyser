@@ -141,7 +141,6 @@ body::before{
 .db-tag.saved{display:flex;background:#ecfdf5;color:#065f46;border:1px solid #a7f3d0}
 .db-tag.updated{display:flex;background:#eff6ff;color:#1e40af;border:1px solid #bfdbfe}
 .db-tag.skip{display:flex;background:#fef3c7;color:#92400e;border:1px solid #fde68a}
-.db-tag.hidden{display:none}
 .db-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
 .db-tag.saved .db-dot{background:var(--success)}
 .db-tag.updated .db-dot{background:#3b82f6}
@@ -229,10 +228,10 @@ body::before{
 .changes-box strong{color:var(--p);display:block;margin-bottom:6px;font-size:.9em}
 .changes-box ul{padding-left:18px;color:#1e40af;line-height:1.9}
 
-/* ═══════════════════════════════════════════
+/* ---
    ROLE PREDICTION CARDS — NEW DESIGN
    Each card has Preview + Download buttons
-═══════════════════════════════════════════ */
+--- */
 .role-pred-section{
   background:#fff;border-radius:20px;padding:28px;
   box-shadow:var(--card-sh);margin-bottom:22px;
@@ -325,67 +324,145 @@ body::before{
 .btn-confirm:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 8px 24px rgba(67,97,238,.3)}
 .btn-confirm:disabled{background:#cbd5e1;cursor:not-allowed}
 
-/* ═══════════════════════════════════════════
-   RESUME PREVIEW MODAL
-═══════════════════════════════════════════ */
+/* ---
+   BEFORE / AFTER PREVIEW MODAL
+--- */
 .modal-overlay{
-  display:none;position:fixed;inset:0;background:rgba(15,23,42,.6);
-  z-index:500;align-items:center;justify-content:center;padding:20px;
-  backdrop-filter:blur(4px);
+  display:none;position:fixed;inset:0;background:rgba(15,23,42,.65);
+  z-index:500;align-items:center;justify-content:center;padding:16px;
+  backdrop-filter:blur(5px);
 }
 .modal-overlay.show{display:flex;animation:fadeUp .2s ease}
 .modal-box{
-  background:#fff;border-radius:24px;width:100%;max-width:720px;
-  max-height:90vh;display:flex;flex-direction:column;
+  background:#fff;border-radius:20px;width:100%;max-width:1020px;
+  max-height:92vh;display:flex;flex-direction:column;
   box-shadow:0 32px 80px rgba(0,0,0,.3);overflow:hidden;
 }
 .modal-head{
-  padding:22px 28px;display:flex;align-items:center;justify-content:space-between;
+  padding:16px 24px;display:flex;align-items:center;justify-content:space-between;
   border-bottom:1px solid var(--border);flex-shrink:0;
 }
-.modal-head-left h3{font-size:1em;font-weight:800;color:var(--text);margin-bottom:3px}
-.modal-head-left p{font-size:.78em;color:var(--muted)}
+.modal-head-left h3{font-size:1em;font-weight:800;color:var(--text);margin-bottom:2px}
+.modal-head-left p{font-size:.75em;color:var(--muted)}
 .modal-role-chip{
   display:inline-flex;align-items:center;gap:6px;
   background:linear-gradient(135deg,#4361ee,#4cc9f0);
   color:#fff;padding:4px 14px;border-radius:20px;
-  font-size:.76em;font-weight:800;margin-bottom:4px;
+  font-size:.74em;font-weight:800;margin-bottom:4px;
 }
 .modal-close{
-  width:36px;height:36px;border-radius:10px;border:1.5px solid var(--border);
-  background:#f8fafc;cursor:pointer;font-size:1.1em;
+  width:34px;height:34px;border-radius:9px;border:1.5px solid var(--border);
+  background:#f8fafc;cursor:pointer;font-size:1.05em;
   display:flex;align-items:center;justify-content:center;
   transition:all .2s;font-family:inherit;flex-shrink:0;
 }
 .modal-close:hover{background:#fee2e2;border-color:#fca5a5;color:#dc2626}
-.modal-body{padding:24px 28px;overflow-y:auto;flex:1}
-.modal-resume-text{
-  font-family:'Courier New',monospace;font-size:.82em;
-  line-height:1.8;color:var(--text);white-space:pre-wrap;
-  word-break:break-word;
-  background:#f8fafc;border:1px solid var(--border);
-  border-radius:12px;padding:20px;
+
+/* ── view tabs ── */
+.modal-vtabs{
+  display:flex;gap:2px;padding:10px 22px 0;
+  background:#f8fafc;border-bottom:2px solid var(--border);flex-shrink:0;
 }
-.modal-resume-text .rtxt-name{font-weight:900;font-size:1.1em;color:var(--text);font-family:'Plus Jakarta Sans',sans-serif}
-.modal-resume-text .rtxt-contact{color:var(--muted);font-size:.9em;font-family:'Plus Jakarta Sans',sans-serif}
-.modal-resume-text .rtxt-role-tag{color:var(--p);font-size:.85em;font-weight:700;font-family:'Plus Jakarta Sans',sans-serif}
-.modal-resume-text .rtxt-section{color:var(--p);font-weight:800;font-family:'Plus Jakarta Sans',sans-serif;margin-top:4px}
-.modal-resume-text .rtxt-sep{color:#e2e8f0}
-.modal-resume-text .rtxt-summary{color:#1e293b;background:rgba(67,97,238,.05);border-left:3px solid var(--p);padding:8px 12px;border-radius:0 8px 8px 0;font-family:'Plus Jakarta Sans',sans-serif;font-size:.95em}
+.mvtab{
+  padding:8px 16px;border:none;border-radius:8px 8px 0 0;
+  font-family:inherit;font-size:.8em;font-weight:700;cursor:pointer;
+  background:transparent;color:var(--muted);transition:all .18s;
+  border-bottom:3px solid transparent;margin-bottom:-2px;
+}
+.mvtab.active{color:var(--p);border-bottom-color:var(--p);background:#fff}
+.mvtab:hover:not(.active){background:#f1f5f9;color:var(--text)}
+
+/* ── diff legend ── */
+.modal-diff-leg{
+  display:none;align-items:center;gap:14px;flex-wrap:wrap;
+  padding:7px 22px;background:#fffbeb;border-bottom:1px solid #fde68a;
+  font-size:.74em;font-weight:700;color:#92400e;flex-shrink:0;
+}
+.modal-diff-leg.show{display:flex}
+.leg-chip{display:flex;align-items:center;gap:5px;color:#374151}
+.leg-sq{width:12px;height:12px;border-radius:3px;flex-shrink:0}
+.leg-sq.add{background:#bbf7d0;border:1.5px solid #16a34a}
+.leg-sq.rem{background:#fecaca;border:1.5px solid #dc2626}
+.leg-sq.mod{background:#fef08a;border:1.5px solid #ca8a04}
+
+/* ── stats bar ── */
+.modal-stats{
+  display:none;padding:6px 22px;background:#eff6ff;
+  border-bottom:1px solid #bfdbfe;font-size:.77em;
+  color:#1e40af;flex-shrink:0;gap:10px;align-items:center;flex-wrap:wrap;
+}
+.modal-stats.show{display:flex}
+.stat-chip{display:inline-flex;align-items:center;gap:4px;padding:2px 10px;border-radius:20px;font-weight:700;font-size:.9em}
+.stat-chip.add{background:#dcfce7;color:#16a34a}
+.stat-chip.rem{background:#fee2e2;color:#dc2626}
+.stat-chip.mod{background:#fef9c3;color:#a16207}
+
+/* ── modal body ── */
+.modal-body{padding:0;overflow:hidden;flex:1;display:flex;flex-direction:column;min-height:0}
+
+/* ── split view ── */
+.mv-split{display:none;grid-template-columns:1fr 1fr;flex:1;min-height:0}
+.mv-split.active{display:grid}
+.mv-panel{display:flex;flex-direction:column;overflow:hidden}
+.mv-panel.bef{border-right:2px solid var(--border)}
+.mv-phead{
+  padding:8px 14px;font-size:.77em;font-weight:800;
+  letter-spacing:.3px;flex-shrink:0;display:flex;align-items:center;gap:6px;
+}
+.mv-panel.bef .mv-phead{background:#fef2f2;color:#991b1b;border-bottom:2px solid #fecaca}
+.mv-panel.aft .mv-phead{background:#f0fdf4;color:#065f46;border-bottom:2px solid #bbf7d0}
+.mv-panel.dif .mv-phead{background:#fffbeb;color:#92400e;border-bottom:2px solid #fde68a}
+.mv-scroll{
+  overflow-y:auto;flex:1;padding:14px;min-height:0;
+  font-family:'Courier New',monospace;font-size:.79em;
+  line-height:1.9;white-space:pre-wrap;word-break:break-word;color:var(--text);
+}
+.mv-panel.bef .mv-scroll{background:#fff9f9}
+.mv-panel.aft .mv-scroll{background:#f7fef9}
+.mv-panel.dif .mv-scroll{background:#fffdf4}
+.mv-scroll::-webkit-scrollbar{width:5px}
+.mv-scroll::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px}
+
+/* ── single-panel views ── */
+.mv-single{
+  display:none;flex:1;overflow-y:auto;padding:18px 22px;
+  font-family:'Courier New',monospace;font-size:.8em;
+  line-height:1.9;white-space:pre-wrap;word-break:break-word;color:var(--text);min-height:0;
+}
+.mv-single.active{display:block}
+.mv-single.bef{background:#fff9f9}
+.mv-single.aft{background:#f7fef9}
+
+/* ── diff highlight classes ── */
+.dh-add{background:#bbf7d0;color:#065f46;border-radius:2px;padding:0 2px;font-weight:600}
+.dh-rem{background:#fecaca;color:#991b1b;border-radius:2px;padding:0 2px;text-decoration:line-through;opacity:.9}
+.dh-mod{background:#fef08a;color:#a16207;border-radius:2px;padding:0 2px;font-weight:600}
+/* structure classes */
+.dh-name{font-size:1.1em;font-weight:900;font-family:'Plus Jakarta Sans',sans-serif;color:#1a1a2e}
+.dh-contact{color:#64748b;font-family:'Plus Jakarta Sans',sans-serif}
+.dh-tag{color:#4361ee;font-weight:700;font-family:'Plus Jakarta Sans',sans-serif}
+.dh-sep{color:#e2e8f0}
+.dh-sec{color:#4361ee;font-weight:800;font-family:'Plus Jakarta Sans',sans-serif;letter-spacing:.4px}
+.dh-sec-bef{color:#991b1b;font-weight:800;font-family:'Plus Jakarta Sans',sans-serif;letter-spacing:.4px}
+
 .modal-foot{
-  padding:16px 28px;border-top:1px solid var(--border);
+  padding:12px 24px;border-top:1px solid var(--border);
   display:flex;align-items:center;justify-content:space-between;gap:12px;flex-shrink:0;
-  background:#f8fafc;
+  background:#f8fafc;flex-wrap:wrap;
 }
-.modal-foot-info{font-size:.78em;color:var(--muted)}
+.modal-foot-info{font-size:.75em;color:var(--muted)}
 .modal-dl-btn{
-  padding:11px 28px;background:var(--grad);color:#fff;
-  border:none;border-radius:10px;font-size:.9em;font-weight:800;
+  padding:10px 24px;background:var(--grad);color:#fff;
+  border:none;border-radius:10px;font-size:.88em;font-weight:800;
   cursor:pointer;font-family:inherit;transition:all .25s;
-  display:flex;align-items:center;gap:8px;
+  display:flex;align-items:center;gap:7px;
 }
 .modal-dl-btn:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(67,97,238,.35)}
 .modal-dl-btn:disabled{background:#cbd5e1;cursor:not-allowed;transform:none;box-shadow:none}
+@media(max-width:700px){
+  .mv-split{grid-template-columns:1fr}
+  .mv-panel.bef{border-right:none;border-bottom:2px solid var(--border)}
+}
 
 .mock-card{display:none;background:linear-gradient(135deg,#faf5ff,#f3e8ff);border:1px solid #e9d5ff;border-radius:18px;padding:28px;margin-bottom:22px}
 .mock-card.show{display:block;animation:fadeUp .4s ease}
@@ -413,6 +490,12 @@ body::before{
   .ai-bar{flex-direction:column;align-items:stretch}
   .btn-ai{justify-content:center}
   .modal-box{max-height:95vh}
+}
+.nlp-gap-block, .nlp-scores-block, .nlp-ats-block, .nlp-stats-block {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px 14px;
 }
 </style>
 </head>
@@ -566,7 +649,12 @@ body::before{
     <!-- EDITOR CARD -->
     <div class="editor-card" id="editorCard" style="display:none">
       <div class="editor-head">
-        <div class="sec-head">✏️ Resume NLP Optimizer</div>
+        <div class="sec-head">✏️ Resume Editor &amp; NLP Optimizer</div>
+      </div>
+      <div class="editor-tabs">
+        <button class="etab active" onclick="switchTab('tips')">💡 Fix Issues</button>
+        <button class="etab" onclick="switchTab('editor')">✏️ Edit</button>
+        <button class="etab" onclick="switchTab('compare')">👁 Before &amp; After</button>
       </div>
 
       <div class="epanel active" id="panel-tips">
@@ -577,10 +665,7 @@ body::before{
         <div class="ai-bar" id="aiBar">
           <p>🤖 <strong>Apply All Fixes with NLP</strong>
           <span>Our NLP engine reads every issue &amp; suggestion, rewrites your resume to ATS spec, then re-scores with the ML model</span></p>
-          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px">
-            <button class="btn-ai btn-ai-pulse" id="applyBtn" onclick="applyAllWithAI()">⚡ Apply All Fixes</button>
-            <button class="btn-sm green" id="dlBtnMain" onclick="downloadResume()" style="display:none">⬇ Download PDF</button>
-          </div>
+          <button class="btn-ai btn-ai-pulse" id="applyBtn" onclick="applyAllWithAI()">⚡ Apply All Fixes</button>
         </div>
         <div class="ai-writing" id="aiWriting">
           <div class="ai-write-icon">🤖</div>
@@ -598,19 +683,46 @@ body::before{
           ✅ Resume rewritten &amp; re-scored! ATS score updated above.
         </div>
       </div>
+
+      <div class="epanel" id="panel-editor">
+        <p style="color:var(--muted);font-size:.84em;margin-bottom:12px">Your NLP-enhanced resume. Edit manually and it auto-saves.</p>
+        <textarea class="resume-ta" id="resumeTa" placeholder="Resume text will appear here…"></textarea>
+        <div class="char-bar">
+          <span id="charCount">0 chars</span>
+          <span id="wordCount">0 words</span>
+        </div>
+        <div class="ed-actions">
+          <button class="btn-sm blue" onclick="autoImprove()">⚡ Re-Improve with NLP</button>
+          <button class="btn-sm green" onclick="downloadResume()">⬇ Download PDF</button>
+          <button class="btn-sm ghost" onclick="resetEdit()">↩ Reset</button>
+        </div>
+      </div>
+
+      <div class="epanel" id="panel-compare">
+        <div id="impBadge" class="imp-badge" style="display:none">✅ NLP Improvements Applied</div>
+        <div class="changes-box" id="changesBox" style="display:none">
+          <strong>📋 Changes made by NLP engine:</strong>
+          <ul id="changesList"></ul>
+        </div>
+        <div class="diff-legend">
+          <div class="dl-item"><div class="dl-dot add"></div> Added / Improved</div>
+          <div class="dl-item"><div class="dl-dot rem"></div> Removed / Replaced</div>
+        </div>
+        <div class="diff-grid">
+          <div class="diff-panel bef"><h4>📄 Original Resume</h4><div class="diff-txt" id="diffBef"></div></div>
+          <div class="diff-panel aft"><h4>✨ NLP-Optimized Version</h4><div class="diff-txt" id="diffAft"></div></div>
+        </div>
+      </div>
     </div>
 
-    <!-- ═══════════════════════════════════════════
+    <!-- 
          3 ROLE PREDICTION CARDS — NEW FEATURE
-    ═══════════════════════════════════════════ -->
+     -->
     <div class="role-pred-section" id="rolePredSection" style="display:none">
       <div class="role-pred-header">
         <h3>🎯 Your 3 Predicted Career Paths</h3>
         <p>Our ML model matched your resume to these roles. Each card has a <strong>tailored resume version</strong> — same skills from your resume, but with a rewritten summary/objective targeting that specific role. Preview it or download the PDF directly.</p>
       </div>
-
-      <!-- Shown when ATS score < 80 — role prediction locked -->
-      <div id="rolePredLocked" style="display:none;margin-bottom:18px"></div>
 
       <div class="role-pred-grid" id="rolePredGrid">
         <!-- Cards injected by JS -->
@@ -651,35 +763,85 @@ body::before{
   </div>
 </div>
 
-<!-- ═══════════════════════════════════════════
+<!-- 
      RESUME PREVIEW MODAL
-═══════════════════════════════════════════ -->
+ -->
 <div class="modal-overlay" id="previewModal">
   <div class="modal-box">
+
+    <!-- HEAD -->
     <div class="modal-head">
       <div class="modal-head-left">
         <div class="modal-role-chip" id="modalRoleChip">Role</div>
-        <h3 id="modalTitle">Resume Preview</h3>
-        <p id="modalSubtitle">Tailored version based on your uploaded resume</p>
+        <h3 id="modalTitle">Before &amp; After</h3>
+        <p id="modalSubtitle">Every change highlighted — word-level diff included</p>
       </div>
       <button class="modal-close" onclick="closePreviewModal()">✕</button>
     </div>
+
+    <!-- VIEW TABS -->
+    <div class="modal-vtabs">
+      <button class="mvtab active" id="mvtab-split"  onclick="switchMView('split')">⚖️ Side by Side</button>
+      <button class="mvtab"        id="mvtab-diff"   onclick="switchMView('diff')">🔍 Diff</button>
+      <button class="mvtab"        id="mvtab-before" onclick="switchMView('before')">📄 Before</button>
+      <button class="mvtab"        id="mvtab-after"  onclick="switchMView('after')">✨ After</button>
+    </div>
+
+    <!-- DIFF LEGEND (shown only on diff tab) -->
+    <div class="modal-diff-leg" id="modalDiffLeg">
+      <strong>Key:</strong>
+      <div class="leg-chip"><div class="leg-sq add"></div>Added</div>
+      <div class="leg-chip"><div class="leg-sq rem"></div>Removed</div>
+      <div class="leg-chip"><div class="leg-sq mod"></div>Modified</div>
+    </div>
+
+    <!-- STATS BAR -->
+    <div class="modal-stats" id="modalStats"></div>
+
+    <!-- BODY: 4 view panels -->
     <div class="modal-body">
-      <div class="modal-resume-text" id="modalResumeText">Loading…</div>
-    </div>
+
+      <!-- SPLIT: before | after -->
+      <div class="mv-split active" id="mv-split">
+        <div class="mv-panel bef">
+          <div class="mv-phead">📄 BEFORE — Your Original Resume</div>
+          <div class="mv-scroll" id="mv-bef">Loading…</div>
+        </div>
+        <div class="mv-panel aft">
+          <div class="mv-phead">✨ AFTER — Tailored for <span id="mvRoleLabel">this role</span></div>
+          <div class="mv-scroll" id="mv-aft">Loading…</div>
+        </div>
+      </div>
+
+      <!-- DIFF VIEW -->
+      <div class="mv-split" id="mv-diff">
+        <div class="mv-panel dif" style="grid-column:1/-1">
+          <div class="mv-phead">🔍 Line-by-line Diff — every word change highlighted</div>
+          <div class="mv-scroll" id="mv-difbody">Loading…</div>
+        </div>
+      </div>
+
+      <!-- BEFORE ONLY -->
+      <div class="mv-single bef" id="mv-before">Loading…</div>
+
+      <!-- AFTER ONLY -->
+      <div class="mv-single aft" id="mv-after">Loading…</div>
+
+    </div><!-- /modal-body -->
+
+    <!-- FOOT -->
     <div class="modal-foot">
-      <span class="modal-foot-info">Same skills from your resume · Summary rewritten for this role</span>
-      <button class="modal-dl-btn" id="modalDlBtn" onclick="downloadFromModal()">
-        ⬇ Download PDF
-      </button>
+      <span class="modal-foot-info" id="modalFootInfo">Skills preserved · Summary rewritten for this role</span>
+      <button class="modal-dl-btn" id="modalDlBtn" onclick="downloadFromModal()">⬇ Download Tailored PDF</button>
     </div>
+
   </div>
 </div>
 
 <script>
-/* ═══════════════════════════════════════════
+/* ---
    CONFIG
-═══════════════════════════════════════════ */
+--- */
 const API    = 'http://localhost:5000/api';
 const SB_URL = 'https://kxqzncqubkzxdjqkmstq.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4cXpuY3F1Ymt6eGRqcWttc3RxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE2NDg3MDksImV4cCI6MjA4NzIyNDcwOX0.82b2UA_f3BPpwwvymmcXqBiBxDCvC1EYf7nvryUefPI';
@@ -688,9 +850,9 @@ const MAX_MB = 50 * 1024 * 1024;
 const { createClient } = supabase;
 const db = createClient(SB_URL, SB_KEY);
 
-/* ═══════════════════════════════════════════
+/* ---
    STATE
-═══════════════════════════════════════════ */
+--- */
 let selFile = null, origText = '', editText = '', rowId = null;
 let atsData = null, mlData = null, origScore = 0;
 
@@ -700,21 +862,23 @@ const roleResumeCache = {};
 let modalCurrentRole = '';
 let modalCurrentText = '';
 
-/* ═══════════════════════════════════════════
+/* ---
    UPLOAD
-═══════════════════════════════════════════ */
+--- */
 const zone = document.getElementById('uploadZone');
 const fInp = document.getElementById('fileInput');
-zone.addEventListener('click', () => fInp.click());
+zone.addEventListener('click', (e) => { if (e.target !== fInp) fInp.click(); });
 zone.addEventListener('dragover',  e => { e.preventDefault(); zone.classList.add('over'); });
 zone.addEventListener('dragleave', () => zone.classList.remove('over'));
 zone.addEventListener('drop', e => { e.preventDefault(); zone.classList.remove('over'); e.dataTransfer.files[0] && selectFile(e.dataTransfer.files[0]); });
 fInp.addEventListener('change', e => e.target.files[0] && selectFile(e.target.files[0]));
 
 function selectFile(f) {
-  const ok = ['application/pdf','application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
-  if (!ok.includes(f.type)) return showErr('Please upload a PDF or DOCX file');
-  if (f.size > MAX_MB)      return showErr('File must be under 50 MB');
+  const okTypes = ['application/pdf','application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+  const ext = '.' + f.name.split('.').pop().toLowerCase();
+  if (!okTypes.includes(f.type) && ext !== '.pdf' && ext !== '.docx')
+    return showErr('Please upload a PDF or DOCX file');
+  if (f.size > MAX_MB) return showErr('File must be under 50 MB');
   selFile = f;
   document.getElementById('fileName').textContent = f.name;
   document.getElementById('fileSize').textContent = fmtSize(f.size);
@@ -725,9 +889,9 @@ function selectFile(f) {
 function fmtSize(b) { return b < 1048576 ? (b/1024).toFixed(1)+' KB' : (b/1048576).toFixed(1)+' MB'; }
 function showErr(m) { const el = document.getElementById('errMsg'); el.textContent = m; el.classList.add('show'); }
 
-/* ═══════════════════════════════════════════
+/* ---
    ANALYZE
-═══════════════════════════════════════════ */
+--- */
 const steps = ['Reading document…','Extracting text…','Running ATS checks…','Predicting career with ML…','Generating suggestions…'];
 let stepTimer;
 
@@ -764,9 +928,9 @@ document.getElementById('analyzeBtn').addEventListener('click', async () => {
   }
 });
 
-/* ═══════════════════════════════════════════
+/* ---
    SHOW RESULTS
-═══════════════════════════════════════════ */
+--- */
 function showResults(data) {
   atsData   = data.ats_check;
   mlData    = data.analysis;
@@ -777,57 +941,23 @@ function showResults(data) {
   document.getElementById('sbScore').textContent  = origScore;
   document.getElementById('sbIssues').textContent = (atsData.issues||[]).length + (atsData.suggestions||[]).length;
   setStatus();
-
-  const scoreGate  = data.score_gate;
-  const roleSec    = document.getElementById('rolePredSection');
-  const roleLocked = document.getElementById('rolePredLocked');
-
-  // ── Score >= 80: show role prediction ────────────────────────────────────
   if (mlData?.predicted_role) {
     document.getElementById('sbRole').textContent = mlData.predicted_role;
     document.getElementById('sbConf').textContent = `${(mlData.confidence*100).toFixed(1)}% confidence`;
-    setupRolePredictionCards(mlData);
-    roleSec.style.display = 'block';
-    if (roleLocked) roleLocked.style.display = 'none';
   } else {
-    // ── Score < 80: show lock message, hide role cards ───────────────────
-    document.getElementById('sbRole').textContent = '🔒 Locked';
-    document.getElementById('sbConf').textContent = 'Score 80+ required';
-    roleSec.style.display = 'block';  // keep section visible to show locked banner
-    // Show locked banner (injected below if not already in HTML)
-    if (roleLocked) {
-      const gateMsg = scoreGate?.message || `Your ATS score (${origScore}/100) is below 80. Fix the issues below and re-scan to unlock role predictions.`;
-      roleLocked.innerHTML = `
-        <div style="display:flex;align-items:flex-start;gap:14px;background:linear-gradient(135deg,#fff7ed,#ffedd5);
-             border:2px solid #fb923c;border-radius:14px;padding:22px 24px;margin-bottom:0">
-          <span style="font-size:2em;line-height:1">🔒</span>
-          <div>
-            <div style="font-weight:800;font-size:1.05em;color:#c2410c;margin-bottom:6px">
-              Role Prediction Locked — ATS Score: ${origScore}/100
-            </div>
-            <p style="color:#9a3412;font-size:.9em;line-height:1.55;margin:0">
-              ${gateMsg}
-            </p>
-            <div style="margin-top:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-              <div style="height:10px;flex:1;background:#fed7aa;border-radius:99px;overflow:hidden;min-width:120px">
-                <div style="height:100%;width:${origScore}%;background:linear-gradient(90deg,#f97316,#fb923c);border-radius:99px;transition:width .6s"></div>
-              </div>
-              <span style="font-size:.82em;font-weight:700;color:#c2410c;white-space:nowrap">${origScore} / 80 needed</span>
-            </div>
-          </div>
-        </div>`;
-      roleLocked.style.display = 'block';
-    }
-    // Hide the actual role cards grid
-    const grid = document.getElementById('rolePredGrid');
-    if (grid) grid.style.display = 'none';
-    const roleOpts = document.getElementById('roleOpts');
-    if (roleOpts) roleOpts.closest?.('.card')?.style && (roleOpts.style.display = 'none');
+    document.getElementById('sbRole').textContent = 'Needs more detail';
+    document.getElementById('sbConf').textContent = mlData?.message || '';
   }
-
   document.getElementById('summaryBanner').style.display = 'block';
+
   renderATS(atsData);
   setupEditor(data);
+
+  if (mlData?.predicted_role) {
+    setupRolePredictionCards(mlData);
+    document.getElementById('rolePredSection').style.display = 'block';
+  }
+
   saveToDB();
 }
 
@@ -841,9 +971,9 @@ function setStatus() {
   document.getElementById('sbStatusSub').textContent = sub;
 }
 
-/* ═══════════════════════════════════════════
+/* ---
    RENDER ATS
-═══════════════════════════════════════════ */
+--- */
 function renderATS(a) {
   const score = a.score;
   const ring  = document.getElementById('scoreRing');
@@ -895,9 +1025,9 @@ function renderATS(a) {
   } else { document.getElementById('sugsSec').style.display = 'none'; }
 }
 
-/* ═══════════════════════════════════════════
+/* ---
    3 ROLE PREDICTION CARDS — NEW FEATURE
-═══════════════════════════════════════════ */
+--- */
 const ROLE_ICONS = {
   'DATA-SCIENCE':'📊','DATA SCIENTIST':'📊','WEB-DEVELOPER':'💻','WEB DEVELOPER':'💻',
   'SOFTWARE-ENGINEER':'⚙️','HR':'👥','DESIGNER':'🎨','ENGINEERING':'🔧',
@@ -981,36 +1111,44 @@ function setupRolePredictionCards(analysis) {
   });
 }
 
-/* ═══════════════════════════════════════════
+/* ---
    GENERATE ROLE-SPECIFIC RESUME (API call)
    Returns the resume text, caches it
-═══════════════════════════════════════════ */
+--- */
+/* ---
+   PATCH: Replace the existing generateRoleResume function
+   in index.html with this NLP-powered version.
+   
+   Also add: nlp_ui.js script tag before closing body tag
+   BEFORE the closing </body> tag in index.html.
+--- */
+
+/* ─── Replace the existing generateRoleResume function with this ─── */
+
 async function generateRoleResume(role, cardIdx, previewOnly = false) {
   // Return cached if already generated
   if (roleResumeCache[role]) return roleResumeCache[role];
 
-  const loadEl = document.getElementById(`rpc-load-${cardIdx}`);
+  const loadEl  = document.getElementById(`rpc-load-${cardIdx}`);
   const prevBtn = document.getElementById(`rpc-prev-btn-${cardIdx}`);
   const dlBtn   = document.getElementById(`rpc-dl-btn-${cardIdx}`);
 
-  if (loadEl) loadEl.classList.add('show');
+  if (loadEl)  loadEl.classList.add('show');
   if (prevBtn) prevBtn.disabled = true;
   if (dlBtn)   dlBtn.disabled   = true;
 
   try {
-    const res  = await fetch(`${API}/generate-role-resume`, {
+    const res = await fetch(`${API}/generate-role-resume`, {
       method : 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body   : JSON.stringify({
-        resume_text: origText,
-        target_role: role,
-      })
+      body   : JSON.stringify({ resume_text: origText, target_role: role })
     });
 
     const ct = res.headers.get('content-type') || '';
     if (!ct.includes('application/json')) {
       const txt = await res.text();
-      if (txt.toLowerCase().includes('<!doctype')) throw new Error('Session expired — please refresh and log in again.');
+      if (txt.toLowerCase().includes('<!doctype'))
+        throw new Error('Session expired — please refresh and log in again.');
       throw new Error('Unexpected server response');
     }
 
@@ -1021,20 +1159,24 @@ async function generateRoleResume(role, cardIdx, previewOnly = false) {
     const resumeText = data.resume_text;
     roleResumeCache[role] = resumeText;
 
-    // Show a snippet of the summary in the card
+    /* ── Show summary snippet ── */
     const summaryEl = document.getElementById(`rpc-summary-${cardIdx}`);
     if (summaryEl) {
-      // Extract just the PROFESSIONAL SUMMARY section from the generated text
-      const summaryMatch = resumeText.match(/PROFESSIONAL SUMMARY[\s\S]*?---[-]+\n([\s\S]*?)(?:\n\n[A-Z]|$)/);
+      const summaryMatch = resumeText.match(/PROFESSIONAL SUMMARY[\s\S]*?─+\n([\s\S]*?)(?:\n\n[A-Z]|$)/);
       let snippet = '';
       if (summaryMatch) {
-        snippet = summaryMatch[1].trim().substring(0, 160);
+        snippet = summaryMatch[1].trim().substring(0, 180);
       } else {
-        // Fallback: take first non-header paragraph
-        const lines = resumeText.split('\n').filter(l => l.trim() && !l.match(/^[-─]{3,}$/) && !l.match(/^[A-Z\s]{5,}$/));
-        snippet = lines.slice(2, 5).join(' ').substring(0, 160);
+        const lines = resumeText.split('\n')
+          .filter(l => l.trim() && !l.match(/^[─\-]{3,}$/) && !l.match(/^[A-Z\s]{5,}$/));
+        snippet = lines.slice(2, 6).join(' ').substring(0, 180);
       }
-      summaryEl.textContent = snippet + (snippet.length >= 160 ? '…' : '');
+      summaryEl.textContent = snippet + (snippet.length >= 180 ? '…' : '');
+    }
+
+    /* ── Render NLP Dashboard ── */
+    if (data.nlp && window.NLP) {
+      window.NLP.renderNlpDashboard(cardIdx, data.nlp);
     }
 
     return resumeText;
@@ -1044,46 +1186,174 @@ async function generateRoleResume(role, cardIdx, previewOnly = false) {
     const summaryEl = document.getElementById(`rpc-summary-${cardIdx}`);
     if (summaryEl) summaryEl.textContent = '⚠️ Could not generate — ' + err.message;
     return null;
+
   } finally {
-    if (loadEl) loadEl.classList.remove('show');
+    if (loadEl)  loadEl.classList.remove('show');
     if (prevBtn) prevBtn.disabled = false;
     if (dlBtn)   dlBtn.disabled   = false;
   }
 }
 
-/* ═══════════════════════════════════════════
+/* ─── Add this CSS block to your <style> section ─── */
+/*
+.nlp-gap-block, .nlp-scores-block, .nlp-ats-block, .nlp-stats-block {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+*/
+/* ---
    PREVIEW ROLE RESUME
-═══════════════════════════════════════════ */
-async function previewRoleResume(role, cardIdx) {
-  // Open modal immediately with loading state
-  openPreviewModal(role, 'Loading…');
+--- */
+/* ---
+   BEFORE / AFTER MODAL — full implementation
+   switchMView  : tab switcher
+   renderPane   : render resume text with colour-coded structure
+   buildDiff    : word-level LCS diff → html + stats
+   previewRoleResume : master entry point
+--- */
 
-  let text = roleResumeCache[role];
-  if (!text) {
-    text = await generateRoleResume(role, cardIdx);
+const _SHDRS = new Set([
+  'PROFESSIONAL SUMMARY','SKILLS','PROFESSIONAL EXPERIENCE','EXPERIENCE',
+  'EDUCATION','CERTIFICATIONS','PROJECTS','ACHIEVEMENTS','LANGUAGES','AWARDS'
+]);
+
+/* render a resume text into element elId
+   isBefore=true  → red section headers (before style)
+   isBefore=false → blue section headers (after style) */
+function renderPane(elId, text, isBefore) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  const lines = text.split('\n');
+  let html = '', li = 0;
+  for (const line of lines) {
+    const s = line.trim();
+    if (!s)                            { html += '\n'; li++; continue; }
+    if (/^-{3,}$/.test(s))            { html += `<span class="dh-sep">${esc(s)}</span>\n`; li++; continue; }
+    if (li === 0)                      { html += `<span class="dh-name">${esc(s)}</span>\n`; li++; continue; }
+    if (li === 1)                      { html += `<span class="dh-contact">${esc(s)}</span>\n`; li++; continue; }
+    if (li === 2 && s.startsWith('Tailored for:'))
+                                       { html += `<span class="dh-tag">${esc(s)}</span>\n`; li++; continue; }
+    if (_SHDRS.has(s.toUpperCase()))   { html += `<span class="${isBefore ? 'dh-sec-bef' : 'dh-sec'}">${esc(s)}</span>\n`; li++; continue; }
+    html += esc(line) + '\n'; li++;
   }
+  el.innerHTML = html;
+}
 
-  if (!text) {
-    document.getElementById('modalResumeText').textContent = '⚠️ Could not generate resume for this role. Please try again.';
+/* word-level LCS diff between two strings */
+function _wdiff(b, a) {
+  const bw = b.split(/\b/), aw = a.split(/\b/);
+  const m = bw.length, n = aw.length;
+  const dp = Array.from({length: m+1}, () => new Array(n+1).fill(0));
+  for (let i = m-1; i >= 0; i--)
+    for (let j = n-1; j >= 0; j--)
+      dp[i][j] = bw[i]===aw[j] ? dp[i+1][j+1]+1 : Math.max(dp[i+1][j], dp[i][j+1]);
+  let i=0, j=0, out='';
+  while (i<m || j<n) {
+    if (i<m && j<n && bw[i]===aw[j]) { out += esc(bw[i]); i++; j++; }
+    else if (j<n && (i>=m || dp[i][j+1] >= dp[i+1][j]))
+      { out += `<span class="dh-add">${esc(aw[j])}</span>`; j++; }
+    else
+      { out += `<span class="dh-rem">${esc(bw[i])}</span>`; i++; }
+  }
+  return out;
+}
+
+/* build full diff HTML + return stats object */
+function buildDiff(bText, aText) {
+  const bl = bText.split('\n'), al = aText.split('\n');
+  const maxLen = Math.max(bl.length, al.length);
+  let html = '', added=0, removed=0, modified=0, li=0;
+  for (let i=0; i<maxLen; i++) {
+    const b = (bl[i]||'').trim(), a = (al[i]||'').trim();
+    if (!b && !a)                         { html += '\n'; li++; continue; }
+    if (/^-{3,}$/.test(b||a))            { html += `<span class="dh-sep">${esc(b||a)}</span>\n`; li++; continue; }
+    if (li===0)                           { html += `<span class="dh-name">${esc(a||b)}</span>\n`; li++; continue; }
+    if (li===1)                           { html += `<span class="dh-contact">${esc(a||b)}</span>\n`; li++; continue; }
+    if (_SHDRS.has((b||a).toUpperCase())) { html += `<span class="dh-sec">${esc(a||b)}</span>\n`; li++; continue; }
+    if (b===a)                            { html += esc(b) + '\n'; li++; continue; }
+    if (!b && a) { html += `<span class="dh-add">+ ${esc(a)}</span>\n`; added++;   li++; continue; }
+    if (b && !a) { html += `<span class="dh-rem">− ${esc(b)}</span>\n`; removed++; li++; continue; }
+    html += _wdiff(b, a) + '\n'; modified++; li++;
+  }
+  return { html, added, removed, modified };
+}
+
+/* switch active tab */
+function switchMView(view) {
+  ['split','diff','before','after'].forEach(v => {
+    document.getElementById(`mvtab-${v}`).classList.toggle('active', v === view);
+    const el = document.getElementById(`mv-${v}`);
+    if (el) el.classList.toggle('active', v === view);
+  });
+  const leg = document.getElementById('modalDiffLeg');
+  if (leg) leg.classList.toggle('show', view === 'diff');
+}
+
+/* ── master function — open + populate all 4 panes ── */
+async function previewRoleResume(role, cardIdx) {
+  const icon = getRoleIcon(role);
+  document.getElementById('modalRoleChip').textContent  = `${icon} ${role}`;
+  document.getElementById('modalTitle').textContent     = `${role} — Before & After`;
+  document.getElementById('modalSubtitle').textContent  = 'Every change highlighted · word-level diff included';
+  document.getElementById('mvRoleLabel').textContent    = role;
+  document.getElementById('modalStats').classList.remove('show');
+  document.getElementById('modalStats').innerHTML       = '';
+
+  // set loading state in all panels
+  ['mv-bef','mv-aft','mv-difbody','mv-before','mv-after'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.innerHTML = '⏳ Generating…';
+  });
+  document.getElementById('previewModal').classList.add('show');
+  document.body.style.overflow = 'hidden';
+  switchMView('split');
+
+  // fetch tailored resume
+  let afterText = roleResumeCache[role];
+  if (!afterText) afterText = await generateRoleResume(role, cardIdx);
+
+  if (!afterText) {
+    ['mv-bef','mv-aft','mv-difbody','mv-before','mv-after'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = '⚠️ Could not generate — please try again.';
+    });
     return;
   }
 
   modalCurrentRole = role;
-  modalCurrentText = text;
+  modalCurrentText = afterText;
+  const beforeText = origText || '';
 
-  // Render the resume text with highlighting
-  renderModalResume(text, role);
+  // render before panes (red headers)
+  renderPane('mv-bef',    beforeText, true);
+  renderPane('mv-before', beforeText, true);
+
+  // render after panes (blue headers)
+  renderPane('mv-aft',   afterText, false);
+  renderPane('mv-after', afterText, false);
+
+  // build and render diff
+  const { html: diffHtml, added, removed, modified } = buildDiff(beforeText, afterText);
+  const difEl = document.getElementById('mv-difbody');
+  if (difEl) difEl.innerHTML = diffHtml;
+
+  // update stats bar
+  const statsEl = document.getElementById('modalStats');
+  if (statsEl && (added || removed || modified)) {
+    statsEl.innerHTML =
+      '<strong style="font-size:.8em;color:#1e40af">Changes:</strong>' +
+      (added    ? `<span class="stat-chip add">+${added} added</span>`      : '') +
+      (removed  ? `<span class="stat-chip rem">−${removed} removed</span>`  : '') +
+      (modified ? `<span class="stat-chip mod">~${modified} modified</span>`: '');
+    statsEl.classList.add('show');
+  }
+
+  document.getElementById('modalFootInfo').textContent =
+    `Tailored for ${role} · Skills preserved from your original resume`;
 }
 
-function openPreviewModal(role, bodyContent) {
-  const icon = getRoleIcon(role);
-  document.getElementById('modalRoleChip').textContent = `${icon} ${role}`;
-  document.getElementById('modalTitle').textContent    = `${role} Resume`;
-  document.getElementById('modalSubtitle').textContent = 'Tailored from your uploaded resume · Summary rewritten for this role';
-  document.getElementById('modalResumeText').textContent = bodyContent;
-  document.getElementById('previewModal').classList.add('show');
-  document.body.style.overflow = 'hidden';
-}
+function openPreviewModal(role, bodyContent) { /* legacy stub — logic moved to previewRoleResume */ }
 
 function closePreviewModal() {
   document.getElementById('previewModal').classList.remove('show');
@@ -1091,61 +1361,13 @@ function closePreviewModal() {
 }
 
 function renderModalResume(text, role) {
-  const el = document.getElementById('modalResumeText');
-  const lines = text.split('\n');
-  let html = '';
-  let lineIdx = 0;
-
-  for (const line of lines) {
-    const stripped = line.trim();
-    if (!stripped) { html += '\n'; lineIdx++; continue; }
-
-    // Separator lines — render faintly
-    if (/^-{3,}$/.test(stripped)) {
-      html += `<span style="color:#e2e8f0">${stripped}</span>\n`;
-      lineIdx++;
-      continue;
-    }
-
-    // First line = name
-    if (lineIdx === 0) {
-      html += `<span style="font-size:1.2em;font-weight:900;color:#1a1a2e;font-family:'Plus Jakarta Sans',sans-serif">${esc(stripped)}</span>\n`;
-      lineIdx++;
-      continue;
-    }
-    // Second line = contact
-    if (lineIdx === 1) {
-      html += `<span style="color:#64748b;font-family:'Plus Jakarta Sans',sans-serif">${esc(stripped)}</span>\n`;
-      lineIdx++;
-      continue;
-    }
-    // Third line = "Tailored for: X" tag
-    if (lineIdx === 2 && stripped.startsWith('Tailored for:')) {
-      html += `<span style="color:#4361ee;font-weight:700;font-family:'Plus Jakarta Sans',sans-serif">${esc(stripped)}</span>\n`;
-      lineIdx++;
-      continue;
-    }
-
-    // Section headers
-    const sectionHeaders = ['PROFESSIONAL SUMMARY','SKILLS','PROFESSIONAL EXPERIENCE','EXPERIENCE',
-      'EDUCATION','CERTIFICATIONS','PROJECTS','ACHIEVEMENTS','LANGUAGES','AWARDS'];
-    if (sectionHeaders.includes(stripped.toUpperCase())) {
-      html += `<span style="color:#4361ee;font-weight:800;font-family:'Plus Jakarta Sans',sans-serif;letter-spacing:.5px">${esc(stripped)}</span>\n`;
-      lineIdx++;
-      continue;
-    }
-
-    // Summary content (lines right after PROFESSIONAL SUMMARY header, before next section)
-    html += esc(line) + '\n';
-    lineIdx++;
-  }
-
-  el.innerHTML = html;
+  // legacy compatibility — mirror to after panes
+  renderPane('mv-aft',   text, false);
+  renderPane('mv-after', text, false);
 }
-
-/* ═══════════════════════════════════════════
+/* ---
    DOWNLOAD ROLE RESUME FROM CARD
-═══════════════════════════════════════════ */
+--- */
 async function downloadRoleResume(role, cardIdx) {
   const dlBtn = document.getElementById(`rpc-dl-btn-${cardIdx}`);
   if (dlBtn) { dlBtn.disabled = true; dlBtn.textContent = '⏳…'; }
@@ -1165,9 +1387,9 @@ async function downloadRoleResume(role, cardIdx) {
   }
 }
 
-/* ═══════════════════════════════════════════
+/* ---
    DOWNLOAD FROM MODAL
-═══════════════════════════════════════════ */
+--- */
 async function downloadFromModal() {
   const btn = document.getElementById('modalDlBtn');
   btn.disabled = true;
@@ -1182,9 +1404,9 @@ async function downloadFromModal() {
   }
 }
 
-/* ═══════════════════════════════════════════
+/* ---
    SHARED PDF DOWNLOAD HELPER
-═══════════════════════════════════════════ */
+--- */
 async function triggerPdfDownload(text, role) {
   const baseName = (selFile?.name?.replace(/\.[^.]+$/, '') || 'resume');
   const safeRole = (role || 'resume').replace(/[^a-zA-Z0-9]/g, '_');
@@ -1218,16 +1440,16 @@ async function triggerPdfDownload(text, role) {
   toast(`✅ ${role} resume downloaded!`, 'success');
 }
 
-/* ═══════════════════════════════════════════
+/* ---
    CLOSE MODAL ON BACKDROP CLICK
-═══════════════════════════════════════════ */
+--- */
 document.getElementById('previewModal').addEventListener('click', function(e) {
   if (e.target === this) closePreviewModal();
 });
 
-/* ═══════════════════════════════════════════
+/* ---
    ROLE SELECTION (for MCQ)
-═══════════════════════════════════════════ */
+--- */
 function pickRole(el, role) {
   document.querySelectorAll('.role-opt').forEach(o => o.classList.remove('sel'));
   el.classList.add('sel');
@@ -1248,17 +1470,19 @@ function confirmRole() {
 function goMCQ() { window.location.href = `/mcq_test?role=${encodeURIComponent(window._normRole||'DEFAULT')}`; }
 function showComingSoon() { alert('🚀 AI Mock Interview — Coming Soon!\n\nA live conversational AI interviewer tailored to your role. Stay tuned!'); }
 
-/* ═══════════════════════════════════════════
+/* ---
    EDITOR
-═══════════════════════════════════════════ */
+--- */
 function setupEditor(data) {
-  const ta = document.getElementById('resumeTa');
-  if (ta) { ta.value = origText; updateCounts(origText); }
+  document.getElementById('resumeTa').value = origText;
+  updateCounts(origText);
+  document.getElementById('diffBef').textContent = origText;
+  document.getElementById('diffAft').textContent = origText;
   renderTips(data);
   document.getElementById('editorCard').style.display = 'block';
+  document.getElementById('impBadge').style.display   = 'none';
+  document.getElementById('changesBox').style.display = 'none';
   resetApplyState();
-  const dlBtn = document.getElementById('dlBtnMain');
-  if (dlBtn) dlBtn.style.display = 'none';
 }
 
 function resetApplyState() {
@@ -1299,9 +1523,9 @@ function renderTips(data) {
 
 function logout() { window.location.href = "/logout"; }
 
-/* ═══════════════════════════════════════════
+/* ---
    NLP ENHANCE
-═══════════════════════════════════════════ */
+--- */
 async function callClaude(resumeText, ats, ml) {
   const res = await fetch(`${API}/enhance-resume`, {
     method : 'POST',
@@ -1396,13 +1620,19 @@ async function applyAllWithAI() {
 
     writing.classList.remove('show');
     editText = improved;
-    // keep resumeTa in sync even though it's hidden
-    const ta = document.getElementById('resumeTa');
-    if (ta) { ta.value = improved; updateCounts(improved); }
+    document.getElementById('resumeTa').value = improved;
+    updateCounts(improved);
+    renderDiff(origText, improved);
+    document.getElementById('impBadge').style.display = 'inline-flex';
 
-    // Show Download PDF button in the Fix Issues panel
-    const dlBtn = document.getElementById('dlBtnMain');
-    if (dlBtn) dlBtn.style.display = 'inline-flex';
+    const changes = [
+      ...(atsData.issues      || []).map(x => `Fixed: ${x}`),
+      ...(atsData.suggestions || []).map(x => `Applied: ${x}`),
+    ];
+    if (changes.length) {
+      document.getElementById('changesBox').style.display = 'block';
+      document.getElementById('changesList').innerHTML = changes.slice(0, 12).map(c => `<li>${c}</li>`).join('');
+    }
 
     const pSteps = [
       { id: 'ps-save',  label: 'Saving enhanced resume' },
@@ -1517,38 +1747,32 @@ async function reScore(text) {
     const bn = document.getElementById('rescoreBanner');
     const bt = document.getElementById('rescoreTxt');
     bn.classList.add('show');
-    bt.innerHTML = diff > 0
-      ? `🎉 ATS score improved from <span class="score-badge">${origScore} → ${newS} &nbsp;▲ +${diff} pts</span>`
-      : `✅ Re-analysis complete. New ATS Score: <strong>${newS}/100</strong>.`;
-    setStatus();
-
-    // ── If score just crossed 80 threshold, unlock role prediction ──────────
-    if (newS >= 80 && data.analysis?.predicted_role) {
+    /* ── UPDATE ROLE PREDICTION ───────────────────────────────────── */
+    if (data.analysis && data.analysis.predicted_role) {
       mlData = data.analysis;
       document.getElementById('sbRole').textContent = mlData.predicted_role;
-      document.getElementById('sbConf').textContent = `${(mlData.confidence*100).toFixed(1)}% confidence`;
-      const roleLocked = document.getElementById('rolePredLocked');
-      if (roleLocked) roleLocked.style.display = 'none';
-      const grid = document.getElementById('rolePredGrid');
-      if (grid) grid.style.display = '';
-      setupRolePredictionCards(mlData);
-      document.getElementById('rolePredSection').style.display = 'block';
-      toast('🎉 Score ≥ 80 — Role Prediction Unlocked!', 'success');
-    } else if (newS < 80) {
-      document.getElementById('sbRole').textContent = '🔒 Locked';
-      document.getElementById('sbConf').textContent = 'Score 80+ required';
-      const roleLocked = document.getElementById('rolePredLocked');
-      if (roleLocked && roleLocked.style.display !== 'none') {
-        const bar = roleLocked.querySelector('div[style*="width:"]');
-        if (bar) bar.style.width = newS + '%';
-        const label = roleLocked.querySelector('span[style*="white-space"]');
-        if (label) label.textContent = `${newS} / 80 needed`;
+      document.getElementById('sbConf').textContent = `${(mlData.confidence * 100).toFixed(1)}% confidence`;
+
+      if (newS >= 80) {
+        window.roleResumeCache = {};          // clear stale cached resumes
+        setupRolePredictionCards(mlData);
+        document.getElementById('rolePredSection').style.display = 'block';
+        bt.innerHTML = diff > 0
+          ? `🎉 ATS score improved from <span class="score-badge">${origScore} → ${newS} &nbsp;▲ +${diff} pts</span> &nbsp;🎯 Role predictions unlocked!`
+          : `✅ Score: <strong>${newS}/100</strong> — 🎯 Role predictions are now live!`;
+      } else {
+        document.getElementById('rolePredSection').style.display = 'none';
+        bt.innerHTML = diff > 0
+          ? `🎉 Score improved to <span class="score-badge">${newS} pts ▲</span> — reach 80+ to unlock role cards!`
+          : `✅ Score: <strong>${newS}/100</strong> — keep fixing to reach 80+ for role predictions!`;
       }
+    } else {
+      bt.innerHTML = diff > 0
+        ? `🎉 ATS score improved from <span class="score-badge">${origScore} → ${newS} &nbsp;▲ +${diff} pts</span>`
+        : `✅ Re-analysis complete. New ATS Score: <strong>${newS}/100</strong>.`;
     }
-
-    // Re-run DB save with updated score so the tag is never stale
-    await saveToDB();
-
+    /* ──────────────────────────────────────────────────────────────── */
+    setStatus();
     return data.ats_check;
   } catch(e) {
     document.getElementById('rescoreLoad').classList.remove('show');
@@ -1570,24 +1794,20 @@ function animScore(target) {
   requestAnimationFrame(step);
 }
 
-/* ═══════════════════════════════════════════
+/* ---
    SUPABASE
-═══════════════════════════════════════════ */
+--- */
 async function saveToDB() {
-  const score = atsData?.score || 0;
-  if (score < 80) {
-    // Don't persist yet — just hide any DB tag silently
-    setDB('hidden', '');
-    return;
-  }
+  const score = atsData?.score||0;
+  if (score < 80) { setDB('skip', `⚠️ Score ${score}/100 below 80 — Apply NLP improvements!`); return; }
   const {data, error} = await db.from('resumes').insert([{
-    file_name: selFile?.name || 'unknown', original_text: origText, edited_text: null,
-    ats_score: score, ats_overall: atsData?.overall || '',
-    predicted_role: mlData?.predicted_role || '', confidence: mlData?.confidence || 0,
-    is_ats_friendly: true, version: 'original'
+    file_name:selFile?.name||'unknown', original_text:origText, edited_text:null,
+    ats_score:score, ats_overall:atsData?.overall||'',
+    predicted_role:mlData?.predicted_role||'', confidence:mlData?.confidence||0,
+    is_ats_friendly:true, version:'original'
   }]).select();
-  if (error) setDB('skip', '❌ DB error: ' + error.message);
-  else { rowId = data[0].id; setDB('saved', `✅ Saved (ATS: ${score}/100)`); }
+  if (error) setDB('skip','❌ DB error: '+error.message);
+  else { rowId = data[0].id; setDB('saved',`✅ Saved (ATS: ${score}/100)`); }
 }
 
 async function saveEdited() {
@@ -1603,36 +1823,39 @@ function setDB(type, msg) {
   document.getElementById('dbTxt').textContent = msg;
 }
 
-/* ═══════════════════════════════════════════
+/* ---
    EDITOR HELPERS
-═══════════════════════════════════════════ */
+--- */
 function updateCounts(t) {
-  const cc = document.getElementById('charCount');
-  const wc = document.getElementById('wordCount');
-  if (cc) cc.textContent = t.length+' chars';
-  if (wc) wc.textContent = t.split(/\s+/).filter(Boolean).length+' words';
+  document.getElementById('charCount').textContent = t.length+' chars';
+  document.getElementById('wordCount').textContent = t.split(/\s+/).filter(Boolean).length+' words';
 }
 
 let saveTimer;
-const _rTa = document.getElementById('resumeTa');
-if (_rTa) _rTa.addEventListener('input', function() {
+document.getElementById('resumeTa').addEventListener('input', function() {
   updateCounts(this.value); editText = this.value;
   clearTimeout(saveTimer); saveTimer = setTimeout(saveEdited, 2000);
 });
 
-function switchTab(tab) { /* tabs removed — no-op */ }
+function switchTab(tab) {
+  ['tips','editor','compare'].forEach((t,i) => {
+    document.querySelectorAll('.etab')[i].classList.toggle('active', t===tab);
+    document.getElementById(`panel-${t}`).classList.toggle('active', t===tab);
+  });
+  if (tab==='compare') renderDiff(origText, editText);
+}
 
-async function autoImprove() { await applyAllWithAI(); }
+async function autoImprove() { await applyAllWithAI(); setTimeout(()=>switchTab('compare'),500); }
 
 function resetEdit() {
   if (!confirm('Reset to original? All edits lost.')) return;
-  const ta = document.getElementById('resumeTa');
-  if (ta) ta.value = origText;
+  document.getElementById('resumeTa').value = origText;
   editText = origText;
   updateCounts(origText);
+  renderDiff(origText, origText);
+  document.getElementById('impBadge').style.display   = 'none';
+  document.getElementById('changesBox').style.display = 'none';
   document.getElementById('rescoreBanner').classList.remove('show');
-  const dlBtn = document.getElementById('dlBtnMain');
-  if (dlBtn) dlBtn.style.display = 'none';
   resetApplyState();
 }
 
@@ -1653,9 +1876,9 @@ function renderDiff(orig, improved) {
 
 function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-/* ═══════════════════════════════════════════
+/* ---
    TOAST
-═══════════════════════════════════════════ */
+--- */
 function toast(msg, type='success') {
   const t  = document.createElement('div');
   const bg = type==='success'
@@ -1669,36 +1892,39 @@ function toast(msg, type='success') {
 
 function fmtKey(k) { return k.split('_').map(w=>w[0].toUpperCase()+w.slice(1)).join(' '); }
 
-/* ═══════════════════════════════════════════
+/* ---
    SUBSCRIPTION
-═══════════════════════════════════════════ */
+--- */
 let _currentPlanName = 'Free';
 
 async function loadSubscription() {
   try {
     const res = await fetch('/api/my-subscription', { credentials: 'include' });
-    const d   = await res.json();
-    if (!d.success || !d.subscription) return;
+    if (!res.ok) { console.warn('[subscription] HTTP', res.status); return; }
+    const d = await res.json();
+    console.log('[subscription] response:', JSON.stringify(d).substring(0,300));
+    if (!d.success || !d.subscription) { console.warn('[subscription] no data'); return; }
     const sub  = d.subscription;
-    const plan = sub.subscription_plans || {};
+    const plan = (sub.subscription_plans && typeof sub.subscription_plans === 'object') ? sub.subscription_plans : {};
+    const planName = plan.name || sub.plan_name || 'Free';
     const badge = document.getElementById('subBadge');
     if (badge) {
       const icons = { Free:'🆓', Pro:'⭐', Enterprise:'💎' };
-      badge.textContent = (icons[plan.name] || '📋') + ' ' + (plan.name || 'Free');
+      badge.textContent = (icons[planName] || '📋') + ' ' + planName;
     }
     const bar = document.getElementById('subStatusBar');
     if (bar) {
       bar.style.display = 'flex';
-      _currentPlanName = plan.name || 'Free';
-      document.getElementById('subPlanName').textContent = plan.name || 'Free';
-      const rUsed = sub.resumes_used || 0;
-      const rMax  = plan.max_resumes  === -1 ? '∞' : (plan.max_resumes  || 2);
+      _currentPlanName = planName;
+      document.getElementById('subPlanName').textContent = planName;
+      const rUsed = sub.resumes_used  || 0;
       const mUsed = sub.mcq_used      || 0;
-      const mMax  = plan.max_mcq_tests === -1 ? '∞' : (plan.max_mcq_tests || 1);
-      document.getElementById('subResumeUsage').textContent = `${rUsed} / ${rMax}`;
-      document.getElementById('subMcqUsage').textContent    = `${mUsed} / ${mMax}`;
-      const rPct = rMax === '∞' ? 0 : Math.min(100, (rUsed / rMax) * 100);
-      const mPct = mMax === '∞' ? 0 : Math.min(100, (mUsed / mMax) * 100);
+      const rMax  = (plan.max_resumes   === -1 || plan.max_resumes   == null) ? 'Unlimited' : (plan.max_resumes   || 2);
+      const mMax  = (plan.max_mcq_tests === -1 || plan.max_mcq_tests == null) ? 'Unlimited' : (plan.max_mcq_tests || 1);
+      document.getElementById('subResumeUsage').textContent = rUsed + ' / ' + rMax;
+      document.getElementById('subMcqUsage').textContent    = mUsed + ' / ' + mMax;
+      const rPct = rMax === 'Unlimited' ? 0 : Math.min(100, (rUsed / Number(rMax)) * 100);
+      const mPct = mMax === 'Unlimited' ? 0 : Math.min(100, (mUsed / Number(mMax)) * 100);
       document.getElementById('subResumeFill').style.width = rPct + '%';
       document.getElementById('subMcqFill').style.width    = mPct + '%';
       if (sub.expires_at) {
@@ -1706,21 +1932,20 @@ async function loadSubscription() {
           'Expires: ' + new Date(sub.expires_at).toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric'});
       }
       const rLimit = plan.max_resumes;
-      if (rLimit !== -1 && rUsed >= rLimit) {
+      if (rLimit !== -1 && rLimit != null && rUsed >= rLimit) {
         document.getElementById('limitBanner').style.display = 'block';
         document.getElementById('limitTitle').textContent = 'Resume Analysis Limit Reached';
-        document.getElementById('limitMsg').textContent   =
-          `You've used all ${rLimit} resume ${rLimit===1?'analysis':'analyses'} on your ${plan.name} plan. Ask your admin to upgrade.`;
+        document.getElementById('limitMsg').textContent = 'You have used all ' + rLimit + ' resume ' + (rLimit===1?'analysis':'analyses') + ' on your ' + planName + ' plan. Ask your admin to upgrade.';
         document.getElementById('analyzeBtn').disabled = true;
       }
     }
-  } catch(e) { console.warn('[subscription] Could not load:', e); }
+  } catch(e) { console.warn('[subscription] error:', e); }
 }
 loadSubscription();
 
-/* ═══════════════════════════════════════════
+/* ---
    RESET
-═══════════════════════════════════════════ */
+--- */
 document.getElementById('resetBtn').addEventListener('click', () => {
   selFile=null; fInp.value='';
   document.getElementById('filePill').classList.remove('show');
@@ -1748,9 +1973,9 @@ document.getElementById('resetBtn').addEventListener('click', () => {
 });
 </script>
 
-<!-- ═══════════════════════════════════════════
+<!-- 
      PLANS MODAL
-═══════════════════════════════════════════ -->
+ -->
 <div id="plansModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center;padding:20px;">
   <div style="background:#fff;border-radius:24px;width:100%;max-width:680px;max-height:90vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,.25);">
     <div style="background:linear-gradient(135deg,#4361ee,#4cc9f0);border-radius:24px 24px 0 0;padding:28px 32px;color:#fff;position:relative;">
@@ -1829,23 +2054,29 @@ async function loadPlansIntoModal() {
 function renderPlanCards() {
   const planColors=[{grad:'linear-gradient(135deg,#3b6fd4,#06b6d4)',icon:'🆓'},{grad:'linear-gradient(135deg,#10b981,#059669)',icon:'⭐'},{grad:'linear-gradient(135deg,#f59e0b,#d97706)',icon:'💎'}];
   const isYearly=_billingCycle==='yearly';
-  document.getElementById('planCardsContainer').innerHTML=_allPlans.map((p,i)=>{
+  document.getElementById('planCardsContainer').innerHTML=_allPlans.map(function(p,i){
     const c=planColors[i]||planColors[0];
     const isCur=p.name===_currentPlanName;
     const price=isYearly?(p.price_yearly||0):(p.price_monthly||0);
     const perLabel=isYearly?'/year':'/month';
-    const savings=(p.price_monthly&&p.price_yearly&&isYearly)?`Save ₹${Math.round(p.price_monthly*12-p.price_yearly)}`:'';
-    const rLabel=p.max_resumes===-1?'∞ Unlimited':`${p.max_resumes} / month`;
-    const mLabel=p.max_mcq_tests===-1?'∞ Unlimited':`${p.max_mcq_tests} / month`;
+    const savingsAmt=(p.price_monthly&&p.price_yearly&&isYearly)?('Save Rs.'+Math.round(p.price_monthly*12-p.price_yearly)):'';
+    const rLabel=p.max_resumes===-1?'Unlimited':(p.max_resumes+' / month');
+    const mLabel=p.max_mcq_tests===-1?'Unlimited':(p.max_mcq_tests+' / month');
     const isFree=p.name==='Free';
-    return `<div onclick="${isCur?'':''}" id="planCard_${p.id}" style="border:2px solid ${isCur?'#4361ee':'#e2e8f0'};border-radius:16px;padding:20px;cursor:${isCur?'default':'pointer'};transition:all .2s;background:${isCur?'#eff6ff':'#fff'};position:relative;" ${isCur?'':'onclick="selectPlan(\''+p.id+'\',\''+p.name+'\',this)"'}>
-      ${isCur?`<div style="position:absolute;top:10px;right:10px;background:#4361ee;color:#fff;font-size:.65em;font-weight:800;padding:2px 10px;border-radius:20px;">CURRENT</div>`:''}
-      ${savings?`<div style="position:absolute;top:10px;right:10px;background:#10b981;color:#fff;font-size:.65em;font-weight:800;padding:2px 10px;border-radius:20px;">${savings}</div>`:''}
-      <div style="font-size:1.8em;margin-bottom:8px">${c.icon}</div>
-      <div style="font-size:1.05em;font-weight:800;color:#1e293b;margin-bottom:4px">${p.name}</div>
-      <div style="margin-bottom:14px"><span style="font-size:1.6em;font-weight:800;color:#4361ee">${isFree?'Free':'₹'+price}</span>${isFree?'':`<span style="font-size:.75em;font-weight:600;color:#64748b">${perLabel}</span>`}</div>
-      <div style="font-size:.78em;color:#64748b;line-height:2;">📄 ${rLabel} resumes<br>📝 ${mLabel} MCQ tests</div>
-    </div>`;
+    const border='border:2px solid '+(isCur?'#4361ee':'#e2e8f0')+';';
+    const bg='background:'+(isCur?'#eff6ff':'#fff')+';';
+    const cursor='cursor:'+(isCur?'default':'pointer')+';';
+    const onclickAttr=isCur?'':' onclick="selectPlan(\''+p.id+'\',\''+p.name+'\',this)"';
+    const currentBadge=isCur?'<div style="position:absolute;top:10px;right:10px;background:#4361ee;color:#fff;font-size:.65em;font-weight:800;padding:2px 10px;border-radius:20px;">CURRENT</div>':'';
+    const savingsBadge=savingsAmt?'<div style="position:absolute;top:10px;right:10px;background:#10b981;color:#fff;font-size:.65em;font-weight:800;padding:2px 10px;border-radius:20px;">'+savingsAmt+'</div>':'';
+    const priceSpan=isFree?'Free':('Rs.'+price+'<span style="font-size:.75em;font-weight:600;color:#64748b">'+perLabel+'</span>');
+    return '<div id="planCard_'+p.id+'" style="'+border+'border-radius:16px;padding:20px;'+cursor+'transition:all .2s;'+bg+'position:relative;"'+onclickAttr+'>'
+      +currentBadge+savingsBadge
+      +'<div style="font-size:1.8em;margin-bottom:8px">'+c.icon+'</div>'
+      +'<div style="font-size:1.05em;font-weight:800;color:#1e293b;margin-bottom:4px">'+p.name+'</div>'
+      +'<div style="margin-bottom:14px"><span style="font-size:1.6em;font-weight:800;color:#4361ee">'+priceSpan+'</span></div>'
+      +'<div style="font-size:.78em;color:#64748b;line-height:2;">Resumes: '+rLabel+'<br>MCQ Tests: '+mLabel+'</div>'
+      +'</div>';
   }).join('');
 }
 function selectPlan(planId,planName,el) {
@@ -1902,5 +2133,6 @@ setInterval(async()=>{
   }catch(e){}
 },30000);
 </script>
+<script src="/static/nlp_ui.js"></script>
 </body>
 </html>

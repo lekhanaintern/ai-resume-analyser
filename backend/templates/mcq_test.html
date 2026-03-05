@@ -683,12 +683,12 @@
                 </div>
                 <div class="question-text">${result.question}</div>
                 <div class="options">
-                    ${result.options.map(opt => {
-                        let cls = 'option';
-                        if (opt === result.correct_answer) cls += ' correct';
-                        else if (opt === result.user_answer && !isCorrect) cls += ' incorrect';
-                        return `<div class="${cls}"><span>${opt}</span></div>`;
-                    }).join('')}
+                   ${result.options.map(opt => {
+                   let cls = 'option';
+                   if (isCorrect && opt === result.correct_answer) cls += ' correct';
+                   else if (!isCorrect && opt === result.user_answer) cls += ' incorrect';
+                   return `<div class="${cls}"><span>${opt}</span></div>`;
+                }).join('')}
                 </div>
                 ${result.explanation
                     ? `<div class="explanation show"><strong>💡 Explanation:</strong> ${result.explanation}</div>`

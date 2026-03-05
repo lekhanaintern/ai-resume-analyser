@@ -653,6 +653,9 @@
             <button class="nav-item" onclick="showPage('add-question')">
                 <span class="nav-icon">➕</span> Add Question
             </button>
+            <button class="nav-item" onclick="showPage('bulk-upload')">
+                <span class="nav-icon">📤</span> Bulk Upload
+            </button>
             <button class="nav-item" onclick="showPage('roles')">
                 <span class="nav-icon">🎯</span> By Role
             </button>
@@ -944,7 +947,111 @@
             </div>
         </div>
 
-        <!-- ═══════════════════════════════════ BY ROLE ═══ -->
+        <!-- ═══════════════════════════════════ BULK UPLOAD ═══ -->
+        <div class="page-section" id="page-bulk-upload">
+            <div class="page-header">
+                <div>
+                    <h2>📤 Bulk Upload Questions</h2>
+                    <p>Upload multiple MCQ questions at once via CSV or JSON file</p>
+                </div>
+                <button class="btn-sm" onclick="showPage('questions')">← Back to Questions</button>
+            </div>
+
+            <!-- Format Guide -->
+            <div class="card" style="margin-bottom:20px;">
+                <div style="font-size:1em;font-weight:700;margin-bottom:14px;">📋 Supported Formats</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+
+                    <!-- CSV Format -->
+                    <div style="background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:14px;">
+                        <div style="font-weight:700;font-size:.9em;margin-bottom:8px;">📄 CSV Format</div>
+                        <div style="font-size:.78em;color:var(--muted);margin-bottom:8px;">Columns (in order):</div>
+                        <code style="display:block;background:#1e293b;color:#e2e8f0;padding:10px;border-radius:6px;font-size:.72em;white-space:pre;overflow-x:auto;">job_role,question,option_a,option_b,option_c,option_d,correct_answer,difficulty,explanation
+DATA-SCIENCE,What is pandas?,A library,A language,A framework,A database,A library,easy,Pandas is a Python library</code>
+                        <div style="margin-top:8px;font-size:.76em;color:var(--muted);">• <b>correct_answer</b> = exact text of the correct option<br>• <b>difficulty</b> = easy / medium / hard<br>• <b>explanation</b> is optional</div>
+                        <button class="btn-sm" style="margin-top:10px;" onclick="downloadCSVTemplate()">⬇️ Download Template</button>
+                    </div>
+
+                    <!-- JSON Format -->
+                    <div style="background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:14px;">
+                        <div style="font-weight:700;font-size:.9em;margin-bottom:8px;">🗂️ JSON Format</div>
+                        <div style="font-size:.78em;color:var(--muted);margin-bottom:8px;">Array of question objects:</div>
+                        <code style="display:block;background:#1e293b;color:#e2e8f0;padding:10px;border-radius:6px;font-size:.72em;white-space:pre;overflow-x:auto;">[{
+  "job_role": "DATA-SCIENCE",
+  "question": "What is pandas?",
+  "options": ["A library","A language","A framework","A database"],
+  "correct_answer": "A library",
+  "difficulty": "easy",
+  "explanation": "Pandas is a Python data library"
+}]</code>
+                        <div style="margin-top:8px;font-size:.76em;color:var(--muted);">• <b>options</b> = array of exactly 4 strings<br>• <b>correct_answer</b> = exact text of the correct option<br>• <b>explanation</b> is optional</div>
+                        <button class="btn-sm" style="margin-top:10px;" onclick="downloadJSONTemplate()">⬇️ Download Template</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Upload Card -->
+            <div class="card" style="max-width:700px;">
+                <div class="alert" id="bulkAlert"></div>
+
+                <!-- Drop Zone -->
+                <div id="bulkDropZone"
+                     style="border:2px dashed var(--border);border-radius:12px;padding:40px 20px;text-align:center;cursor:pointer;transition:border-color .2s,background .2s;margin-bottom:16px;"
+                     onclick="document.getElementById('bulkFileInput').click()"
+                     ondragover="event.preventDefault();this.style.borderColor='var(--primary)';this.style.background='#f0f4ff';"
+                     ondragleave="this.style.borderColor='var(--border)';this.style.background='';"
+                     ondrop="handleBulkDrop(event)">
+                    <div style="font-size:2.5em;margin-bottom:8px;">📂</div>
+                    <div style="font-weight:700;font-size:.95em;color:var(--text);">Drop your CSV or JSON file here</div>
+                    <div style="font-size:.8em;color:var(--muted);margin-top:4px;">or click to browse</div>
+                    <input type="file" id="bulkFileInput" accept=".csv,.json" style="display:none;" onchange="handleBulkFileSelect(event)">
+                </div>
+
+                <!-- File Info -->
+                <div id="bulkFileInfo" style="display:none;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:12px 16px;margin-bottom:16px;align-items:center;gap:10px;">
+                    <span style="font-size:1.3em;">📄</span>
+                    <div style="flex:1;">
+                        <div id="bulkFileName" style="font-weight:700;font-size:.88em;"></div>
+                        <div id="bulkFileSize" style="font-size:.76em;color:var(--muted);"></div>
+                    </div>
+                    <button class="btn-sm danger" onclick="clearBulkFile()">✕ Remove</button>
+                </div>
+
+                <!-- Preview Table -->
+                <div id="bulkPreviewSection" style="display:none;margin-bottom:16px;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                        <div style="font-weight:700;font-size:.88em;">👁️ Preview <span id="bulkPreviewCount" style="color:var(--muted);font-weight:400;"></span></div>
+                        <div id="bulkValidationSummary" style="font-size:.78em;"></div>
+                    </div>
+                    <div style="overflow-x:auto;max-height:280px;border:1px solid var(--border);border-radius:8px;">
+                        <table style="width:100%;border-collapse:collapse;font-size:.78em;">
+                            <thead style="background:#f1f5f9;position:sticky;top:0;">
+                                <tr>
+                                    <th style="padding:8px 10px;text-align:left;white-space:nowrap;">#</th>
+                                    <th style="padding:8px 10px;text-align:left;">Question</th>
+                                    <th style="padding:8px 10px;text-align:left;white-space:nowrap;">Role</th>
+                                    <th style="padding:8px 10px;text-align:left;white-space:nowrap;">Difficulty</th>
+                                    <th style="padding:8px 10px;text-align:left;">Correct Answer</th>
+                                    <th style="padding:8px 10px;text-align:left;white-space:nowrap;">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="bulkPreviewBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Upload Button -->
+                <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+                    <button class="btn-primary" id="bulkUploadBtn" onclick="submitBulkUpload()" disabled style="opacity:.5;cursor:not-allowed;">📤 Upload to Database</button>
+                    <button class="btn-sm" onclick="clearBulkFile()" id="bulkClearBtn" style="display:none;">🔄 Clear & Reset</button>
+                    <div id="bulkProgress" style="display:none;font-size:.82em;color:var(--muted);"></div>
+                </div>
+
+                <!-- Result Summary -->
+                <div id="bulkResultBox" style="display:none;margin-top:16px;"></div>
+            </div>
+        </div>
+
         <div class="page-section" id="page-roles">
             <div class="page-header">
                 <div>
@@ -1199,6 +1306,7 @@ function showPage(name) {
         name === 'users'         ? 'Users' :
         name === 'questions'     ? 'All Questions' :
         name === 'add-question'  ? 'Add Question' :
+        name === 'bulk-upload'   ? 'Bulk Upload' :
         name === 'roles'         ? 'By Role' :
         name === 'results'       ? 'Test Results' :
         name === 'subscriptions' ? 'Subscriptions' : ''
@@ -1723,11 +1831,15 @@ async function loadSubscriptions() {
         document.getElementById('planCards').innerHTML = allPlans.map((p, i) => {
             const usersOnPlan = allSubs.filter(s => s.plan_id === p.id && s.status === 'active').length;
             return `
-            <div style="background:${planColors[i]||'#6366f1'};border-radius:16px;padding:22px;color:#fff;">
+            <div style="background:${planColors[i]||'#6366f1'};border-radius:16px;padding:22px;color:#fff;position:relative;">
+                <button onclick="openEditPlanModal(${JSON.stringify(p).replace(/"/g,'&quot;')})"
+                    style="position:absolute;top:14px;right:14px;background:rgba(255,255,255,.22);border:1px solid rgba(255,255,255,.35);color:#fff;border-radius:8px;padding:4px 10px;font-size:.72em;font-weight:700;cursor:pointer;font-family:inherit;">
+                    ✏️ Edit
+                </button>
                 <div style="font-size:2em;margin-bottom:6px">${planIcons[i]||'📋'}</div>
                 <div style="font-size:1.2em;font-weight:800;margin-bottom:2px">${p.name}</div>
-                <div style="font-size:.8em;opacity:.8;margin-bottom:14px">₹${p.price_monthly}/mo</div>
-                <div style="display:flex;gap:16px;font-size:.78em;opacity:.9;">
+                <div style="font-size:.8em;opacity:.8;margin-bottom:4px">₹${p.price_monthly}/mo &nbsp;·&nbsp; ₹${p.price_yearly || 0}/yr</div>
+                <div style="display:flex;gap:16px;font-size:.78em;opacity:.9;margin-bottom:0">
                     <span>📄 ${p.max_resumes === -1 ? '∞' : p.max_resumes} resumes</span>
                     <span>📝 ${p.max_mcq_tests === -1 ? '∞' : p.max_mcq_tests} tests</span>
                 </div>
@@ -1974,6 +2086,481 @@ document.addEventListener('DOMContentLoaded', () => {
         el.addEventListener('click', e => { if (e.target === el) el.classList.remove('show'); });
     });
 });
+
+// ═══════════════════════════════════════════════════════════
+// BULK UPLOAD
+// ═══════════════════════════════════════════════════════════
+
+const VALID_ROLES = [
+    'HR','DESIGNER','INFORMATION-TECHNOLOGY','TEACHER','ADVOCATE','BUSINESS-DEVELOPMENT',
+    'HEALTHCARE','FITNESS','AGRICULTURE','BPO','SALES','CONSULTANT','DIGITAL-MEDIA',
+    'AUTOMOBILE','CHEF','FINANCE','APPAREL','ENGINEERING','ACCOUNTANT','CONSTRUCTION',
+    'PUBLIC-RELATIONS','BANKING','ARTS','AVIATION','DATA-SCIENCE','WEB-DEVELOPER','DEFAULT'
+];
+
+let bulkParsedQuestions = [];  // holds all parsed + validated questions
+let bulkValidCount      = 0;
+let bulkInvalidCount    = 0;
+
+/* ── File drop / select ─────────────────────────────────── */
+function handleBulkDrop(e) {
+    e.preventDefault();
+    document.getElementById('bulkDropZone').style.borderColor = '';
+    document.getElementById('bulkDropZone').style.background  = '';
+    const file = e.dataTransfer.files[0];
+    if (file) processBulkFile(file);
+}
+
+function handleBulkFileSelect(e) {
+    const file = e.target.files[0];
+    if (file) processBulkFile(file);
+}
+
+function clearBulkFile() {
+    bulkParsedQuestions = [];
+    bulkValidCount = bulkInvalidCount = 0;
+    document.getElementById('bulkFileInput').value        = '';
+    document.getElementById('bulkFileInfo').style.display = 'none';
+    document.getElementById('bulkPreviewSection').style.display = 'none';
+    document.getElementById('bulkResultBox').style.display      = 'none';
+    document.getElementById('bulkProgress').style.display       = 'none';
+    document.getElementById('bulkClearBtn').style.display       = 'none';
+    document.getElementById('bulkUploadBtn').disabled           = true;
+    document.getElementById('bulkUploadBtn').style.opacity      = '.5';
+    document.getElementById('bulkUploadBtn').style.cursor       = 'not-allowed';
+    document.getElementById('bulkAlert').innerHTML              = '';
+    document.getElementById('bulkAlert').className              = 'alert';
+}
+
+/* ── Main file processor ────────────────────────────────── */
+function processBulkFile(file) {
+    clearBulkFile();
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (!['csv','json'].includes(ext)) {
+        showAlert(document.getElementById('bulkAlert'), '❌ Only .csv and .json files are supported.', 'error');
+        return;
+    }
+
+    // Show file info bar
+    const infoEl = document.getElementById('bulkFileInfo');
+    infoEl.style.display = 'flex';
+    document.getElementById('bulkFileName').textContent = file.name;
+    document.getElementById('bulkFileSize').textContent = (file.size / 1024).toFixed(1) + ' KB';
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const raw = e.target.result;
+            let questions = ext === 'csv' ? parseCSV(raw) : parseJSON(raw);
+            renderBulkPreview(questions);
+        } catch(err) {
+            showAlert(document.getElementById('bulkAlert'), '❌ Parse error: ' + err.message, 'error');
+        }
+    };
+    reader.readAsText(file);
+}
+
+/* ── CSV parser ─────────────────────────────────────────── */
+function parseCSV(text) {
+    const lines  = text.trim().split(/\r?\n/).filter(l => l.trim());
+    if (lines.length < 2) throw new Error('CSV must have a header row and at least one data row.');
+
+    const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/"/g,''));
+    const required = ['job_role','question','option_a','option_b','option_c','option_d','correct_answer','difficulty'];
+    const missing  = required.filter(r => !headers.includes(r));
+    if (missing.length) throw new Error(`Missing CSV columns: ${missing.join(', ')}`);
+
+    return lines.slice(1).map((line, idx) => {
+        // Handle quoted commas properly
+        const cols = line.match(/(".*?"|[^,]+)(?=\s*,|\s*$)/g) || [];
+        const clean = cols.map(c => c.trim().replace(/^"|"$/g,'').trim());
+        const get   = (col) => clean[headers.indexOf(col)] || '';
+        return {
+            _row:           idx + 2,
+            job_role:       get('job_role').toUpperCase(),
+            question:       get('question'),
+            options:        [get('option_a'), get('option_b'), get('option_c'), get('option_d')],
+            correct_answer: get('correct_answer'),
+            difficulty:     get('difficulty').toLowerCase() || 'medium',
+            explanation:    get('explanation') || '',
+        };
+    });
+}
+
+/* ── JSON parser ────────────────────────────────────────── */
+function parseJSON(text) {
+    const data = JSON.parse(text);
+    if (!Array.isArray(data)) throw new Error('JSON must be an array of question objects.');
+    return data.map((item, idx) => ({
+        _row:           idx + 1,
+        job_role:       (item.job_role || '').toUpperCase(),
+        question:       item.question || '',
+        options:        Array.isArray(item.options) ? item.options : [],
+        correct_answer: item.correct_answer || '',
+        difficulty:     (item.difficulty || 'medium').toLowerCase(),
+        explanation:    item.explanation || '',
+    }));
+}
+
+/* ── Validator ─────────────────────────────────────────── */
+function validateQuestion(q) {
+    const errs = [];
+    if (!q.question || q.question.length < 5)           errs.push('Question too short');
+    if (!VALID_ROLES.includes(q.job_role))               errs.push(`Invalid role: ${q.job_role}`);
+    if (!q.options || q.options.length !== 4)            errs.push('Must have exactly 4 options');
+    else if (q.options.some(o => !o.trim()))             errs.push('All 4 options must be non-empty');
+    if (!q.correct_answer)                               errs.push('Missing correct_answer');
+    else if (q.options && !q.options.includes(q.correct_answer)) errs.push('correct_answer not in options');
+    if (!['easy','medium','hard'].includes(q.difficulty)) errs.push(`Invalid difficulty: ${q.difficulty}`);
+    return errs;
+}
+
+/* ── Preview renderer ───────────────────────────────────── */
+function renderBulkPreview(questions) {
+    bulkParsedQuestions = [];
+    bulkValidCount = bulkInvalidCount = 0;
+
+    const tbody = document.getElementById('bulkPreviewBody');
+    tbody.innerHTML = '';
+
+    questions.forEach(q => {
+        const errs  = validateQuestion(q);
+        const valid = errs.length === 0;
+        if (valid) bulkValidCount++; else bulkInvalidCount++;
+
+        const stored = {...q, _errors: errs, _valid: valid};
+        bulkParsedQuestions.push(stored);
+
+        const tr = document.createElement('tr');
+        tr.style.background = valid ? '' : '#fff5f5';
+        tr.innerHTML = `
+            <td style="padding:7px 10px;color:var(--muted);">${q._row}</td>
+            <td style="padding:7px 10px;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${q.question}">${q.question || '<span style="color:#ef4444">empty</span>'}</td>
+            <td style="padding:7px 10px;white-space:nowrap;"><span style="background:#e0e7ff;color:#3730a3;border-radius:4px;padding:1px 7px;font-size:.72em;font-weight:700;">${q.job_role || '?'}</span></td>
+            <td style="padding:7px 10px;white-space:nowrap;">${q.difficulty}</td>
+            <td style="padding:7px 10px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${q.correct_answer}">${q.correct_answer || '<span style="color:#ef4444">none</span>'}</td>
+            <td style="padding:7px 10px;white-space:nowrap;">
+                ${valid
+                    ? '<span style="color:#10b981;font-weight:700;">✅ Valid</span>'
+                    : `<span style="color:#ef4444;font-weight:700;cursor:help;" title="${errs.join(', ')}">❌ ${errs.length} error${errs.length>1?'s':''}</span>`}
+            </td>`;
+        tbody.appendChild(tr);
+    });
+
+    // Show preview section
+    const previewSec = document.getElementById('bulkPreviewSection');
+    previewSec.style.display = 'block';
+    document.getElementById('bulkPreviewCount').textContent =
+        `(${questions.length} rows found)`;
+
+    // Validation summary
+    const summaryEl = document.getElementById('bulkValidationSummary');
+    summaryEl.innerHTML =
+        `<span style="color:#10b981;font-weight:700;">${bulkValidCount} valid</span>` +
+        (bulkInvalidCount ? ` &nbsp;·&nbsp; <span style="color:#ef4444;font-weight:700;">${bulkInvalidCount} invalid</span>` : '');
+
+    // Enable upload only if at least 1 valid question
+    const btn = document.getElementById('bulkUploadBtn');
+    if (bulkValidCount > 0) {
+        btn.disabled           = false;
+        btn.style.opacity      = '1';
+        btn.style.cursor       = 'pointer';
+        btn.textContent        = `📤 Upload ${bulkValidCount} Valid Question${bulkValidCount>1?'s':''}`;
+    }
+    document.getElementById('bulkClearBtn').style.display = 'inline-flex';
+
+    if (bulkInvalidCount > 0) {
+        showAlert(document.getElementById('bulkAlert'),
+            `⚠️ ${bulkInvalidCount} row${bulkInvalidCount>1?'s':''} have validation errors (shown in red) and will be skipped. Hover ❌ for details.`,
+            'warning');
+    } else {
+        document.getElementById('bulkAlert').innerHTML = '';
+    }
+}
+
+/* ── Submit to backend ──────────────────────────────────── */
+async function submitBulkUpload() {
+    const validOnes = bulkParsedQuestions.filter(q => q._valid);
+    if (!validOnes.length) return;
+
+    const btn      = document.getElementById('bulkUploadBtn');
+    const progress = document.getElementById('bulkProgress');
+    const resultBox= document.getElementById('bulkResultBox');
+    const alertEl  = document.getElementById('bulkAlert');
+
+    btn.disabled      = true;
+    btn.textContent   = '⏳ Uploading...';
+    progress.style.display = 'block';
+    resultBox.style.display = 'none';
+
+    // Send in batches of 50
+    const BATCH = 50;
+    let inserted = 0, failed = 0, failedDetails = [];
+
+    for (let i = 0; i < validOnes.length; i += BATCH) {
+        const batch = validOnes.slice(i, i + BATCH).map(q => ({
+            job_role:       q.job_role,
+            question:       q.question,
+            options:        q.options,
+            correct_answer: q.correct_answer,
+            difficulty:     q.difficulty,
+            explanation:    q.explanation,
+        }));
+
+        progress.textContent = `Uploading… ${Math.min(i + BATCH, validOnes.length)} / ${validOnes.length}`;
+
+        try {
+            const r = await api('/api/admin/bulk-upload-questions', {
+                method:  'POST',
+                headers: {'Content-Type':'application/json'},
+                body:    JSON.stringify({ questions: batch }),
+            });
+            inserted += r.inserted || 0;
+            failed   += r.failed   || 0;
+            if (r.errors && r.errors.length) failedDetails.push(...r.errors);
+        } catch(e) {
+            failed += batch.length;
+        }
+    }
+
+    progress.style.display = 'none';
+    btn.textContent = '📤 Upload to Database';
+    btn.disabled    = false;
+
+    // Show result box
+    resultBox.style.display = 'block';
+    resultBox.innerHTML = `
+        <div style="background:${inserted>0?'#f0fdf4':'#fff5f5'};border:1px solid ${inserted>0?'#bbf7d0':'#fecaca'};border-radius:10px;padding:16px 20px;">
+            <div style="font-size:1.1em;font-weight:800;margin-bottom:10px;">${inserted>0?'🎉':'⚠️'} Upload Complete</div>
+            <div style="display:flex;gap:24px;font-size:.88em;">
+                <div><span style="color:#10b981;font-weight:700;font-size:1.4em;">${inserted}</span><br>Inserted</div>
+                <div><span style="color:#ef4444;font-weight:700;font-size:1.4em;">${failed}</span><br>Failed</div>
+                <div><span style="color:#64748b;font-weight:700;font-size:1.4em;">${bulkInvalidCount}</span><br>Skipped (invalid)</div>
+            </div>
+            ${failedDetails.length ? `<div style="margin-top:10px;font-size:.76em;color:#991b1b;">Some errors: ${failedDetails.slice(0,3).join('; ')}</div>` : ''}
+            ${inserted>0 ? `<button class="btn-sm primary" style="margin-top:12px;" onclick="showPage('questions');clearBulkFile();">View Questions →</button>` : ''}
+        </div>`;
+
+    if (inserted > 0) {
+        allQuestions = [];   // force refresh question cache
+        showAlert(alertEl, `✅ Successfully uploaded ${inserted} question${inserted>1?'s':''} to the database!`, 'success');
+    }
+}
+
+/* ── Template downloads ─────────────────────────────────── */
+function downloadCSVTemplate() {
+    const header = 'job_role,question,option_a,option_b,option_c,option_d,correct_answer,difficulty,explanation';
+    const row1   = 'DATA-SCIENCE,What is the primary use of pandas in Python?,Data manipulation,Web development,Network configuration,Image processing,Data manipulation,easy,Pandas is used for data manipulation and analysis';
+    const row2   = 'WEB-DEVELOPER,Which HTML tag creates a hyperlink?,<a>,<link>,<href>,<url>,<a>,easy,The anchor tag creates hyperlinks in HTML';
+    const row3   = 'HR,What does KPI stand for in HR?,Key Performance Indicator,Key Process Index,Key Personnel Integration,Knowledge Performance Index,Key Performance Indicator,medium,KPI measures performance against defined objectives';
+    const csv    = [header, row1, row2, row3].join('\n');
+    triggerDownload(csv, 'bulk_questions_template.csv', 'text/csv');
+}
+
+function downloadJSONTemplate() {
+    const template = [
+        { job_role:'DATA-SCIENCE', question:'What is the primary use of pandas in Python?', options:['Data manipulation','Web development','Network configuration','Image processing'], correct_answer:'Data manipulation', difficulty:'easy', explanation:'Pandas is used for data manipulation and analysis' },
+        { job_role:'WEB-DEVELOPER', question:'Which HTML tag creates a hyperlink?', options:['<a>','<link>','<href>','<url>'], correct_answer:'<a>', difficulty:'easy', explanation:'The anchor tag creates hyperlinks in HTML' },
+        { job_role:'HR', question:'What does KPI stand for in HR?', options:['Key Performance Indicator','Key Process Index','Key Personnel Integration','Knowledge Performance Index'], correct_answer:'Key Performance Indicator', difficulty:'medium', explanation:'KPI measures performance against defined objectives' }
+    ];
+    triggerDownload(JSON.stringify(template, null, 2), 'bulk_questions_template.json', 'application/json');
+}
+
+function triggerDownload(content, filename, type) {
+    const blob = new Blob([content], {type});
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+// ═══════════════════════════════════════════════════════════
+// EDIT PLAN MODAL
+// ═══════════════════════════════════════════════════════════
+
+function openEditPlanModal(plan) {
+    // Populate fields
+    document.getElementById('editPlanId').value       = plan.id;
+    document.getElementById('editPlanName').value     = plan.name || '';
+    document.getElementById('editPlanMonthly').value  = plan.price_monthly || 0;
+    document.getElementById('editPlanYearly').value   = plan.price_yearly  || 0;
+    document.getElementById('editPlanResumes').value  = plan.max_resumes   ?? 2;
+    document.getElementById('editPlanMcq').value      = plan.max_mcq_tests ?? 1;
+    document.getElementById('editPlanAlert').innerHTML = '';
+    document.getElementById('editPlanAlert').className = 'alert';
+
+    // Update preview
+    updateEditPlanPreview();
+
+    // Show modal
+    const modal = document.getElementById('editPlanModal');
+    modal.style.display = 'flex';
+    setTimeout(() => modal.style.opacity = '1', 10);
+
+    // Live preview on input change
+    ['editPlanMonthly','editPlanYearly','editPlanResumes','editPlanMcq'].forEach(id => {
+        document.getElementById(id).oninput = updateEditPlanPreview;
+    });
+}
+
+function updateEditPlanPreview() {
+    const monthly  = parseInt(document.getElementById('editPlanMonthly').value) || 0;
+    const yearly   = parseInt(document.getElementById('editPlanYearly').value)  || 0;
+    const resumes  = parseInt(document.getElementById('editPlanResumes').value);
+    const mcq      = parseInt(document.getElementById('editPlanMcq').value);
+
+    document.getElementById('prevMonthly').textContent  = '₹' + monthly;
+    document.getElementById('prevYearly').textContent   = '₹' + yearly;
+    document.getElementById('prevResumes').textContent  = isNaN(resumes) ? '—' : (resumes === -1 ? '∞ unlimited' : resumes);
+    document.getElementById('prevMcq').textContent      = isNaN(mcq)     ? '—' : (mcq === -1     ? '∞ unlimited' : mcq);
+}
+
+function closeEditPlanModal() {
+    document.getElementById('editPlanModal').style.display = 'none';
+}
+
+async function saveEditPlan() {
+    const id      = document.getElementById('editPlanId').value;
+    const name    = document.getElementById('editPlanName').value.trim();
+    const monthly = parseInt(document.getElementById('editPlanMonthly').value);
+    const yearly  = parseInt(document.getElementById('editPlanYearly').value);
+    const resumes = parseInt(document.getElementById('editPlanResumes').value);
+    const mcq     = parseInt(document.getElementById('editPlanMcq').value);
+    const alertEl = document.getElementById('editPlanAlert');
+    const saveBtn = document.getElementById('editPlanSaveBtn');
+
+    // Validate
+    if (!name)                  { showAlert(alertEl, '⚠️ Plan name is required.', 'error'); return; }
+    if (isNaN(monthly) || monthly < 0) { showAlert(alertEl, '⚠️ Monthly price must be 0 or more.', 'error'); return; }
+    if (isNaN(yearly)  || yearly < 0)  { showAlert(alertEl, '⚠️ Yearly price must be 0 or more.', 'error'); return; }
+    if (isNaN(resumes) || resumes < -1) { showAlert(alertEl, '⚠️ Max resumes must be -1 (unlimited) or greater.', 'error'); return; }
+    if (isNaN(mcq)     || mcq < -1)     { showAlert(alertEl, '⚠️ Max MCQ tests must be -1 (unlimited) or greater.', 'error'); return; }
+
+    saveBtn.disabled    = true;
+    saveBtn.textContent = '⏳ Saving...';
+
+    try {
+        const r = await api('/api/admin/update-plan', {
+            method:  'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                id,
+                name,
+                price_monthly:  monthly,
+                price_yearly:   yearly,
+                max_resumes:    resumes,
+                max_mcq_tests:  mcq,
+            })
+        });
+
+        if (r.success) {
+            showAlert(alertEl, '✅ Plan updated successfully!', 'success');
+            // Refresh plan cards after short delay
+            setTimeout(() => {
+                closeEditPlanModal();
+                allSubs = []; // clear cache
+                loadSubscriptions();
+            }, 900);
+        } else {
+            showAlert(alertEl, '❌ ' + (r.error || 'Update failed.'), 'error');
+        }
+    } catch(e) {
+        showAlert(alertEl, '❌ Server error. Please try again.', 'error');
+    }
+
+    saveBtn.disabled    = false;
+    saveBtn.textContent = '💾 Save Changes';
+}
+
+// Close modal when clicking the backdrop
+document.getElementById('editPlanModal').addEventListener('click', function(e) {
+    if (e.target === this) closeEditPlanModal();
+});
 </script>
+<!-- ═══════════════════ EDIT PLAN MODAL ═══════════════════ -->
+<div class="modal-overlay" id="editPlanModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:20px;padding:32px;width:100%;max-width:500px;box-shadow:0 20px 60px rgba(0,0,0,.2);margin:16px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">
+            <div>
+                <div style="font-size:1.15em;font-weight:800;color:var(--text);">✏️ Edit Plan</div>
+                <div style="font-size:.8em;color:var(--muted);margin-top:2px;">Changes save directly to database</div>
+            </div>
+            <button onclick="closeEditPlanModal()" style="background:#f1f5f9;border:none;border-radius:50%;width:32px;height:32px;font-size:1.1em;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
+        </div>
+        <div class="alert" id="editPlanAlert"></div>
+        <input type="hidden" id="editPlanId">
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+            <!-- Plan Name -->
+            <div style="grid-column:1/-1;">
+                <label style="font-size:.82em;font-weight:700;color:var(--muted);display:block;margin-bottom:5px;">📋 Plan Name</label>
+                <input id="editPlanName" type="text" placeholder="e.g. Pro"
+                    style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:.9em;font-family:inherit;outline:none;">
+            </div>
+
+            <!-- Monthly Price -->
+            <div>
+                <label style="font-size:.82em;font-weight:700;color:var(--muted);display:block;margin-bottom:5px;">💰 Monthly Price (₹)</label>
+                <div style="position:relative;">
+                    <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-weight:700;">₹</span>
+                    <input id="editPlanMonthly" type="number" min="0" placeholder="0"
+                        style="width:100%;padding:10px 14px 10px 28px;border:1.5px solid var(--border);border-radius:10px;font-size:.9em;font-family:inherit;outline:none;">
+                </div>
+                <div style="font-size:.72em;color:var(--muted);margin-top:3px;">Set 0 for Free plan</div>
+            </div>
+
+            <!-- Yearly Price -->
+            <div>
+                <label style="font-size:.82em;font-weight:700;color:var(--muted);display:block;margin-bottom:5px;">💰 Yearly Price (₹)</label>
+                <div style="position:relative;">
+                    <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-weight:700;">₹</span>
+                    <input id="editPlanYearly" type="number" min="0" placeholder="0"
+                        style="width:100%;padding:10px 14px 10px 28px;border:1.5px solid var(--border);border-radius:10px;font-size:.9em;font-family:inherit;outline:none;">
+                </div>
+                <div style="font-size:.72em;color:var(--muted);margin-top:3px;">Set 0 for Free plan</div>
+            </div>
+
+            <!-- Max Resumes -->
+            <div>
+                <label style="font-size:.82em;font-weight:700;color:var(--muted);display:block;margin-bottom:5px;">📄 Max Resume Analyses</label>
+                <input id="editPlanResumes" type="number" min="-1" placeholder="2"
+                    style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:.9em;font-family:inherit;outline:none;">
+                <div style="font-size:.72em;color:var(--muted);margin-top:3px;">Enter -1 for unlimited</div>
+            </div>
+
+            <!-- Max MCQ Tests -->
+            <div>
+                <label style="font-size:.82em;font-weight:700;color:var(--muted);display:block;margin-bottom:5px;">📝 Max MCQ Tests</label>
+                <input id="editPlanMcq" type="number" min="-1" placeholder="1"
+                    style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:.9em;font-family:inherit;outline:none;">
+                <div style="font-size:.72em;color:var(--muted);margin-top:3px;">Enter -1 for unlimited</div>
+            </div>
+        </div>
+
+        <!-- Live Preview -->
+        <div id="editPlanPreview" style="margin-top:18px;background:#f8fafc;border:1px solid var(--border);border-radius:12px;padding:14px;font-size:.82em;">
+            <div style="font-weight:700;color:var(--muted);margin-bottom:8px;">👁️ Preview</div>
+            <div style="display:flex;gap:20px;flex-wrap:wrap;">
+                <div>Monthly: <strong id="prevMonthly">₹0</strong></div>
+                <div>Yearly: <strong id="prevYearly">₹0</strong></div>
+                <div>Resumes: <strong id="prevResumes">—</strong></div>
+                <div>MCQ Tests: <strong id="prevMcq">—</strong></div>
+            </div>
+        </div>
+
+        <div style="display:flex;gap:10px;margin-top:22px;">
+            <button onclick="saveEditPlan()" id="editPlanSaveBtn"
+                style="flex:1;padding:12px;background:var(--primary);color:#fff;border:none;border-radius:10px;font-size:.9em;font-weight:700;cursor:pointer;font-family:inherit;">
+                💾 Save Changes
+            </button>
+            <button onclick="closeEditPlanModal()"
+                style="padding:12px 20px;background:#f1f5f9;color:var(--text);border:none;border-radius:10px;font-size:.9em;font-weight:700;cursor:pointer;font-family:inherit;">
+                Cancel
+            </button>
+        </div>
+    </div>
+</div>
 </body>
 </html>
