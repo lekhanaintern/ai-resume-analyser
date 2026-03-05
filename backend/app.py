@@ -2302,139 +2302,271 @@ def enhance_resume():
 
 
 # ============================================================
-# PDF DOWNLOAD
+# PDF DOWNLOAD  —  Advanced ATS-Friendly Resume
+# POST /api/download-pdf
+# Body: { resume_text, filename }
 # ============================================================
 @app.route('/api/download-pdf', methods=['POST'])
 def download_pdf():
     try:
-        from reportlab.lib.pagesizes import A4
-        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-        from reportlab.lib.units import cm
-        from reportlab.lib import colors
-        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
-        from reportlab.lib.enums import TA_CENTER
         import io
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib.units     import cm
+        from reportlab.lib           import colors
+        from reportlab.lib.enums     import TA_LEFT, TA_CENTER, TA_RIGHT
+        from reportlab.lib.styles    import ParagraphStyle
+        from reportlab.platypus      import (
+            SimpleDocTemplate, Paragraph, Spacer,
+            HRFlowable, Table, TableStyle, KeepTogether,
+        )
 
+        # ── Input ──────────────────────────────────────────────
         body        = request.get_json(force=True)
         resume_text = (body.get('resume_text') or '').strip()
-        filename    = (body.get('filename') or 'resume').strip()
+        filename    = (body.get('filename')    or 'resume').strip()
         if not filename.endswith('.pdf'):
             filename += '.pdf'
-
         if not resume_text:
             return jsonify({'error': 'resume_text is required'}), 400
+
+        # ── Colours ────────────────────────────────────────────
+        C_BLACK  = colors.HexColor('#0A0A0A')
+        C_ACCENT = colors.HexColor('#1B3A6B')   # navy — name & section headers
+        C_MGREY  = colors.HexColor('#4A4A4A')
+        C_LGREY  = colors.HexColor('#888888')
+
+        L_MARGIN = 2.0 * cm
+        R_MARGIN = 2.0 * cm
+        T_MARGIN = 1.6 * cm
+        B_MARGIN = 1.6 * cm
+        PAGE_W   = A4[0] - L_MARGIN - R_MARGIN
+
+        # ── Footer: "Name  ·  Page N" ──────────────────────────
+        _candidate_name = ['']
+
+        def _draw_footer(canvas, doc):
+            canvas.saveState()
+            canvas.setFont('Helvetica', 7.5)
+            canvas.setFillColor(C_LGREY)
+            name_part = _candidate_name[0] + '  \u00b7  ' if _candidate_name[0] else ''
+            canvas.drawString(L_MARGIN, B_MARGIN - 10,
+                              f'{name_part}Page {doc.page}')
+            canvas.restoreState()
 
         buffer = io.BytesIO()
         doc    = SimpleDocTemplate(
             buffer,
-            pagesize=A4,
-            rightMargin=2*cm, leftMargin=2*cm,
-            topMargin=2*cm,   bottomMargin=2*cm
+            pagesize     = A4,
+            leftMargin   = L_MARGIN,
+            rightMargin  = R_MARGIN,
+            topMargin    = T_MARGIN,
+            bottomMargin = B_MARGIN,
+            title        = filename.replace('.pdf', ''),
+            subject      = 'ATS-Optimised Resume',
         )
 
-        styles   = getSampleStyleSheet()
-        elements = []
+        # ── Styles ─────────────────────────────────────────────
+        S_NAME = ParagraphStyle('S_NAME',
+            fontName='Helvetica-Bold', fontSize=18, leading=22,
+            alignment=TA_CENTER, textColor=C_ACCENT, spaceAfter=3)
 
-        name_style = ParagraphStyle(
-            'Name', parent=styles['Normal'],
-            fontSize=16, fontName='Helvetica-Bold',
-            alignment=TA_CENTER, spaceAfter=4,
-            textColor=colors.HexColor('#1a1a2e')
-        )
-        contact_style = ParagraphStyle(
-            'Contact', parent=styles['Normal'],
-            fontSize=9, fontName='Helvetica',
-            alignment=TA_CENTER, spaceAfter=6,
-            textColor=colors.HexColor('#444444')
-        )
-        role_tag_style = ParagraphStyle(
-            'RoleTag', parent=styles['Normal'],
-            fontSize=8, fontName='Helvetica-Bold',
-            alignment=TA_CENTER, spaceAfter=14,
-            textColor=colors.HexColor('#4361ee')
-        )
-        section_style = ParagraphStyle(
-            'Section', parent=styles['Normal'],
-            fontSize=10, fontName='Helvetica-Bold',
-            spaceAfter=4, spaceBefore=12,
-            textColor=colors.HexColor('#1a1a2e'),
-        )
-        body_style = ParagraphStyle(
-            'Body', parent=styles['Normal'],
-            fontSize=9.5, fontName='Helvetica',
-            leading=14, spaceAfter=3,
-            textColor=colors.HexColor('#222222')
-        )
-        bullet_style = ParagraphStyle(
-            'Bullet', parent=styles['Normal'],
-            fontSize=9.5, fontName='Helvetica',
-            leading=14, spaceAfter=2,
-            leftIndent=14, firstLineIndent=-10,
-            textColor=colors.HexColor('#222222')
-        )
+        S_CONTACT = ParagraphStyle('S_CONTACT',
+            fontName='Helvetica', fontSize=8.5, leading=11,
+            alignment=TA_CENTER, textColor=C_MGREY, spaceAfter=2)
 
+        S_ROLETAG = ParagraphStyle('S_ROLETAG',
+            fontName='Helvetica-Oblique', fontSize=8, leading=10,
+            alignment=TA_CENTER, textColor=C_LGREY, spaceAfter=6)
+
+        S_SECTION = ParagraphStyle('S_SECTION',
+            fontName='Helvetica-Bold', fontSize=10, leading=13,
+            alignment=TA_LEFT, textColor=C_ACCENT,
+            spaceBefore=12, spaceAfter=1)
+
+        S_JOBTITLE = ParagraphStyle('S_JOBTITLE',
+            fontName='Helvetica-Bold', fontSize=9.5, leading=13,
+            alignment=TA_LEFT, textColor=C_BLACK, spaceAfter=1)
+
+        S_DATE = ParagraphStyle('S_DATE',
+            fontName='Helvetica-Oblique', fontSize=9, leading=13,
+            alignment=TA_RIGHT, textColor=C_MGREY)
+
+        S_BODY = ParagraphStyle('S_BODY',
+            fontName='Helvetica', fontSize=9.5, leading=13.5,
+            alignment=TA_LEFT, textColor=C_BLACK, spaceAfter=2)
+
+        S_BULLET = ParagraphStyle('S_BULLET',
+            fontName='Helvetica', fontSize=9.5, leading=13.5,
+            alignment=TA_LEFT, textColor=C_BLACK,
+            leftIndent=16, firstLineIndent=-16, spaceAfter=2)
+
+        S_SKILLS = ParagraphStyle('S_SKILLS',
+            fontName='Helvetica', fontSize=9, leading=13,
+            alignment=TA_LEFT, textColor=C_BLACK, spaceAfter=3)
+
+        # ── Regex helpers ───────────────────────────────────────
+        SEP_RE    = re.compile(r'^[-─=]{3,}$')
+        BULLET_RE = re.compile(r'^[-*\u2022\u25cf]\s+')
+        DATE_RE   = re.compile(
+            r'(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|'
+            r'\d{4}|Present|Current|Till date)', re.I)
+        SKILLS_RE = re.compile(
+            r'^(skills?|technical skills?|key skills?|'
+            r'core competencies|competencies)\s*[:\-]?\s*', re.I)
+        PIPE_SEP  = re.compile(r'\s*\|\s*')
+
+        def sx(t):
+            return (t.replace('&', '&amp;')
+                     .replace('<', '&lt;')
+                     .replace('>', '&gt;')
+                     .replace('"', '&quot;'))
+
+        def section_block(title):
+            return KeepTogether([
+                Paragraph(title.upper(), S_SECTION),
+                HRFlowable(width='100%', thickness=1.0,
+                           color=C_ACCENT, spaceAfter=3),
+            ])
+
+        def job_title_row(title_text, date_text=''):
+            if not date_text:
+                return Paragraph(sx(title_text), S_JOBTITLE)
+            t = Table(
+                [[Paragraph(sx(title_text), S_JOBTITLE),
+                  Paragraph(sx(date_text),  S_DATE)]],
+                colWidths=[PAGE_W * 0.70, PAGE_W * 0.30],
+                hAlign='LEFT',
+            )
+            t.setStyle(TableStyle([
+                ('VALIGN',       (0, 0), (-1, -1), 'TOP'),
+                ('LEFTPADDING',  (0, 0), (-1, -1), 0),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+                ('TOPPADDING',   (0, 0), (-1, -1), 0),
+                ('BOTTOMPADDING',(0, 0), (-1, -1), 2),
+            ]))
+            return t
+
+        # ── Known section headers ───────────────────────────────
         SECTION_HEADERS = {
-            'PROFESSIONAL SUMMARY', 'SKILLS', 'PROFESSIONAL EXPERIENCE',
-            'EXPERIENCE', 'EDUCATION', 'CERTIFICATIONS', 'PROJECTS',
-            'ACHIEVEMENTS', 'LANGUAGES', 'AWARDS'
+            'PROFESSIONAL SUMMARY', 'SUMMARY', 'OBJECTIVE',
+            'CAREER OBJECTIVE', 'PROFILE', 'ABOUT ME',
+            'SKILLS', 'TECHNICAL SKILLS', 'KEY SKILLS',
+            'CORE COMPETENCIES', 'COMPETENCIES', 'TOOLS & TECHNOLOGIES',
+            'PROFESSIONAL EXPERIENCE', 'WORK EXPERIENCE', 'EXPERIENCE',
+            'EMPLOYMENT HISTORY', 'WORK HISTORY',
+            'EDUCATION', 'ACADEMIC BACKGROUND', 'ACADEMIC QUALIFICATIONS',
+            'CERTIFICATIONS', 'CERTIFICATES', 'LICENSES & CERTIFICATIONS',
+            'PROJECTS', 'KEY PROJECTS', 'PERSONAL PROJECTS',
+            'ACHIEVEMENTS', 'ACCOMPLISHMENTS', 'AWARDS', 'HONORS',
+            'LANGUAGES', 'ADDITIONAL INFORMATION', 'INTERESTS',
+            'VOLUNTEER', 'VOLUNTEER EXPERIENCE', 'PUBLICATIONS',
+            'KEY CONTRIBUTIONS', 'KEY STRENGTHS', 'STRENGTHS',
         }
-        SEP_RE = re.compile(r'^-{3,}$')
 
+        # ── Parse ───────────────────────────────────────────────
+        elements    = []
         lines       = resume_text.split('\n')
-        first_line  = True
-        second_line = False
-        third_line  = False  # for "Tailored for: X" tag
+        i           = 0
+        header_done = False
 
-        for line in lines:
-            stripped = line.strip()
+        while i < len(lines):
+            raw      = lines[i]
+            stripped = raw.strip()
+            i       += 1
 
             if SEP_RE.match(stripped):
                 continue
-
             if not stripped:
-                elements.append(Spacer(1, 4))
+                if elements:
+                    elements.append(Spacer(1, 3))
                 continue
 
-            if first_line:
-                safe = stripped.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
-                elements.append(Paragraph(safe, name_style))
-                first_line  = False
-                second_line = True
+            upper = stripped.upper()
+
+            # ── Header block ─────────────────────────────────
+            if not header_done:
+                _candidate_name[0] = stripped
+                elements.append(Paragraph(sx(stripped), S_NAME))
+                elements.append(
+                    HRFlowable(width='40%', thickness=2.5,
+                               color=C_ACCENT, spaceAfter=4, hAlign='CENTER')
+                )
+                # Collect contact / role-tag lines
+                contact_lines = []
+                while i < len(lines):
+                    nxt = lines[i].strip()
+                    i  += 1
+                    if not nxt or SEP_RE.match(nxt):
+                        continue
+                    if nxt.upper() in SECTION_HEADERS:
+                        i -= 1
+                        break
+                    contact_lines.append(nxt)
+                    if len(contact_lines) >= 4:
+                        break
+
+                for cl in contact_lines:
+                    if cl.startswith('Tailored for:'):
+                        elements.append(Paragraph(sx(cl), S_ROLETAG))
+                    else:
+                        clean = PIPE_SEP.sub('  \u00b7  ', cl)
+                        elements.append(Paragraph(sx(clean), S_CONTACT))
+
+                elements.append(Spacer(1, 8))
+                header_done = True
                 continue
 
-            if second_line:
-                safe = stripped.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
-                elements.append(Paragraph(safe, contact_style))
-                second_line = False
-                third_line  = True
+            # ── Section heading ──────────────────────────────
+            if upper in SECTION_HEADERS:
+                elements.append(section_block(stripped))
                 continue
 
-            if third_line:
-                safe = stripped.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
-                # If it looks like a role tag line
-                if stripped.startswith('Tailored for:'):
-                    elements.append(Paragraph(safe, role_tag_style))
+            # ── Bullet point ─────────────────────────────────
+            if BULLET_RE.match(stripped):
+                content = BULLET_RE.sub('', stripped).strip()
+                elements.append(Paragraph('\u2013 ' + sx(content), S_BULLET))
+                continue
+
+            # ── Skills line ──────────────────────────────────
+            if SKILLS_RE.match(stripped) or (
+                    ',' in stripped and len(stripped.split(',')) >= 3):
+                clean_skills = SKILLS_RE.sub('', stripped).strip().strip(':').strip()
+                if clean_skills:
+                    clean_skills = re.sub(r'\s*[|/]\s*', ', ', clean_skills)
+                    elements.append(Paragraph(sx(clean_skills), S_SKILLS))
+                    continue
+
+            # ── Job title / company with date ────────────────
+            if ('|' in stripped or '\u2014' in stripped or '\u2013' in stripped) \
+                    and DATE_RE.search(stripped):
+                date_match = re.search(
+                    r'(\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)?\s*'
+                    r'\d{4}\s*[-\u2013]\s*(?:\d{4}|Present|Current|Till date))',
+                    stripped, re.I)
+                if date_match:
+                    title_part = stripped[:date_match.start()].strip().strip('|-').strip()
+                    date_part  = date_match.group(0).strip()
+                    elements.append(job_title_row(title_part, date_part))
                 else:
-                    elements.append(Paragraph(safe, body_style))
-                third_line = False
+                    clean = stripped.replace('\u2014', '-').replace('\u2013', '-')
+                    elements.append(Paragraph(sx(clean), S_JOBTITLE))
                 continue
 
-            if stripped.upper() in SECTION_HEADERS:
-                safe = stripped.upper().replace('&', '&amp;')
-                elements.append(Paragraph(safe, section_style))
-                elements.append(Spacer(1, 1))
-                continue
+            # ── Education / cert line with year ─────────────
+            if DATE_RE.search(stripped) and len(stripped) < 120:
+                date_match = re.search(r'(\b\d{4}\b(?:\s*[-\u2013]\s*\d{4})?)', stripped)
+                if date_match:
+                    title_part = stripped[:date_match.start()].strip().rstrip('-|').strip()
+                    date_part  = date_match.group(0).strip()
+                    if title_part:
+                        elements.append(job_title_row(title_part, date_part))
+                        continue
 
-            if stripped.startswith(('- ', '* ', '• ')):
-                content = stripped[2:].strip()
-                safe    = content.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
-                elements.append(Paragraph(f'• {safe}', bullet_style))
-                continue
+            # ── Plain body ───────────────────────────────────
+            elements.append(Paragraph(sx(stripped), S_BODY))
 
-            safe = stripped.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
-            elements.append(Paragraph(safe, body_style))
-
-        doc.build(elements)
+        # ── Build PDF ──────────────────────────────────────────
+        doc.build(elements, onFirstPage=_draw_footer, onLaterPages=_draw_footer)
         buffer.seek(0)
 
         response = make_response(buffer.read())
@@ -2445,7 +2577,9 @@ def download_pdf():
     except ImportError:
         return jsonify({'error': 'reportlab not installed. Run: pip install reportlab'}), 500
     except Exception as e:
+        import traceback
         print(f'[download-pdf] Error: {e}')
+        print(traceback.format_exc())
         return jsonify({'error': str(e)}), 500
 
 
