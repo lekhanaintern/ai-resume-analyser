@@ -249,6 +249,7 @@ def index():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
+        import requests as http_requests
         username = (request.form.get('username') or '').strip()
         password = (request.form.get('password') or '').strip()
         if not username or not password:
@@ -262,6 +263,25 @@ def login():
             is_legacy = not (stored_pw.startswith('$2b$') or stored_pw.startswith('$2a$') or stored_pw.startswith('$2y$'))
             if not verify_password(password, stored_pw):
                 return render_template('login.html', error='Invalid username or password')
+
+            # Check if email is verified in Supabase Auth
+            email = user.get('email', '')
+            auth_resp = http_requests.get(
+                f"{SUPABASE_URL}/auth/v1/admin/users",
+                headers={
+                    "apikey": SUPABASE_KEY,
+                    "Authorization": f"Bearer {SUPABASE_KEY}",
+                    "Content-Type": "application/json"
+                },
+                params={"filter": f"email.eq.{email}"}
+            )
+            if auth_resp.status_code == 200:
+                auth_users = auth_resp.json().get('users', [])
+                if auth_users:
+                    confirmed = auth_users[0].get('email_confirmed_at')
+                    if not confirmed:
+                        return render_template('login.html', error='Please verify your email before logging in. Check your inbox for the OTP.')
+
             # Auto-upgrade legacy plain-text password to bcrypt on successful login
             if is_legacy:
                 _upgrade_password_hash(username, password)
@@ -290,6 +310,7 @@ def admin_page():
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
     if request.method == 'POST':
+        import requests as http_requests
         data     = request.get_json()
         name     = (data.get('name')     or '').strip()
         username = (data.get('username') or '').strip()
@@ -304,30 +325,144 @@ def signup():
             existing = supabase.table("users").select("id").eq("username", username).execute()
             if existing.data:
                 return jsonify({'error': 'Username already taken'}), 400
+            existing_email = supabase.table("users").select("id").eq("email", email).execute()
+            if existing_email.data:
+                return jsonify({'error': 'An account with this email already exists'}), 400
+
+            # Register via Supabase Auth — this triggers the OTP email
+            resp = http_requests.post(
+                f"{SUPABASE_URL}/auth/v1/signup",
+                headers={
+                    "apikey": SUPABASE_KEY,
+                    "Content-Type": "application/json"
+                },
+                json={"email": email, "password": password}
+            )
+            print(f"[signup] Supabase Auth response: {resp.status_code} — {resp.text}")
+
+            if resp.status_code not in (200, 201):
+                err = resp.json().get('msg') or resp.json().get('error_description') or 'Signup failed'
+                return jsonify({'error': err}), 400
+
+            # Insert extra user info into your custom users table
             hashed_pw = hash_password(password)
             supabase.table("users").insert({
                 "name": name, "username": username,
                 "email": email, "password": hashed_pw, "role": role
             }).execute()
 
-            if role == 'candidate':
-                try:
-                    free_id = _get_free_plan_id()
-                    if free_id:
-                        supabase.table("user_subscriptions").insert({
-                            "username":     username,
-                            "plan_id":      free_id,
-                            "status":       "active",
-                            "resumes_used": 0,
-                            "mcq_used":     0,
-                        }).execute()
-                except Exception as sub_err:
-                    print(f"[signup] Could not create subscription row: {sub_err}")
-
             return jsonify({'success': True})
+
         except Exception as e:
             return jsonify({'error': str(e)}), 500
     return render_template('signup.html')
+@app.route('/verify')
+def verify_page():
+    return render_template('verify.html')
+
+@app.route('/verify-otp', methods=['POST'])
+def verify_otp():
+    import requests as http_requests
+    data  = request.get_json()
+    email = (data.get('email') or '').strip()
+    otp   = (data.get('otp') or '').strip()
+
+    if not email or not otp:
+        return jsonify({'error': 'Email and OTP are required'}), 400
+
+    try:
+        # Verify OTP with Supabase
+        resp = http_requests.post(
+            f"{SUPABASE_URL}/auth/v1/verify",
+            headers={
+                "apikey":        SUPABASE_KEY,
+                "Content-Type":  "application/json"
+            },
+            json={"type": "signup", "email": email, "token": otp}
+        )
+
+        if resp.status_code == 200:
+            return jsonify({'success': True})
+        else:
+            err = resp.json().get('error_description') or resp.json().get('msg') or 'Invalid OTP'
+            return jsonify({'error': err}), 400
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/resend-otp', methods=['POST'])
+def resend_otp():
+    import requests as http_requests
+    data  = request.get_json()
+    email = (data.get('email') or '').strip()
+
+    if not email:
+        return jsonify({'error': 'Email is required'}), 400
+
+    try:
+        resp = http_requests.post(
+            f"{SUPABASE_URL}/auth/v1/resend",
+            headers={
+                "apikey":       SUPABASE_KEY,
+                "Content-Type": "application/json"
+            },
+            json={"type": "signup", "email": email}
+        )
+
+        if resp.status_code in (200, 204):
+            return jsonify({'success': True})
+        else:
+            err = resp.json().get('error_description') or 'Could not resend OTP'
+            return jsonify({'error': err}), 400
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    
+@app.route('/forgot-password', methods=['GET', 'POST'])
+def forgot_password():
+    if request.method == 'POST':
+        import requests as http_requests
+        data  = request.get_json()
+        email = (data.get('email') or '').strip()
+        if not email:
+            return jsonify({'error': 'Email is required'}), 400
+        try:
+            resp = http_requests.post(
+                f"{SUPABASE_URL}/auth/v1/recover",
+                headers={
+                    "apikey": SUPABASE_KEY,
+                    "Content-Type": "application/json"
+                },
+                json={"email": email}
+            )
+            if resp.status_code in (200, 204):
+                return jsonify({'success': True})
+            else:
+                err = resp.json().get('msg') or 'Could not send reset email'
+                return jsonify({'error': err}), 400
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+    return render_template('forgot_password.html')
+
+
+@app.route('/reset-password', methods=['GET', 'POST'])
+def reset_password():
+    if request.method == 'POST':
+        data        = request.get_json()
+        email       = (data.get('email')    or '').strip()
+        new_password = (data.get('password') or '').strip()
+        if not email or not new_password:
+            return jsonify({'error': 'Email and new password are required'}), 400
+        if len(new_password) < 6:
+            return jsonify({'error': 'Password must be at least 6 characters'}), 400
+        try:
+            hashed_pw = hash_password(new_password)
+            supabase.table("users").update({"password": hashed_pw}).eq("email", email).execute()
+            return jsonify({'success': True})
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+    return render_template('reset_password.html')
 
 @app.route('/logout')
 def logout():

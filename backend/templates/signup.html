@@ -333,15 +333,15 @@
             const btn      = document.getElementById('signupBtn');
 
             if (!name || !username || !email || !password || !confirm) {
-                showAlert('⚠️ Please fill in all fields.', 'error');
+                showAlert('Please fill in all fields.', 'error');
                 return;
             }
             if (password.length < 6) {
-                showAlert('⚠️ Password must be at least 6 characters.', 'error');
+                showAlert('Password must be at least 6 characters.', 'error');
                 return;
             }
             if (password !== confirm) {
-                showAlert('⚠️ Passwords do not match.', 'error');
+                showAlert('Passwords do not match.', 'error');
                 return;
             }
 
@@ -359,16 +359,18 @@
                 const data = await res.json();
 
                 if (data.success) {
-                    const roleLabel = selectedRole === 'admin' ? 'Admin' : 'Candidate';
-                    showAlert(`✅ ${roleLabel} account created! Redirecting to login...`, 'success');
-                    setTimeout(() => { window.location.href = '/login'; }, 1200);
+                    showAlert('Account created! Sending OTP to your email...', 'success');
+                    // Redirect to OTP verification page with email
+                    setTimeout(() => {
+                        window.location.href = '/verify?email=' + encodeURIComponent(email);
+                    }, 1200);
                 } else {
-                    showAlert('❌ ' + (data.error || 'Could not create account.'), 'error');
+                    showAlert(data.error || 'Could not create account.', 'error');
                     btn.disabled = false;
                     btn.innerHTML = '🚀 Create Account';
                 }
             } catch (err) {
-                showAlert('❌ Server error. Please try again.', 'error');
+                showAlert('Server error. Please try again.', 'error');
                 btn.disabled = false;
                 btn.innerHTML = '🚀 Create Account';
             }
