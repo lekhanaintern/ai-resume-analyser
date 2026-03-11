@@ -1,14 +1,19 @@
 import time as _time
 from supabase import create_client, Client
+from dotenv import load_dotenv
+
+load_dotenv()
 
 SUPABASE_URL = "https://kxqzncqubkzxdjqkmstq.supabase.co"
 
 # Anon key — normal DB operations
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4cXpuY3F1Ymt6eGRqcWttc3RxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE2NDg3MDksImV4cCI6MjA4NzIyNDcwOX0.82b2UA_f3BPpwwvymmcXqBiBxDCvC1EYf7nvryUefPI"
 
-# Service-role key — admin auth calls only (backend only, never expose to frontend)
-# GET IT: Supabase Dashboard → Project Settings → API → service_role → Copy
-SUPABASE_SERVICE_KEY = "PASTE_YOUR_SERVICE_ROLE_KEY_HERE"
+# ── Email config for OTP sending (add these to your .env file) ──
+# EMAIL_ADDRESS  = your Gmail address      e.g. yourapp@gmail.com
+# EMAIL_PASSWORD = your Gmail App Password (NOT your real Gmail password)
+#   How to get App Password:
+#   Gmail → Settings → Security → 2-Step Verification → App Passwords → Generate
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
