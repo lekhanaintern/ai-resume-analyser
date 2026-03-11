@@ -658,29 +658,71 @@ body::before{
       </div>
 
       <div class="epanel active" id="panel-tips">
-        <p style="color:var(--muted);font-size:.84em;margin-bottom:16px;line-height:1.6">
-          Every issue and suggestion from your ATS scan is listed below. Click <strong>Apply All Fixes</strong> — our NLP engine will intelligently rewrite your resume fixing each one, then re-score it with the ML model.
-        </p>
+        <!-- ADVANCED ISSUE ANALYSIS HEADER -->
+        <div id="advAnalysisHeader" style="display:none;margin-bottom:18px">
+          <div style="background:linear-gradient(135deg,#0f172a,#1e293b);border-radius:14px;padding:18px 20px;color:#fff;position:relative;overflow:hidden">
+            <div style="position:absolute;top:-20px;right:-20px;width:100px;height:100px;border-radius:50%;background:rgba(67,97,238,.2)"></div>
+            <div style="position:absolute;bottom:-30px;left:30%;width:80px;height:80px;border-radius:50%;background:rgba(76,201,240,.15)"></div>
+            <div style="font-size:.7em;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;opacity:.6;margin-bottom:6px">🔬 ML Pipeline — Fix Summary</div>
+            <div id="advAnalysisSummary" style="font-size:.92em;line-height:1.6;opacity:.9"></div>
+          </div>
+        </div>
+
+        <!-- REAL-TIME FIX FEED -->
+        <div id="rtFeedWrap" style="display:none;margin-bottom:18px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <div style="font-size:.82em;font-weight:800;color:var(--p);display:flex;align-items:center;gap:7px">
+              <div id="rtPulseDot" style="width:9px;height:9px;border-radius:50%;background:#10b981;animation:pulse .8s infinite"></div>
+              <span id="rtFeedTitle">Live Fix Feed</span>
+            </div>
+            <div id="rtScoreLive" style="font-size:.78em;font-weight:700;color:var(--muted)"></div>
+          </div>
+          <div id="rtFeed" style="background:#0f172a;border-radius:12px;padding:14px 16px;max-height:200px;overflow-y:auto;font-family:'Courier New',monospace;font-size:.78em;line-height:1.8;color:#94a3b8"></div>
+        </div>
+
+        <!-- SCORE RACE BAR -->
+        <div id="scoreRaceWrap" style="display:none;background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:1.5px solid #6ee7b7;border-radius:14px;padding:16px 20px;margin-bottom:16px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <div style="font-size:.8em;font-weight:700;color:#065f46">📈 ATS Score Progress</div>
+            <div style="font-size:.8em;color:#047857"><span id="raceFrom">—</span> → <span id="raceTo" style="font-weight:800;font-size:1.2em;color:#10b981">—</span></div>
+          </div>
+          <div style="height:10px;background:#a7f3d0;border-radius:5px;overflow:hidden">
+            <div id="raceBar" style="height:100%;background:linear-gradient(90deg,#10b981,#059669);border-radius:5px;transition:width 1.2s cubic-bezier(.4,0,.2,1);width:0%"></div>
+          </div>
+          <div id="raceMsg" style="font-size:.78em;color:#065f46;margin-top:6px;font-weight:600"></div>
+        </div>
+
         <div id="tipsList"></div>
+
         <div class="ai-bar" id="aiBar">
-          <p>🤖 <strong>Apply All Fixes with NLP</strong>
-          <span>Our NLP engine reads every issue &amp; suggestion, rewrites your resume to ATS spec, then re-scores with the ML model</span></p>
+          <p>🧠 <strong>Apply All Fixes with ML Engine</strong>
+          <span>Local NLP pipeline reads every issue, applies targeted fixes in real-time, shows each change, then re-scores to push toward 100 — 100% free, no API needed</span></p>
           <button class="btn-ai btn-ai-pulse" id="applyBtn" onclick="applyAllWithAI()">⚡ Apply All Fixes</button>
         </div>
+
         <div class="ai-writing" id="aiWriting">
           <div class="ai-write-icon">🤖</div>
-          <h4>NLP engine is rewriting your resume…</h4>
-          <p id="aiWriteDesc">Reading every issue and suggestion and crafting an ATS-optimized version</p>
+          <h4>ML Engine is fixing your resume…</h4>
+          <p id="aiWriteDesc">Analyzing every issue and applying precision fixes</p>
           <div class="ai-progress-bar"><div class="ai-progress-fill" id="aiFill"></div></div>
           <div class="ai-step-label" id="aiStepLabel">Analyzing structure…</div>
           <div class="ai-tips-done" id="aiTipsDone"></div>
         </div>
+
         <div class="prog-steps" id="progSteps">
           <div class="prog-title">Finishing up…</div>
           <div id="progList"></div>
         </div>
         <div class="ok-msg" id="okMsg">
           ✅ Resume rewritten &amp; re-scored! ATS score updated above.
+        </div>
+
+        <!-- APPLIED FIXES CHECKLIST -->
+        <div id="appliedFixesWrap" style="display:none;margin-top:16px">
+          <div style="font-size:.84em;font-weight:800;color:var(--text);margin-bottom:10px;display:flex;align-items:center;gap:7px">
+            ✅ <span id="appliedFixesCount">0</span> Fixes Applied
+          </div>
+          <div id="appliedFixesList" style="display:flex;flex-direction:column;gap:6px"></div>
         </div>
       </div>
 
@@ -690,11 +732,6 @@ body::before{
         <div class="char-bar">
           <span id="charCount">0 chars</span>
           <span id="wordCount">0 words</span>
-        </div>
-        <div class="ed-actions">
-          <button class="btn-sm blue" onclick="autoImprove()">⚡ Re-Improve with NLP</button>
-          <button class="btn-sm green" onclick="downloadResume()">⬇ Download PDF</button>
-          <button class="btn-sm ghost" onclick="resetEdit()">↩ Reset</button>
         </div>
       </div>
 
@@ -719,6 +756,14 @@ body::before{
          3 ROLE PREDICTION CARDS — NEW FEATURE
      -->
     <div class="role-pred-section" id="rolePredSection" style="display:none">
+      <!-- SCORE UNLOCK CALLOUT — dynamic: locked (yellow) or unlocked (green) -->
+      <div id="scoreUnlockCallout" style="display:none;border-radius:14px;padding:16px 20px;margin-bottom:16px;text-align:center;transition:all .4s"></div>
+      <!-- SCORE BREAKDOWN CARD -->
+      <div class="card" id="scoreBreakdownCard" style="display:none;margin-bottom:18px">
+        <div class="sec-head">📊 Score Breakdown — How Each Dimension Scores</div>
+        <div id="scoreBreakdownGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-top:4px"></div>
+        <div id="scoreBreakdownTip" style="margin-top:14px;padding:12px 16px;background:#f0fdf4;border-radius:10px;border-left:4px solid #10b981;font-size:.84em;color:#065f46;display:none"></div>
+      </div>
       <div class="role-pred-header">
         <h3>🎯 Your 3 Predicted Career Paths</h3>
         <p>Our ML model matched your resume to these roles. Each card has a <strong>tailored resume version</strong> — same skills from your resume, but with a rewritten summary/objective targeting that specific role. Preview it or download the PDF directly.</p>
@@ -929,6 +974,54 @@ document.getElementById('analyzeBtn').addEventListener('click', async () => {
 });
 
 /* ---
+   UNLOCK CALLOUT — shows locked (yellow) or unlocked (green) based on score
+--- */
+function setUnlockCallout(score, hasPrediction) {
+  const el = document.getElementById('scoreUnlockCallout');
+  if (!el) return;
+
+  if (hasPrediction && score >= 80) {
+    // ── UNLOCKED ──
+    el.style.cssText = [
+      'display:block',
+      'background:linear-gradient(135deg,#d1fae5,#a7f3d0)',
+      'border:1.5px solid #10b981',
+      'border-radius:14px',
+      'padding:16px 20px',
+      'margin-bottom:16px',
+      'text-align:center',
+      'animation:fadeUp .4s ease',
+    ].join(';');
+    el.innerHTML = `
+      <div style="font-size:1.5em;margin-bottom:6px">🔓</div>
+      <div style="font-weight:800;color:#065f46;margin-bottom:4px">Role Predictions Unlocked!</div>
+      <div style="color:#047857;font-size:.87em">ATS Score <strong>${score}/100</strong> — your 3 predicted career paths are ready below. Preview and download tailored resumes for each role.</div>`;
+  } else {
+    // ── LOCKED ──
+    const remaining = Math.max(0, 80 - score);
+    el.style.cssText = [
+      'display:block',
+      'background:linear-gradient(135deg,#fef3c7,#fde68a)',
+      'border:1.5px solid #f59e0b',
+      'border-radius:14px',
+      'padding:16px 20px',
+      'margin-bottom:16px',
+      'text-align:center',
+    ].join(';');
+    el.innerHTML = `
+      <div style="font-size:1.5em;margin-bottom:6px">🔒</div>
+      <div style="font-weight:800;color:#92400e;margin-bottom:4px">Role Predictions Locked</div>
+      <div style="color:#78350f;font-size:.87em">Your ATS score is <strong>${score}/100</strong> — need <strong>${remaining} more points</strong> (80+ required). Hit <strong>⚡ Apply All Fixes</strong> above to unlock.</div>
+      <div style="margin-top:10px">
+        <div style="height:7px;background:rgba(0,0,0,.1);border-radius:4px;overflow:hidden;max-width:280px;margin:0 auto">
+          <div style="height:100%;width:${Math.min(score,100)}%;background:linear-gradient(90deg,#f59e0b,#d97706);border-radius:4px;transition:width .8s ease"></div>
+        </div>
+        <div style="font-size:.74em;color:#92400e;margin-top:5px;font-weight:700">${score} / 80 needed</div>
+      </div>`;
+  }
+}
+
+/* ---
    SHOW RESULTS
 --- */
 function showResults(data) {
@@ -951,11 +1044,17 @@ function showResults(data) {
   document.getElementById('summaryBanner').style.display = 'block';
 
   renderATS(atsData);
+  renderScoreBreakdown(atsData);
   setupEditor(data);
 
   if (mlData?.predicted_role) {
     setupRolePredictionCards(mlData);
     document.getElementById('rolePredSection').style.display = 'block';
+    setUnlockCallout(origScore, true);
+  } else {
+    document.getElementById('rolePredSection').style.display = 'block';
+    setUnlockCallout(origScore, false);
+    document.getElementById('rolePredGrid').innerHTML = '';
   }
 
   saveToDB();
@@ -969,6 +1068,80 @@ function setStatus() {
   else              { icon='🔴'; txt='Not ATS-Ready'; sub='Fix all issues'; }
   document.getElementById('sbStatus').textContent    = icon + ' ' + txt;
   document.getElementById('sbStatusSub').textContent = sub;
+}
+
+/* ---
+   SCORE BREAKDOWN PANEL
+--- */
+function renderScoreBreakdown(atsData) {
+  const breakdown = atsData.score_breakdown || {};
+  const score     = atsData.score || 0;
+  const card      = document.getElementById('scoreBreakdownCard');
+  const grid      = document.getElementById('scoreBreakdownGrid');
+  if (!card || !grid || Object.keys(breakdown).length === 0) return;
+
+  const DIM_META = {
+    content_length  : { label:'Word Count',         max:10, icon:'📝' },
+    contact_info    : { label:'Contact Info',        max:10, icon:'📬' },
+    sections        : { label:'Key Sections',        max:20, icon:'🗂️' },
+    action_verbs    : { label:'Action Verbs',        max:10, icon:'💪' },
+    paragraph_format: { label:'Bullet Format',       max:18, icon:'📋' },
+    graphics_charts : { label:'No Graphics',         max:15, icon:'🖼️' },
+    writing_style   : { label:'Writing Style',       max:7,  icon:'✍️' },
+    quantification  : { label:'Quantified Results',  max:5,  icon:'📊' },
+    special_chars   : { label:'Clean Formatting',    max:5,  icon:'✅' },
+  };
+
+  grid.innerHTML = Object.entries(DIM_META).map(([key, meta]) => {
+    const got = breakdown[key] ?? 0;
+    const pct = Math.round((got / meta.max) * 100);
+    const col = pct >= 80 ? '#10b981' : pct >= 50 ? '#f59e0b' : '#ef4444';
+    const bg  = pct >= 80 ? '#f0fdf4' : pct >= 50 ? '#fffbeb' : '#fef2f2';
+    return `
+      <div style="background:${bg};border-radius:10px;padding:12px 14px;border:1px solid ${col}30">
+        <div style="font-size:.7em;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">${meta.icon} ${meta.label}</div>
+        <div style="display:flex;align-items:baseline;gap:4px;margin-bottom:6px">
+          <span style="font-size:1.4em;font-weight:800;color:${col}">${got}</span>
+          <span style="font-size:.78em;color:#94a3b8">/ ${meta.max}</span>
+        </div>
+        <div style="height:5px;background:#e2e8f0;border-radius:3px;overflow:hidden">
+          <div style="height:100%;width:${pct}%;background:${col};border-radius:3px;transition:width 1s ease"></div>
+        </div>
+      </div>`;
+  }).join('');
+
+  card.style.display = 'block';
+
+  // Show tip if score < 90
+  const tipEl = document.getElementById('scoreBreakdownTip');
+  if (score < 90 && tipEl) {
+    // Find lowest-scoring dimension
+    let lowestKey = null, lowestPct = 101;
+    for (const [key, meta] of Object.entries(DIM_META)) {
+      const got = breakdown[key] ?? 0;
+      const pct = Math.round((got / meta.max) * 100);
+      if (pct < lowestPct) { lowestPct = pct; lowestKey = key; }
+    }
+    const tips = {
+      content_length  : '📝 Tip: Aim for 300-800 words for maximum length score (10/10).',
+      contact_info    : '📬 Tip: Add email + phone + LinkedIn for full contact score (10/10).',
+      sections        : '🗂️ Tip: Ensure Summary, Skills, Experience and Education are all present (20/20).',
+      action_verbs    : '💪 Tip: Use 10+ action verbs (developed, managed, led…) for full verb score (10/10).',
+      paragraph_format: '📋 Tip: Convert all text to bullet points — bullet ratio > 30% gives 18/18.',
+
+      writing_style   : '✍️ Tip: Avoid "he/she/they" — use first-person implied style for 7/7.',
+      quantification  : '📊 Tip: Add 8+ numbers/percentages (e.g. "30% increase") for 5/5.',
+      special_chars   : '✅ Tip: Remove all special characters and symbols for clean formatting (5/5).',
+      graphics_charts : '🖼️ Tip: Remove all images, skill bars, charts and graphics — plain text resumes score 15/15.',
+    };
+    if (lowestKey && tips[lowestKey]) {
+      tipEl.textContent = `🎯 Biggest opportunity: ${tips[lowestKey]}`;
+      tipEl.style.display = 'block';
+    }
+  } else if (tipEl) {
+    tipEl.textContent = '🏆 All dimensions scoring well! Your resume is fully ATS-optimized.';
+    tipEl.style.display = 'block';
+  }
 }
 
 /* ---
@@ -1496,6 +1669,13 @@ function resetApplyState() {
   document.getElementById('progSteps').classList.remove('show');
   document.getElementById('aiWriting').classList.remove('show');
   document.getElementById('aiFill').style.width = '5%';
+  // Reset new real-time elements
+  document.getElementById('rtFeedWrap').style.display = 'none';
+  document.getElementById('rtFeed').innerHTML = '';
+  document.getElementById('scoreRaceWrap').style.display = 'none';
+  document.getElementById('advAnalysisHeader').style.display = 'none';
+  document.getElementById('appliedFixesWrap').style.display = 'none';
+  document.getElementById('appliedFixesList').innerHTML = '';
   const pb = document.getElementById('perfectBanner');
   if (pb) pb.remove();
 }
@@ -1503,22 +1683,73 @@ function resetApplyState() {
 function renderTips(data) {
   const a    = data.ats_check;
   const tips = [];
-  (a.issues      ||[]).forEach(t => tips.push({ type:'crit', label:'🚨 Issue',      text:t }));
-  (a.suggestions ||[]).forEach(t => tips.push({ type:'impr', label:'💡 Suggestion', text:t }));
+  (a.issues      ||[]).forEach(t => tips.push({ type:'crit', label:'🚨 Critical Issue',  text:t, cat: detectCategory(t) }));
+  (a.suggestions ||[]).forEach(t => tips.push({ type:'impr', label:'💡 Improvement',      text:t, cat: detectCategory(t) }));
 
   const c = document.getElementById('tipsList');
   if (!tips.length) {
     c.innerHTML = '<div class="tip-item sugg"><div class="tip-body"><span class="tip-label">✅ All Good!</span>No issues found. Resume is ATS-optimized!</div></div>';
     document.getElementById('aiBar').style.display = 'none';
   } else {
-    c.innerHTML = tips.map((t,i) => `
-      <div class="tip-item ${t.type}" id="tip${i}">
-        <div class="tip-body"><span class="tip-label">${t.label}</span>${t.text}</div>
-        <span class="tip-check" id="tc${i}">✅</span>
-      </div>`).join('');
+    // Group by category
+    const grouped = {};
+    tips.forEach((t, i) => {
+      if (!grouped[t.cat]) grouped[t.cat] = [];
+      grouped[t.cat].push({ ...t, idx: i });
+    });
+
+    const catIcons = { 'Structure':'🏗️','Content':'✍️','Keywords':'🔑','Formatting':'📐','Verbs':'💪','Metrics':'📊','Other':'📋' };
+    let html = '';
+
+    // Show a compact count summary first
+    const critCount = tips.filter(t => t.type === 'crit').length;
+    const suggCount = tips.filter(t => t.type === 'impr').length;
+    html += `<div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+      <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:7px 14px;font-size:.8em;font-weight:700;color:#991b1b">
+        🚨 ${critCount} Critical Issue${critCount!==1?'s':''}
+      </div>
+      <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:7px 14px;font-size:.8em;font-weight:700;color:#92400e">
+        💡 ${suggCount} Improvement${suggCount!==1?'s':''}
+      </div>
+      <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:7px 14px;font-size:.8em;font-weight:700;color:#0369a1">
+        🎯 Target: 100/100
+      </div>
+    </div>`;
+
+    // Render grouped cards
+    Object.entries(grouped).forEach(([cat, catTips]) => {
+      html += `<div style="margin-bottom:14px">
+        <div style="font-size:.74em;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:7px;display:flex;align-items:center;gap:5px">
+          ${catIcons[cat]||'📋'} ${cat}
+          <span style="background:#e2e8f0;color:#475569;border-radius:20px;padding:1px 8px;font-size:.85em">${catTips.length}</span>
+        </div>`;
+      catTips.forEach(t => {
+        html += `<div class="tip-item ${t.type}" id="tip${t.idx}" style="margin-bottom:7px">
+          <div class="tip-body">
+            <span class="tip-label">${t.label}</span>
+            ${t.text}
+          </div>
+          <span class="tip-check" id="tc${t.idx}">✅</span>
+        </div>`;
+      });
+      html += `</div>`;
+    });
+
+    c.innerHTML = html;
     document.getElementById('aiBar').style.display = 'flex';
   }
   window._tips = tips;
+}
+
+function detectCategory(text) {
+  const t = text.toLowerCase();
+  if (t.includes('verb') || t.includes('action') || t.includes('led') || t.includes('achieved')) return 'Verbs';
+  if (t.includes('bullet') || t.includes('paragraph') || t.includes('section') || t.includes('header')) return 'Structure';
+  if (t.includes('metric') || t.includes('number') || t.includes('quantif') || t.includes('%') || t.includes('achiev')) return 'Metrics';
+  if (t.includes('keyword') || t.includes('skill') || t.includes('tool') || t.includes('technolog')) return 'Keywords';
+  if (t.includes('format') || t.includes('font') || t.includes('length') || t.includes('word count')) return 'Formatting';
+  if (t.includes('summar') || t.includes('object') || t.includes('experience') || t.includes('education')) return 'Content';
+  return 'Other';
 }
 
 function logout() { window.location.href = "/logout"; }
@@ -1526,6 +1757,7 @@ function logout() { window.location.href = "/logout"; }
 /* ---
    NLP ENHANCE
 --- */
+// NOTE: callClaude is kept for legacy reference only — applyAllWithAI uses /api/claude-fix directly
 async function callClaude(resumeText, ats, ml) {
   const res = await fetch(`${API}/enhance-resume`, {
     method : 'POST',
@@ -1559,25 +1791,109 @@ async function downloadResume() {
   }
 }
 
+/* ---
+   ADVANCED REAL-TIME AI FIX SYSTEM
+--- */
+
+// ── Live fix feed logger ──
+function rtLog(msg, type = 'info') {
+  const feed = document.getElementById('rtFeed');
+  if (!feed) return;
+  const colors = { info:'#94a3b8', fix:'#34d399', warn:'#fbbf24', done:'#60a5fa', error:'#f87171' };
+  const prefixes = { info:'  ', fix:'✓ ', warn:'⚠ ', done:'★ ', error:'✗ ' };
+  const line = document.createElement('div');
+  line.style.color = colors[type] || colors.info;
+  line.style.animation = 'slideIn .2s ease';
+  line.textContent = prefixes[type] + msg;
+  feed.appendChild(line);
+  feed.scrollTop = feed.scrollHeight;
+}
+
+// ── Animate score race bar ──
+function startScoreRace(from, to) {
+  document.getElementById('scoreRaceWrap').style.display = 'block';
+  document.getElementById('raceFrom').textContent = from + '/100';
+  document.getElementById('raceTo').textContent   = to   + '/100';
+  const pct = Math.min(to, 100);
+  setTimeout(() => {
+    document.getElementById('raceBar').style.width = pct + '%';
+    const gain = to - from;
+    document.getElementById('raceMsg').textContent =
+      gain > 0 ? `▲ +${gain} points improvement` : to >= 100 ? '🏆 Perfect score!' : 'Score maintained';
+  }, 100);
+}
+
+// ── Add a fix chip to the checklist ──
+function addFixChip(text, category) {
+  const wrap = document.getElementById('appliedFixesList');
+  const catColors = {
+    'Structure':   { bg:'#eff6ff', border:'#bfdbfe', icon:'🏗️', color:'#1e40af' },
+    'Content':     { bg:'#f0fdf4', border:'#a7f3d0', icon:'✍️', color:'#065f46' },
+    'Keywords':    { bg:'#fdf4ff', border:'#e9d5ff', icon:'🔑', color:'#6b21a8' },
+    'Formatting':  { bg:'#fff7ed', border:'#fed7aa', icon:'📐', color:'#9a3412' },
+    'Verbs':       { bg:'#ecfdf5', border:'#6ee7b7', icon:'💪', color:'#065f46' },
+    'Metrics':     { bg:'#fef9c3', border:'#fde68a', icon:'📊', color:'#713f12' },
+    'Default':     { bg:'#f8fafc', border:'#e2e8f0', icon:'✅', color:'#334155' },
+  };
+  const s = catColors[category] || catColors.Default;
+  const el = document.createElement('div');
+  el.style.cssText = `background:${s.bg};border:1px solid ${s.border};border-radius:8px;padding:8px 14px;font-size:.82em;color:${s.color};display:flex;align-items:flex-start;gap:8px;animation:slideIn .3s ease`;
+  el.innerHTML = `<span style="flex-shrink:0">${s.icon}</span><span>${text}</span>`;
+  wrap.appendChild(el);
+  const count = wrap.children.length;
+  document.getElementById('appliedFixesCount').textContent = count;
+  document.getElementById('appliedFixesWrap').style.display = 'block';
+}
+
+// ── Parse structured fixes from Claude response ──
+function parseAdvancedFixes(rawText) {
+  // Expect JSON block from Claude between ```json ... ```
+  const match = rawText.match(/```json\s*([\s\S]*?)```/);
+  if (match) {
+    try { return JSON.parse(match[1].trim()); } catch(e) {}
+  }
+  // Fallback: try raw JSON
+  try { return JSON.parse(rawText); } catch(e) {}
+  return null;
+}
+
 async function applyAllWithAI() {
   const btn  = document.getElementById('applyBtn');
   const fill = document.getElementById('aiFill');
+
   btn.disabled = true;
   btn.classList.remove('btn-ai-pulse');
-  btn.textContent = '⏳ NLP Rewriting…';
+  btn.textContent = '⏳ ML Engine Running…';
   document.getElementById('okMsg').classList.remove('show');
   document.getElementById('progSteps').classList.remove('show');
+  document.getElementById('appliedFixesWrap').style.display = 'none';
+  document.getElementById('appliedFixesList').innerHTML = '';
+  document.getElementById('appliedFixesCount').textContent = '0';
+  document.getElementById('scoreRaceWrap').style.display = 'none';
+  document.getElementById('advAnalysisHeader').style.display = 'none';
+
+  // Show live feed
+  document.getElementById('rtFeedWrap').style.display = 'block';
+  document.getElementById('rtFeed').innerHTML = '';
+  document.getElementById('rtFeedTitle').textContent = 'Live Fix Feed';
 
   const writing = document.getElementById('aiWriting');
   writing.classList.add('show');
 
+  const issues = (atsData.issues      || []);
+  const suggs  = (atsData.suggestions || []);
+  const role   = mlData?.predicted_role || 'Professional';
+
+  rtLog(`Starting ML pipeline — ${issues.length} issues + ${suggs.length} suggestions`, 'info');
+
   const aiSteps = [
-    `Analyzing ${(atsData.issues||[]).length} issues and ${(atsData.suggestions||[]).length} suggestions…`,
-    `Identifying ATS requirements for ${mlData?.predicted_role||'your role'}…`,
-    'Rewriting Professional Summary with keywords…',
-    'Restructuring Skills section for ATS…',
-    'Strengthening Experience with action verbs…',
-    'Final ATS optimization pass…',
+    `Parsing resume structure…`,
+    `Normalising section headers…`,
+    `Rewriting Professional Summary for ${role}…`,
+    `Optimising Skills section with role keywords…`,
+    `Strengthening action verbs in Experience…`,
+    `Adding quantified achievements & metrics…`,
+    `Final ATS formatting pass…`,
   ];
 
   let si = 0, pct = 5;
@@ -1586,36 +1902,74 @@ async function applyAllWithAI() {
 
   const aiTimer = setInterval(() => {
     si  = Math.min(si + 1, aiSteps.length - 1);
-    pct = Math.min(pct + 12, 80);
+    pct = Math.min(pct + 11, 78);
     document.getElementById('aiStepLabel').textContent = aiSteps[si];
     fill.style.width = pct + '%';
-    const tips = window._tips || [];
-    const done = Math.floor(tips.length * (si / aiSteps.length));
-    for (let i = 0; i < done; i++) {
-      const tc = document.getElementById(`tc${i}`);
-      const tp = document.getElementById(`tip${i}`);
-      if (tc) tc.style.display = 'inline';
-      if (tp) tp.style.opacity = '.5';
-      const chipId = `chip${i}`;
-      if (!document.getElementById(chipId) && tips[i]) {
-        const chip = document.createElement('div');
-        chip.id = chipId; chip.className = 'done-chip';
-        chip.textContent = '✅ ' + tips[i].text.substring(0, 35) + '…';
-        document.getElementById('aiTipsDone').appendChild(chip);
-      }
-    }
-  }, 1500);
+    rtLog(aiSteps[si], 'info');
+  }, 900);
 
   try {
-    const improved = await callClaude(editText || origText, atsData, mlData);
+    // ── Call backend ML pipeline — no external API, runs on your server ──
+    const apiRes = await fetch(`${API}/claude-fix`, {
+      method     : 'POST',
+      headers    : { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body       : JSON.stringify({
+        resume_text   : editText || origText,
+        issues        : issues,
+        suggestions   : suggs,
+        predicted_role: role,
+        orig_score    : origScore,
+      })
+    });
+
     clearInterval(aiTimer);
+
+    if (!apiRes.ok) {
+      let errMsg = `Server error ${apiRes.status}`;
+      try { const e = await apiRes.json(); errMsg = e.error || errMsg; } catch(_) {}
+      throw new Error(errMsg);
+    }
+
+    const apiData = await apiRes.json();
+    if (!apiData.success || !apiData.fixed_resume) {
+      throw new Error(apiData.error || 'ML pipeline returned no result');
+    }
+
+    const improved = apiData.fixed_resume;
+
+    // Show pipeline summary
+    if (apiData.summary) {
+      document.getElementById('advAnalysisSummary').textContent = apiData.summary;
+      document.getElementById('advAnalysisHeader').style.display = 'block';
+    }
+
+    // Animate each fix one-by-one in the live feed + checklist
+    rtLog('ML pipeline complete ✓', 'done');
+    const fixes = apiData.fixes || [];
+    for (let i = 0; i < fixes.length; i++) {
+      const f = fixes[i];
+      await new Promise(r => setTimeout(r, 220));
+      rtLog(`[${f.category}] ${f.action}`, 'fix');
+      addFixChip(f.detail || f.action, f.category);
+
+      // Cross off corresponding issue/suggestion in the list
+      if (i < (window._tips || []).length) {
+        const tc = document.getElementById(`tc${i}`);
+        const tp = document.getElementById(`tip${i}`);
+        if (tc) tc.style.display = 'inline';
+        if (tp) tp.style.opacity = '.45';
+      }
+    }
+
     fill.style.width = '90%';
 
+    // Mark ALL original tips done
     (window._tips || []).forEach((_, i) => {
       const tc = document.getElementById(`tc${i}`);
       const tp = document.getElementById(`tip${i}`);
       if (tc) tc.style.display = 'inline';
-      if (tp) tp.style.opacity = '.5';
+      if (tp) tp.style.opacity = '.45';
     });
 
     writing.classList.remove('show');
@@ -1634,6 +1988,7 @@ async function applyAllWithAI() {
       document.getElementById('changesList').innerHTML = changes.slice(0, 12).map(c => `<li>${c}</li>`).join('');
     }
 
+    // Progress steps: save → re-score
     const pSteps = [
       { id: 'ps-save',  label: 'Saving enhanced resume' },
       { id: 'ps-score', label: 'Re-scoring with ML ATS model' },
@@ -1648,6 +2003,7 @@ async function applyAllWithAI() {
     setP('ps-save', 'done');
 
     setP('ps-score', 'run');
+    rtLog('Re-scoring with ML ATS model…', 'info');
     const rescoreResult = await reScore(improved);
     fill.style.width = '100%';
     setP('ps-score', 'done');
@@ -1657,8 +2013,16 @@ async function applyAllWithAI() {
     const newIssues = rescoreResult.issues || [];
     const newSuggs  = rescoreResult.suggestions || [];
 
+    // Animate score progress bar
+    startScoreRace(origScore, newScore);
+    rtLog(`Score: ${origScore} → ${newScore} (+${newScore - origScore} pts)`, 'done');
+    document.getElementById('rtFeedTitle').textContent = '✓ Fix Feed Complete';
+    document.getElementById('rtPulseDot').style.animation = 'none';
+    document.getElementById('rtPulseDot').style.background = '#10b981';
+
     if (newScore >= 100 || (newIssues.length === 0 && newSuggs.length === 0)) {
       showPerfectBanner(newScore);
+      renderScoreBreakdown(rescoreResult);
     } else {
       btn.disabled    = false;
       btn.textContent = '⚡ Fix Remaining Issues';
@@ -1671,7 +2035,9 @@ async function applyAllWithAI() {
       document.getElementById('okMsg').classList.add('show');
       document.getElementById('okMsg').innerHTML =
         `✅ Score improved to <strong>${newScore}/100</strong>! ` +
-        `<strong>${newIssues.length + newSuggs.length} issue(s) still remaining</strong> — click Fix again to continue.`;
+        (newIssues.length + newSuggs.length > 0
+          ? `<strong>${newIssues.length + newSuggs.length} item(s) still remain</strong> — click Fix again to reach 100.`
+          : `All issues resolved — your resume is fully ATS-optimised!`);
       setTimeout(() => document.getElementById('okMsg').scrollIntoView({ behavior:'smooth', block:'center' }), 400);
       toast(`📈 Score improved to ${newScore}! ${newIssues.length + newSuggs.length} issue(s) still need fixing.`, 'success');
     }
@@ -1683,14 +2049,17 @@ async function applyAllWithAI() {
     btn.disabled    = false;
     btn.textContent = '⚡ Apply All Fixes';
     btn.classList.add('btn-ai-pulse');
-    toast('⚠️ ' + (err.message || 'NLP rewrite failed'), 'error');
+    rtLog('Error: ' + (err.message || 'Unknown error'), 'error');
+    toast('⚠️ ' + (err.message || 'Fix failed — check server logs'), 'error');
   }
 }
 
 function showPerfectBanner(score) {
-  document.getElementById('applyBtn').style.display = 'none';
-  document.getElementById('aiBar').style.display    = 'none';
-  document.getElementById('tipsList').innerHTML     = '';
+  document.getElementById('applyBtn').style.display    = 'none';
+  document.getElementById('aiBar').style.display       = 'none';
+  document.getElementById('tipsList').innerHTML        = '';
+  document.getElementById('scoreUnlockCallout').style.display = 'none';
+  animScore(score);
 
   const panel = document.getElementById('panel-tips');
   const existing = document.getElementById('perfectBanner');
@@ -1736,13 +2105,14 @@ async function reScore(text) {
     document.getElementById('rescoreLoad').classList.remove('show');
     animScore(newS);
     renderATS(data.ats_check);
+    renderScoreBreakdown(data.ats_check);
     atsData = data.ats_check;
 
     document.getElementById('sbScore').textContent = newS;
     const chEl = document.getElementById('sbScoreChange');
     chEl.style.display = 'block';
-    chEl.textContent = diff > 0 ? `▲ +${diff} pts improved!` : diff === 0 ? 'Score maintained' : `${diff} pts`;
-    if (diff > 0) chEl.style.color = '#fff';
+    chEl.textContent = diff > 0 ? `▲ +${diff} pts improved!` : diff === 0 ? '✅ Score maintained' : `▼ ${diff} pts`;
+    chEl.style.color = diff > 0 ? '#fff' : diff === 0 ? '#86efac' : '#fca5a5';
 
     const bn = document.getElementById('rescoreBanner');
     const bt = document.getElementById('rescoreTxt');
@@ -1754,24 +2124,29 @@ async function reScore(text) {
       document.getElementById('sbConf').textContent = `${(mlData.confidence * 100).toFixed(1)}% confidence`;
 
       if (newS >= 80) {
-        window.roleResumeCache = {};          // clear stale cached resumes
+        window.roleResumeCache = {};
         setupRolePredictionCards(mlData);
         document.getElementById('rolePredSection').style.display = 'block';
+        setUnlockCallout(newS, true);
         bt.innerHTML = diff > 0
           ? `🎉 ATS score improved from <span class="score-badge">${origScore} → ${newS} &nbsp;▲ +${diff} pts</span> &nbsp;🎯 Role predictions unlocked!`
           : `✅ Score: <strong>${newS}/100</strong> — 🎯 Role predictions are now live!`;
       } else {
-        document.getElementById('rolePredSection').style.display = 'none';
+        document.getElementById('rolePredSection').style.display = 'block';
+        document.getElementById('rolePredGrid').innerHTML = '';
+        setUnlockCallout(newS, false);
         bt.innerHTML = diff > 0
           ? `🎉 Score improved to <span class="score-badge">${newS} pts ▲</span> — reach 80+ to unlock role cards!`
           : `✅ Score: <strong>${newS}/100</strong> — keep fixing to reach 80+ for role predictions!`;
       }
     } else {
+      setUnlockCallout(newS, false);
       bt.innerHTML = diff > 0
         ? `🎉 ATS score improved from <span class="score-badge">${origScore} → ${newS} &nbsp;▲ +${diff} pts</span>`
         : `✅ Re-analysis complete. New ATS Score: <strong>${newS}/100</strong>.`;
     }
     /* ──────────────────────────────────────────────────────────────── */
+    origScore = newS;   // keep origScore in sync so next fix diff is correct
     setStatus();
     return data.ats_check;
   } catch(e) {
