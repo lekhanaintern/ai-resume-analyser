@@ -233,8 +233,11 @@ def verify_otp():
         if user.get('is_verified'):
             return jsonify({'success': True, 'message': 'Already verified'})
 
-        # Check OTP match
-        if user.get('otp_code') != otp:
+        # Check OTP match (convert both to string to avoid int vs str mismatch)
+        stored_otp  = str(user.get('otp_code') or '').strip()
+        entered_otp = str(otp).strip()
+        print(f"[OTP DEBUG] stored='{stored_otp}' entered='{entered_otp}'")  # remove after confirmed working
+        if stored_otp != entered_otp:
             return jsonify({'error': 'Invalid OTP. Please try again.'}), 400
 
         # Check OTP expiry

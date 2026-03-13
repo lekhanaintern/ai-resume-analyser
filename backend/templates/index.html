@@ -497,6 +497,193 @@ body::before{
   border-radius: 12px;
   padding: 12px 14px;
 }
+
+/* ═══════════════════════════════════════════
+   PROFILE PANEL
+═══════════════════════════════════════════ */
+.profile-trigger {
+  display:flex;align-items:center;gap:8px;
+  background:rgba(255,255,255,.14);border:1.5px solid rgba(255,255,255,.25);
+  padding:5px 12px 5px 6px;border-radius:24px;cursor:pointer;
+  transition:all .2s;color:#fff;font-family:inherit;font-size:.78em;font-weight:700;
+}
+.profile-trigger:hover { background:rgba(255,255,255,.22);border-color:rgba(255,255,255,.4);transform:translateY(-1px); }
+.profile-trigger-avatar {
+  width:28px;height:28px;border-radius:50%;
+  background:linear-gradient(135deg,#4cc9f0,#4361ee);
+  display:flex;align-items:center;justify-content:center;
+  font-size:.85em;font-weight:800;color:#fff;flex-shrink:0;
+  border:2px solid rgba(255,255,255,.35);
+}
+.profile-trigger-chevron { font-size:.65em;opacity:.7;transition:transform .25s; }
+.profile-trigger.open .profile-trigger-chevron { transform:rotate(180deg); }
+
+/* overlay */
+.profile-overlay {
+  display:none;position:fixed;inset:0;z-index:300;
+  background:rgba(15,23,42,.35);backdrop-filter:blur(3px);
+}
+.profile-overlay.show { display:block;animation:pfOverlayIn .2s ease; }
+@keyframes pfOverlayIn { from{opacity:0} to{opacity:1} }
+
+/* drawer */
+.profile-drawer {
+  position:fixed;top:0;right:0;bottom:0;width:360px;max-width:100vw;
+  background:#fff;z-index:400;
+  box-shadow:-12px 0 60px rgba(15,23,42,.2);
+  display:flex;flex-direction:column;overflow:hidden;
+  transform:translateX(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);
+}
+.profile-drawer.open { transform:translateX(0); }
+
+/* drawer header */
+.pd-header {
+  background:linear-gradient(135deg,var(--p2) 0%,var(--p) 55%,var(--acc) 100%);
+  padding:28px 24px 22px;position:relative;overflow:hidden;flex-shrink:0;
+}
+.pd-header::before {
+  content:'';position:absolute;right:-50px;top:-50px;
+  width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.07);
+}
+.pd-header::after {
+  content:'';position:absolute;right:30px;bottom:-60px;
+  width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.05);
+}
+.pd-close {
+  position:absolute;top:16px;right:16px;
+  width:32px;height:32px;border-radius:9px;
+  background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.25);
+  color:#fff;cursor:pointer;font-size:1em;display:flex;align-items:center;justify-content:center;
+  transition:all .2s;font-family:inherit;z-index:1;
+}
+.pd-close:hover { background:rgba(255,255,255,.3); }
+.pd-avatar-wrap { position:relative;display:inline-block;margin-bottom:12px; }
+.pd-avatar {
+  width:64px;height:64px;border-radius:18px;
+  background:rgba(255,255,255,.22);border:3px solid rgba(255,255,255,.4);
+  display:flex;align-items:center;justify-content:center;
+  font-size:1.6em;position:relative;z-index:1;
+}
+.pd-avatar-ring {
+  position:absolute;inset:-5px;border-radius:22px;
+  border:2px dashed rgba(255,255,255,.35);
+  animation:pdSpin 12s linear infinite;
+}
+@keyframes pdSpin { to{transform:rotate(360deg)} }
+.pd-name { font-size:1.18em;font-weight:800;color:#fff;letter-spacing:-.3px;margin-bottom:3px;position:relative;z-index:1; }
+.pd-email { font-size:.77em;color:rgba(255,255,255,.75);position:relative;z-index:1;font-weight:500; }
+.pd-plan-badge {
+  display:inline-flex;align-items:center;gap:5px;margin-top:10px;
+  background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.3);
+  padding:4px 12px;border-radius:20px;font-size:.74em;font-weight:800;color:#fff;
+  position:relative;z-index:1;
+}
+
+/* drawer body */
+.pd-body { flex:1;overflow-y:auto;padding:20px; }
+.pd-body::-webkit-scrollbar { width:4px; }
+.pd-body::-webkit-scrollbar-thumb { background:#e2e8f0;border-radius:2px; }
+
+/* section label */
+.pd-section-label {
+  font-size:.68em;font-weight:800;letter-spacing:1px;text-transform:uppercase;
+  color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:6px;
+}
+.pd-section-label::after { content:'';flex:1;height:1px;background:#f1f5f9; }
+
+/* stat cards */
+.pd-stats-grid { display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px; }
+.pd-stat {
+  background:#f8fafc;border:1px solid #e8edf5;border-radius:14px;
+  padding:14px 14px 12px;position:relative;overflow:hidden;transition:box-shadow .2s;
+}
+.pd-stat:hover { box-shadow:0 4px 16px rgba(67,97,238,.1); }
+.pd-stat::before {
+  content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  background:var(--grad);opacity:0;transition:opacity .2s;
+}
+.pd-stat:hover::before { opacity:1; }
+.pd-stat-icon { font-size:1.3em;margin-bottom:6px; }
+.pd-stat-label { font-size:.68em;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px; }
+.pd-stat-value { font-size:1.35em;font-weight:800;color:var(--text);line-height:1; }
+.pd-stat-sub { font-size:.7em;color:var(--muted);margin-top:3px; }
+
+/* progress bars */
+.pd-usage-card {
+  background:#f8fafc;border:1px solid #e8edf5;border-radius:14px;
+  padding:16px;margin-bottom:10px;transition:box-shadow .2s;
+}
+.pd-usage-card:hover { box-shadow:0 4px 16px rgba(67,97,238,.1); }
+.pd-usage-row { display:flex;align-items:center;justify-content:space-between;margin-bottom:8px; }
+.pd-usage-label { font-size:.8em;font-weight:700;color:var(--text);display:flex;align-items:center;gap:6px; }
+.pd-usage-count { font-size:.8em;font-weight:800;color:var(--p); }
+.pd-bar-track { height:8px;background:#e8edf5;border-radius:4px;overflow:hidden; }
+.pd-bar-fill {
+  height:100%;border-radius:4px;transition:width .7s cubic-bezier(.4,0,.2,1);
+  background:var(--grad);
+}
+.pd-bar-fill.warn { background:linear-gradient(90deg,#f59e0b,#d97706); }
+.pd-bar-fill.danger { background:linear-gradient(90deg,#ef4444,#dc2626); }
+
+/* plan section */
+.pd-plan-card {
+  border-radius:14px;padding:18px;margin-bottom:20px;
+  background:linear-gradient(135deg,#eff6ff,#e0f2fe);
+  border:1.5px solid #bfdbfe;
+}
+.pd-plan-top { display:flex;align-items:center;justify-content:space-between;margin-bottom:14px; }
+.pd-plan-name-wrap { display:flex;align-items:center;gap:8px; }
+.pd-plan-icon { font-size:1.5em; }
+.pd-plan-name { font-size:1em;font-weight:800;color:#1e40af; }
+.pd-plan-tag {
+  font-size:.65em;font-weight:800;letter-spacing:.5px;text-transform:uppercase;
+  background:#1e40af;color:#fff;padding:2px 8px;border-radius:20px;
+}
+.pd-expiry { font-size:.74em;color:#3b82f6;font-weight:600; }
+.pd-upgrade-btn {
+  width:100%;padding:12px;
+  background:linear-gradient(135deg,var(--p),var(--acc));
+  color:#fff;border:none;border-radius:11px;
+  font-size:.88em;font-weight:800;cursor:pointer;font-family:inherit;
+  transition:all .25s;display:flex;align-items:center;justify-content:center;gap:7px;
+  margin-top:4px;
+}
+.pd-upgrade-btn:hover { transform:translateY(-2px);box-shadow:0 8px 24px rgba(67,97,238,.35); }
+
+/* quick actions */
+.pd-actions { display:flex;flex-direction:column;gap:8px;margin-bottom:20px; }
+.pd-action-btn {
+  display:flex;align-items:center;gap:12px;padding:13px 16px;
+  background:#f8fafc;border:1px solid #e8edf5;border-radius:12px;
+  cursor:pointer;transition:all .2s;font-family:inherit;text-align:left;width:100%;
+}
+.pd-action-btn:hover { background:#f0f4ff;border-color:#c7d7ff;transform:translateX(3px); }
+.pd-action-icon { font-size:1.1em;width:24px;text-align:center;flex-shrink:0; }
+.pd-action-text { flex:1; }
+.pd-action-title { font-size:.85em;font-weight:700;color:var(--text);display:block; }
+.pd-action-sub { font-size:.72em;color:var(--muted);display:block;margin-top:1px; }
+.pd-action-arrow { font-size:.7em;color:var(--muted);flex-shrink:0; }
+
+/* footer */
+.pd-footer {
+  padding:16px 20px;border-top:1px solid #f1f5f9;flex-shrink:0;
+  display:flex;align-items:center;gap:10px;
+}
+.pd-logout-btn {
+  flex:1;padding:11px;background:#fef2f2;border:1.5px solid #fecaca;
+  color:#dc2626;border-radius:11px;font-size:.86em;font-weight:800;
+  cursor:pointer;font-family:inherit;transition:all .2s;
+  display:flex;align-items:center;justify-content:center;gap:6px;
+}
+.pd-logout-btn:hover { background:#fee2e2;transform:translateY(-1px); }
+.pd-version { font-size:.7em;color:#cbd5e1;font-weight:500; }
+
+/* request status inside drawer */
+.pd-req-status {
+  border-radius:10px;padding:12px 14px;font-size:.8em;margin-bottom:12px;
+  display:none;
+}
+.pd-req-status.show { display:block; }
 </style>
 </head>
 <body>
@@ -507,15 +694,99 @@ body::before{
     <div class="brand-text">AI Resume<span>Analyzer</span></div>
   </div>
   <div class="nav-right">
-    <div class="nav-user">
-      <div class="nav-avatar">👤</div>
+    <span class="nav-pill">🤖 ML Powered</span>
+    <button class="profile-trigger" id="profileTrigger" onclick="openProfileDrawer()">
+      <div class="profile-trigger-avatar" id="profileNavAvatar">?</div>
       <span id="navUser">{{ session.get('user_name', 'Candidate') }}</span>
-      <span class="nav-pill" id="subBadge" title="Your current plan">🆓 Free</span>
-      <span class="nav-pill">🤖 ML Powered</span>
-      <button class="btn-logout" onclick="logout()">Sign Out</button>
-    </div>
+      <span class="profile-trigger-chevron">▾</span>
+    </button>
   </div>
 </nav>
+
+<!-- PROFILE OVERLAY + DRAWER -->
+<div class="profile-overlay" id="profileOverlay" onclick="closeProfileDrawer()"></div>
+<div class="profile-drawer" id="profileDrawer">
+  <div class="pd-header">
+    <button class="pd-close" onclick="closeProfileDrawer()">✕</button>
+    <div class="pd-avatar-wrap">
+      <div class="pd-avatar" id="pdAvatar">👤</div>
+      <div class="pd-avatar-ring"></div>
+    </div>
+    <div class="pd-name" id="pdName">Candidate</div>
+    <div class="pd-email" id="pdEmail">Loading…</div>
+    <div class="pd-plan-badge" id="pdPlanBadge">🆓 Free Plan</div>
+  </div>
+  <div class="pd-body">
+    <div class="pd-section-label">📊 This Month</div>
+    <div class="pd-stats-grid">
+      <div class="pd-stat">
+        <div class="pd-stat-icon">📄</div>
+        <div class="pd-stat-label">Resumes</div>
+        <div class="pd-stat-value" id="pdResumesUsed">0</div>
+        <div class="pd-stat-sub" id="pdResumesMax">of — available</div>
+      </div>
+      <div class="pd-stat">
+        <div class="pd-stat-icon">🎯</div>
+        <div class="pd-stat-label">MCQ Tests</div>
+        <div class="pd-stat-value" id="pdMcqUsed">0</div>
+        <div class="pd-stat-sub" id="pdMcqMax">of — available</div>
+      </div>
+    </div>
+    <div class="pd-section-label">📈 Usage</div>
+    <div class="pd-usage-card">
+      <div class="pd-usage-row">
+        <div class="pd-usage-label">📄 Resume Analyses</div>
+        <div class="pd-usage-count" id="pdResumeCount">0 / —</div>
+      </div>
+      <div class="pd-bar-track"><div class="pd-bar-fill" id="pdResumeBar" style="width:0%"></div></div>
+    </div>
+    <div class="pd-usage-card" style="margin-bottom:20px">
+      <div class="pd-usage-row">
+        <div class="pd-usage-label">🎯 MCQ Tests</div>
+        <div class="pd-usage-count" id="pdMcqCount">0 / —</div>
+      </div>
+      <div class="pd-bar-track"><div class="pd-bar-fill" id="pdMcqBar" style="width:0%"></div></div>
+    </div>
+    <div class="pd-section-label">💳 Subscription</div>
+    <div class="pd-plan-card" id="pdPlanCard">
+      <div class="pd-plan-top">
+        <div class="pd-plan-name-wrap">
+          <span class="pd-plan-icon" id="pdPlanIcon">🆓</span>
+          <div>
+            <div class="pd-plan-name" id="pdPlanName2">Free</div>
+            <div class="pd-plan-tag">ACTIVE</div>
+          </div>
+        </div>
+        <div class="pd-expiry" id="pdExpiry2" style="display:none"></div>
+      </div>
+      <div class="pd-req-status" id="pdReqStatus"></div>
+      <button class="pd-upgrade-btn" onclick="closeProfileDrawer(); openPlansModal()">⬆️ Upgrade Plan</button>
+    </div>
+    <div class="pd-section-label">⚡ Quick Actions</div>
+    <div class="pd-actions">
+      <button class="pd-action-btn" onclick="closeProfileDrawer(); document.getElementById('resetBtn')?.click()">
+        <span class="pd-action-icon">🔄</span>
+        <span class="pd-action-text">
+          <span class="pd-action-title">Analyze New Resume</span>
+          <span class="pd-action-sub">Upload and score another resume</span>
+        </span>
+        <span class="pd-action-arrow">›</span>
+      </button>
+      <button class="pd-action-btn" onclick="closeProfileDrawer(); openPlansModal()">
+        <span class="pd-action-icon">💎</span>
+        <span class="pd-action-text">
+          <span class="pd-action-title">Manage Subscription</span>
+          <span class="pd-action-sub">View plans and request upgrades</span>
+        </span>
+        <span class="pd-action-arrow">›</span>
+      </button>
+    </div>
+  </div>
+  <div class="pd-footer">
+    <button class="pd-logout-btn" onclick="logout()">🚪 Sign Out</button>
+    <span class="pd-version">v2.0 · ML Powered</span>
+  </div>
+</div>
 
 <div class="page">
   <div class="hero">
@@ -2507,6 +2778,157 @@ setInterval(async()=>{
     if(latest.status!=='pending'&&!localStorage.getItem(key)){localStorage.setItem(key,'1');showPlanNotif(latest.status,latest.requested_plan_name);if(latest.status==='approved')loadSubscription();}
   }catch(e){}
 },30000);
+
+/* ═══════════════════════════════════════════
+   PROFILE DRAWER
+═══════════════════════════════════════════ */
+function openProfileDrawer() {
+  document.getElementById('profileOverlay').classList.add('show');
+  document.getElementById('profileDrawer').classList.add('open');
+  document.getElementById('profileTrigger').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  syncProfileDrawer();
+}
+function closeProfileDrawer() {
+  document.getElementById('profileOverlay').classList.remove('show');
+  document.getElementById('profileDrawer').classList.remove('open');
+  document.getElementById('profileTrigger').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function getInitials(name) {
+  if (!name) return '?';
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0][0].toUpperCase();
+  return (parts[0][0] + parts[parts.length-1][0]).toUpperCase();
+}
+
+function syncProfileDrawer() {
+  // username from navbar
+  const userName = document.getElementById('navUser')?.textContent?.trim() || 'Candidate';
+  const initials = getInitials(userName);
+  
+  // Update avatar with initials
+  const pdAvatar = document.getElementById('pdAvatar');
+  if (pdAvatar) { pdAvatar.textContent = initials; pdAvatar.style.fontSize = initials.length > 1 ? '.9em' : '1.3em'; }
+  
+  // Nav avatar initials too
+  const navAv = document.getElementById('profileNavAvatar');
+  if (navAv) { navAv.textContent = initials; navAv.style.fontSize = initials.length > 1 ? '.65em' : '.8em'; }
+  
+  document.getElementById('pdName').textContent = userName;
+
+  // Get plan data from existing subscription state
+  const planName = _currentPlanName || 'Free';
+  const planIcons = { Free:'🆓', Pro:'⭐', Enterprise:'💎' };
+  const planIcon = planIcons[planName] || '📋';
+  
+  if (document.getElementById('pdPlanBadge')) document.getElementById('pdPlanBadge').textContent = planIcon + ' ' + planName + ' Plan';
+  if (document.getElementById('pdPlanIcon')) document.getElementById('pdPlanIcon').textContent = planIcon;
+  if (document.getElementById('pdPlanName2')) document.getElementById('pdPlanName2').textContent = planName;
+
+  // Plan card color
+  const planColors = { Free:'linear-gradient(135deg,#eff6ff,#e0f2fe)', Pro:'linear-gradient(135deg,#ecfdf5,#d1fae5)', Enterprise:'linear-gradient(135deg,#fdf4ff,#ede9fe)' };
+  const planBorders = { Free:'#bfdbfe', Pro:'#6ee7b7', Enterprise:'#c4b5fd' };
+  const planTextColors = { Free:'#1e40af', Pro:'#065f46', Enterprise:'#6d28d9' };
+  const pc = document.getElementById('pdPlanCard');
+  if (pc) {
+    pc.style.background = planColors[planName] || planColors.Free;
+    pc.style.borderColor = planBorders[planName] || planBorders.Free;
+    const pname = document.getElementById('pdPlanName2');
+    if (pname) pname.style.color = planTextColors[planName] || planTextColors.Free;
+    const ptag = pc.querySelector('.pd-plan-tag');
+    if (ptag) { ptag.style.background = planTextColors[planName] || planTextColors.Free; }
+  }
+
+  // Usage from existing DOM
+  const rUsageText = document.getElementById('subResumeUsage')?.textContent || '0 / —';
+  const mUsageText = document.getElementById('subMcqUsage')?.textContent || '0 / —';
+  const rParts = rUsageText.split('/').map(s => s.trim());
+  const mParts = mUsageText.split('/').map(s => s.trim());
+  const rUsed = parseInt(rParts[0]) || 0;
+  const mUsed = parseInt(mParts[0]) || 0;
+  const rMaxStr = rParts[1] || '—';
+  const mMaxStr = mParts[1] || '—';
+  const rMax = parseInt(rMaxStr) || 0;
+  const mMax = parseInt(mMaxStr) || 0;
+
+  if (document.getElementById('pdResumesUsed')) document.getElementById('pdResumesUsed').textContent = rUsed;
+  if (document.getElementById('pdResumesMax')) document.getElementById('pdResumesMax').textContent = 'of ' + rMaxStr + ' available';
+  if (document.getElementById('pdMcqUsed')) document.getElementById('pdMcqUsed').textContent = mUsed;
+  if (document.getElementById('pdMcqMax')) document.getElementById('pdMcqMax').textContent = 'of ' + mMaxStr + ' available';
+  if (document.getElementById('pdResumeCount')) document.getElementById('pdResumeCount').textContent = rUsageText;
+  if (document.getElementById('pdMcqCount')) document.getElementById('pdMcqCount').textContent = mUsageText;
+
+  // Progress bars
+  const rPct = rMax > 0 ? Math.min(100, (rUsed / rMax) * 100) : 0;
+  const mPct = mMax > 0 ? Math.min(100, (mUsed / mMax) * 100) : 0;
+  const rBar = document.getElementById('pdResumeBar');
+  const mBar = document.getElementById('pdMcqBar');
+  if (rBar) { rBar.style.width = rPct + '%'; rBar.className = 'pd-bar-fill' + (rPct >= 100 ? ' danger' : rPct >= 75 ? ' warn' : ''); }
+  if (mBar) { mBar.style.width = mPct + '%'; mBar.className = 'pd-bar-fill' + (mPct >= 100 ? ' danger' : mPct >= 75 ? ' warn' : ''); }
+
+  // Expiry
+  const expiryText = document.getElementById('subExpiry')?.textContent || '';
+  const exEl = document.getElementById('pdExpiry2');
+  if (exEl && expiryText) { exEl.textContent = expiryText; exEl.style.display = 'block'; }
+
+  // Load latest request status for drawer
+  loadPdRequestStatus();
+}
+
+async function loadPdRequestStatus() {
+  try {
+    const r = await fetch('/api/my-plan-requests', { credentials:'include' });
+    const d = await r.json();
+    const el = document.getElementById('pdReqStatus');
+    if (!el) return;
+    if (!d.success || !d.requests?.length) { el.className = 'pd-req-status'; return; }
+    const latest = d.requests[0];
+    const styles = {
+      pending:  { bg:'#fefce8', border:'#fde68a', color:'#78350f', icon:'⏳', label:'Pending' },
+      approved: { bg:'#f0fdf4', border:'#a7f3d0', color:'#065f46', icon:'✅', label:'Approved' },
+      rejected: { bg:'#fef2f2', border:'#fecaca', color:'#991b1b', icon:'❌', label:'Rejected' }
+    };
+    const s = styles[latest.status] || styles.pending;
+    el.className = 'pd-req-status show';
+    el.style.background = s.bg; el.style.border = '1.5px solid ' + s.border; el.style.color = s.color;
+    el.innerHTML = '<strong>' + s.icon + ' ' + s.label + ':</strong> ' + latest.requested_plan_name + ' Plan' + (latest.admin_note ? ' · "' + latest.admin_note + '"' : '');
+  } catch(e) {}
+}
+
+// Patch loadSubscription to also sync drawer when it updates
+const _origLoadSubscription = loadSubscription;
+window.loadSubscription = async function() {
+  await _origLoadSubscription();
+  if (document.getElementById('profileDrawer').classList.contains('open')) syncProfileDrawer();
+  // Also update navbar avatar with initials on load
+  const userName = document.getElementById('navUser')?.textContent?.trim() || 'Candidate';
+  const initials = getInitials(userName);
+  const navAv = document.getElementById('profileNavAvatar');
+  if (navAv) { navAv.textContent = initials; navAv.style.fontSize = initials.length > 1 ? '.65em' : '.8em'; }
+};
+
+// Initialize nav avatar on DOM ready
+document.addEventListener('DOMContentLoaded', () => {
+  const userName = document.getElementById('navUser')?.textContent?.trim() || 'Candidate';
+  const initials = getInitials(userName);
+  const navAv = document.getElementById('profileNavAvatar');
+  if (navAv) { navAv.textContent = initials; navAv.style.fontSize = initials.length > 1 ? '.65em' : '.8em'; }
+});
+
+// Also add subBadge element for backward compat (subscription code references it)
+(function() {
+  if (!document.getElementById('subBadge')) {
+    const span = document.createElement('span');
+    span.id = 'subBadge'; span.style.display = 'none';
+    document.body.appendChild(span);
+  }
+})();
+
+// Close on Escape key
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeProfileDrawer(); });
+
 </script>
 <script src="/static/nlp_ui.js"></script>
 </body>

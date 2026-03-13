@@ -33,7 +33,6 @@
       display: flex; align-items: center; justify-content: center;
     }
 
-    /* ── background grid pattern ── */
     body::before {
       content: '';
       position: fixed; inset: 0; z-index: 0;
@@ -64,7 +63,6 @@
       box-shadow: 0 4px 32px rgba(0,0,0,0.08);
     }
 
-    /* ── Logo ── */
     .logo {
       display: flex; align-items: center; gap: 9px;
       margin-bottom: 22px;
@@ -82,7 +80,6 @@
     }
     .logo-name .ai { color: var(--blue); }
 
-    /* ── Realtime bar ── */
     .realtime-bar {
       display: flex; justify-content: space-between; align-items: center;
       margin-bottom: 20px; padding-bottom: 16px;
@@ -111,7 +108,6 @@
     h1 { font-size: 19px; font-weight: 700; margin-bottom: 4px; }
     .subtitle { font-size: 13px; color: var(--muted); margin-bottom: 22px; line-height: 1.5; }
 
-    /* ── Error banner ── */
     .error-banner {
       display: none;
       background: var(--red-pale);
@@ -126,14 +122,12 @@
     .error-banner.show { display: flex; }
     .error-banner .err-icon { font-size: 14px; flex-shrink: 0; }
 
-    /* ── Section label ── */
     .section-label {
       font-size: 11px; font-weight: 600; color: var(--muted);
       text-transform: uppercase; letter-spacing: 0.07em;
       margin-bottom: 10px;
     }
 
-    /* ── OAuth buttons ── */
     .oauth-grid { display: flex; flex-direction: column; gap: 8px; margin-bottom: 18px; }
 
     .oauth-btn {
@@ -160,12 +154,10 @@
     .oauth-btn:hover .arrow { opacity: 1; transform: translateX(0); }
     .oauth-btn.loading { opacity: 0.6; pointer-events: none; }
 
-    /* ── Divider ── */
     .divider { display: flex; align-items: center; gap: 10px; margin: 16px 0; }
     .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
     .divider span { font-size: 11px; color: var(--light); letter-spacing: 0.05em; text-transform: uppercase; font-weight: 500; }
 
-    /* ── Form fields ── */
     .field { margin-bottom: 12px; }
     .field label { display: block; font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 5px; }
     .field label .req { color: var(--red); margin-left: 2px; }
@@ -191,7 +183,6 @@
     }
     .field input.error-field { border-color: var(--red); }
 
-    /* toggle password */
     .toggle-pw {
       position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
       background: none; border: none; cursor: pointer;
@@ -204,7 +195,6 @@
     .forgot-row a { font-size: 12px; color: var(--blue); text-decoration: none; font-weight: 500; }
     .forgot-row a:hover { text-decoration: underline; }
 
-    /* ── Submit ── */
     .submit-btn {
       width: 100%; padding: 11px;
       border-radius: 8px; border: none;
@@ -220,7 +210,6 @@
     .submit-btn:active { transform: translateY(0); }
     .submit-btn:disabled { opacity: 0.65; pointer-events: none; }
 
-    /* spinner */
     .spinner {
       width: 14px; height: 14px; border-radius: 50%;
       border: 2px solid rgba(255,255,255,0.4);
@@ -237,7 +226,6 @@
     .tos { text-align: center; margin-top: 10px; font-size: 11px; color: var(--light); line-height: 1.6; }
     .tos a { color: var(--muted); text-decoration: underline; text-underline-offset: 2px; }
 
-    /* ── Toast ── */
     .toast {
       position: fixed; bottom: 24px; left: 50%;
       transform: translateX(-50%) translateY(10px);
@@ -251,9 +239,34 @@
     }
     .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
     .toast.success { background: #14532d; border-color: #166534; color: #dcfce7; }
+
+    /* OAuth loading overlay */
+    .oauth-overlay {
+      display: none;
+      position: fixed; inset: 0; z-index: 9998;
+      background: rgba(241,245,249,0.85);
+      backdrop-filter: blur(4px);
+      align-items: center; justify-content: center;
+      flex-direction: column; gap: 14px;
+    }
+    .oauth-overlay.show { display: flex; }
+    .oauth-overlay-spinner {
+      width: 36px; height: 36px; border-radius: 50%;
+      border: 3px solid rgba(37,99,235,0.2);
+      border-top-color: #2563eb;
+      animation: spin 0.8s linear infinite;
+    }
+    .oauth-overlay-text { font-size: 13px; color: var(--muted); font-weight: 500; }
   </style>
 </head>
 <body>
+
+<!-- OAuth loading overlay -->
+<div class="oauth-overlay" id="oauthOverlay">
+  <div class="oauth-overlay-spinner"></div>
+  <div class="oauth-overlay-text" id="oauthOverlayText">Connecting to Google…</div>
+</div>
+
 <div class="container">
   <div class="card">
 
@@ -278,11 +291,11 @@
       <span id="errorMsg">Invalid username or password.</span>
     </div>
 
-    <!-- ── Quick OAuth sign-in ── -->
+    <!-- Quick OAuth sign-in -->
     <div class="section-label">Quick sign in</div>
     <div class="oauth-grid">
 
-      <button class="oauth-btn" onclick="handleOAuth('Google', this)">
+      <button class="oauth-btn" id="googleBtn" onclick="handleOAuth('Google', this)">
         <span class="icon">
           <svg viewBox="0 0 24 24" fill="none">
             <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
@@ -295,7 +308,7 @@
         <span class="arrow">→</span>
       </button>
 
-      <button class="oauth-btn" onclick="handleOAuth('LinkedIn', this)">
+      <button class="oauth-btn" id="linkedinBtn" onclick="handleOAuth('LinkedIn', this)">
         <span class="icon">
           <svg viewBox="0 0 24 24" fill="#0077B5">
             <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
@@ -307,10 +320,10 @@
 
     </div>
 
-    <!-- ── Divider ── -->
+    <!-- Divider -->
     <div class="divider"><span>or sign in with credentials</span></div>
 
-    <!-- ── Login form — posts to Flask /login ── -->
+    <!-- Login form -->
     <form id="loginForm" onsubmit="handleLogin(event)">
 
       <div class="field">
@@ -356,6 +369,10 @@
 <div class="toast" id="toast"></div>
 
 <script>
+  // ── Supabase config ──
+  const SUPABASE_URL  = 'https://kxqzncqubkzxdjqkmstq.supabase.co';
+  const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4cXpuY3F1Ymt6eGRqcWttc3RxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE2NDg3MDksImV4cCI6MjA4NzIyNDcwOX0.82b2UA_f3BPpwwvymmcXqBiBxDCvC1EYf7nvryUefPI';
+
   // ── Real-time clock ──
   function updateClock() {
     const now = new Date();
@@ -375,7 +392,7 @@
     setTimeout(() => t.className = 'toast', 3500);
   }
 
-  // ── Show error banner ──
+  // ── Error banner ──
   function showError(msg) {
     const banner = document.getElementById('errorBanner');
     document.getElementById('errorMsg').textContent = msg;
@@ -403,7 +420,7 @@
     }
   }
 
-  // ── Main login handler — posts to Flask /login ──
+  // ── Main login handler ──
   async function handleLogin(e) {
     e.preventDefault();
     clearError();
@@ -416,17 +433,14 @@
       return;
     }
 
-    // Show loading state
-    const btn      = document.getElementById('submitBtn');
-    const spinner  = document.getElementById('spinner');
-    const txt      = document.getElementById('submitText');
-    btn.disabled   = true;
+    const btn     = document.getElementById('submitBtn');
+    const spinner = document.getElementById('spinner');
+    const txt     = document.getElementById('submitText');
+    btn.disabled  = true;
     spinner.style.display = 'block';
     txt.textContent = 'Signing in…';
 
     try {
-      // POST to Flask /login endpoint using form encoding
-      // (matches how Flask reads request.form.get('username'))
       const formData = new FormData();
       formData.append('username', username);
       formData.append('password', password);
@@ -435,20 +449,16 @@
         method: 'POST',
         body: formData,
         credentials: 'same-origin',
-        redirect: 'follow'  // follow Flask's redirect
+        redirect: 'follow'
       });
 
-      // If Flask returned a redirect (302 → 200 after follow),
-      // check the final URL to know where we ended up.
       if (res.ok) {
         const finalUrl = res.url;
 
-        // Flask redirects admin → /admin, candidate → /
         if (finalUrl.includes('/admin')) {
           showToast('Welcome, Admin! Redirecting…', 'success');
           setTimeout(() => window.location.href = '/admin', 600);
         } else if (finalUrl.includes('/login')) {
-          // Flask re-rendered login.html with an error — parse it
           const html = await res.text();
           const match = html.match(/class="error[^"]*"[^>]*>(.*?)<\//s);
           const errMsg = match ? match[1].trim() : 'Invalid username or password.';
@@ -457,7 +467,6 @@
           spinner.style.display = 'none';
           txt.textContent = 'Sign In';
         } else {
-          // Candidate dashboard
           showToast('Signed in! Redirecting…', 'success');
           setTimeout(() => window.location.href = '/', 600);
         }
@@ -476,40 +485,55 @@
     }
   }
 
-  // ── Supabase config — REPLACE these two values with your own ──
-  const SUPABASE_URL  = 'https://kxqzncqubkzxdjqkmstq.supabase.co';
-  const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4cXpuY3F1Ymt6eGRqcWttc3RxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE2NDg3MDksImV4cCI6MjA4NzIyNDcwOX0.82b2UA_f3BPpwwvymmcXqBiBxDCvC1EYf7nvryUefPI';
-
-  // ── OAuth via Supabase ──
+  // ── OAuth handler ──
+  // FIX: redirect_to now points to /login (not window.location.pathname which was also /login
+  // but was inconsistent). More importantly, the hash-based callback below handles the token
+  // exchange immediately when the user lands back on /login with #access_token in the URL.
   function handleOAuth(provider, btnEl) {
     btnEl.classList.add('loading');
-    const lbl = btnEl.querySelector('.label');
-    lbl.textContent = 'Connecting to ' + provider + '...';
+
+    // Show full-page loading overlay
+    const overlay = document.getElementById('oauthOverlay');
+    const overlayText = document.getElementById('oauthOverlayText');
+    overlayText.textContent = `Connecting to ${provider}…`;
+    overlay.classList.add('show');
 
     const providerMap = { Google: 'google', LinkedIn: 'linkedin_oidc' };
     const providerKey = providerMap[provider];
 
-    // Direct redirect to Supabase OAuth
-    const redirectTo = encodeURIComponent(window.location.origin + window.location.pathname);
-    const oauthURL   = SUPABASE_URL + '/auth/v1/authorize?provider=' + providerKey + '&redirect_to=' + redirectTo;
+    // ✅ FIX: Always redirect back to /login so the hash callback below can handle the token
+    const redirectTo = encodeURIComponent(window.location.origin + '/login');
+    const oauthURL   = `${SUPABASE_URL}/auth/v1/authorize?provider=${providerKey}&redirect_to=${redirectTo}`;
 
     window.location.href = oauthURL;
   }
 
-  // ── After OAuth redirect back: exchange token with Flask ──
-  // Supabase puts #access_token=...&refresh_token=... in the URL hash
+  // ── OAuth callback handler ──
+  // Runs on page load. If Supabase redirected back with #access_token, exchange it with Flask.
   (async function handleOAuthCallback() {
     const hash = window.location.hash;
     if (!hash.includes('access_token')) return;
 
+    // Show overlay so user sees loading state instead of the login form flashing
+    const overlay = document.getElementById('oauthOverlay');
+    const overlayText = document.getElementById('oauthOverlayText');
+    overlayText.textContent = 'Verifying your account…';
+    overlay.classList.add('show');
+
+    // Clean the hash from the URL immediately (cosmetic)
+    history.replaceState(null, '', window.location.pathname);
+
     const params      = new URLSearchParams(hash.slice(1));
     const accessToken = params.get('access_token');
-    if (!accessToken) return;
+    const tokenType   = params.get('token_type');
 
-    showToast('Verifying your account…');
+    if (!accessToken) {
+      overlay.classList.remove('show');
+      showError('OAuth sign-in failed. No token received.');
+      return;
+    }
 
     try {
-      // Send the Supabase token to your Flask backend to create a session
       const res = await fetch('/oauth-callback', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -519,14 +543,18 @@
 
       if (res.ok) {
         const data = await res.json();
-        showToast('Signed in! Redirecting…', 'success');
+        overlayText.textContent = 'Signed in! Redirecting…';
+        // ✅ FIX: Use the redirect URL returned by Flask (/admin or /)
         setTimeout(() => window.location.href = data.redirect || '/', 800);
       } else {
-        showToast('Sign-in failed. Please try again.', 'error');
+        const errData = await res.json().catch(() => ({}));
+        overlay.classList.remove('show');
+        showError(errData.error || 'Sign-in failed. Please try again.');
       }
     } catch (err) {
       console.error('[OAuth callback]', err);
-      showToast('Could not connect to server.', 'error');
+      overlay.classList.remove('show');
+      showError('Could not connect to server.');
     }
   })();
 
