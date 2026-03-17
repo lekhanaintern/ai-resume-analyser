@@ -519,73 +519,159 @@ def normalize_role(predicted_role: str) -> str:
 
 
 def generate_smart_suggestions(resume_text, predicted_role=None):
+    """
+    Advanced suggestions focused ONLY on career-level and role-specific improvements.
+    Intentionally avoids duplicating ATS checks (word count, contact, sections, verbs)
+    since check_ats_friendliness() already covers those.
+    """
     suggestions = []
-    issues = []
-    text_lower = resume_text.lower()
+    issues      = []
+    text_lower  = resume_text.lower()
+
+    # ── 1. Role-specific keyword gaps ────────────────────────────────────────
+    if predicted_role and predicted_role in ROLE_KEYWORDS:
+        role_kws     = ROLE_KEYWORDS[predicted_role]
+        present      = [k for k in role_kws if k.lower() in text_lower]
+        missing      = [k for k in role_kws if k.lower() not in text_lower]
+        coverage_pct = int(len(present) / max(len(role_kws), 1) * 100)
+        if coverage_pct >= 70:
+            suggestions.append(
+                f"Strong keyword match for {predicted_role.replace('-', ' ').title()} "
+                f"({coverage_pct}% role keywords present)."
+            )
+        elif coverage_pct >= 40:
+            issues.append(
+                f"Moderate keyword coverage ({coverage_pct}%) for "
+                f"{predicted_role.replace('-', ' ').title()}. "
+                f"Add: {', '.join(missing[:5])}."
+            )
+        else:
+            issues.append(
+                f"Low keyword coverage ({coverage_pct}%) for "
+                f"{predicted_role.replace('-', ' ').title()}. "
+                f"Critical missing skills: {', '.join(missing[:6])}."
+            )
+
+    # ── 2. LinkedIn profile ───────────────────────────────────────────────────
+    if 'linkedin.com' not in text_lower:
+        suggestions.append(
+            "Add your LinkedIn profile URL (linkedin.com/in/yourname) — "
+            "recruiters check it 87% of the time."
+        )
+
+    # ── 3. GitHub / Portfolio (tech roles) ───────────────────────────────────
+    tech_roles = {'DATA-SCIENCE', 'INFORMATION-TECHNOLOGY', 'ENGINEERING',
+                  'DESIGNER', 'DIGITAL-MEDIA', 'DATA-ANALYST',
+                  'JAVA-DEVELOPER', 'PYTHON-DEVELOPER', 'DEVOPS',
+                  'WEB-DESIGNING', 'DOTNET-DEVELOPER', 'REACT-DEVELOPER'}
+    if predicted_role in tech_roles:
+        if 'github' not in text_lower and 'portfolio' not in text_lower:
+            issues.append(
+                "No GitHub or portfolio link found. Tech recruiters expect to see your work — "
+                "add github.com/yourusername or a portfolio URL."
+            )
+
+    # ── 4. Certifications check ───────────────────────────────────────────────
+    cert_keywords = ['certified', 'certification', 'certificate', 'aws', 'pmp',
+                     'google', 'microsoft', 'coursera', 'udemy', 'cisco', 'comptia']
+    has_certs = any(k in text_lower for k in cert_keywords)
+    if not has_certs:
+        suggestions.append(
+            "No certifications detected. Adding 1-2 relevant certifications "
+            "(e.g. AWS, Google, PMP, Coursera) significantly boosts ATS ranking."
+        )
+
+    # ── 5. Repetitive word detection ─────────────────────────────────────────
     words = resume_text.split()
-
-    word_count = len(words)
-    if word_count < 200:
-        issues.append(f"Your resume is too short ({word_count} words). Aim for 400-700 words.")
-    elif word_count > 900:
-        issues.append(f"Your resume is too long ({word_count} words). Try to keep it under 700 words.")
-    else:
-        suggestions.append(f"Good resume length ({word_count} words) — within the ideal range.")
-
-    action_verbs = ['developed','managed','led','created','implemented','designed',
-                    'analyzed','improved','coordinated','achieved','executed',
-                    'established','built','optimized','delivered','increased',
-                    'reduced','launched','trained','mentored','collaborated',
-                    'negotiated','presented','resolved','streamlined']
-    found_verbs   = [v for v in action_verbs if v in text_lower]
-    missing_verbs = [v for v in action_verbs if v not in text_lower]
-    if len(found_verbs) < 3:
-        issues.append(f"Very few action verbs found ({len(found_verbs)}). Add more like: {', '.join(missing_verbs[:5])}.")
-    elif len(found_verbs) < 6:
-        suggestions.append(f"You used {len(found_verbs)} action verbs. Consider adding: {', '.join(missing_verbs[:3])}.")
-    else:
-        suggestions.append(f"Great use of {len(found_verbs)} action verbs.")
-
-    numbers = re.findall(r'\b\d+[\%\+]?\b', resume_text)
-    if len(numbers) < 2:
-        issues.append("No quantified achievements. Add numbers like '30% increase', 'team of 10', '$5K budget'.")
-    else:
-        suggestions.append(f"Good — {len(numbers)} quantified achievements found.")
-
-    has_email    = bool(re.search(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', resume_text))
-    has_phone    = bool(re.search(r'(\+\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}', resume_text))
-    has_linkedin = 'linkedin' in text_lower
-    if not has_email:
-        issues.append("No email address detected. Add your professional email.")
-    if not has_phone:
-        issues.append("No phone number detected. Add your contact number.")
-    if not has_linkedin:
-        suggestions.append("Consider adding your LinkedIn profile URL.")
-
-    sections = {
-        'Summary':        ['summary','objective','profile','about'],
-        'Experience':     ['experience','employment','work history'],
-        'Education':      ['education','qualification','degree','university'],
-        'Skills':         ['skills','competencies','technical skills'],
-        'Projects':       ['projects','portfolio','work samples'],
-        'Certifications': ['certification','certificate','certified']
-    }
-    found_sections   = [s for s, kws in sections.items() if any(k in text_lower for k in kws)]
-    missing_sections = [s for s in sections if s not in found_sections]
-    if missing_sections:
-        issues.append(f"Missing sections: {', '.join(missing_sections)}. Add these for a complete resume.")
-    else:
-        suggestions.append("All key resume sections are present.")
-
-    word_freq = {}
-    for word in words:
-        w = word.lower().strip('.,;:')
-        if len(w) > 4:
-            word_freq[w] = word_freq.get(w, 0) + 1
-    overused = [w for w, c in word_freq.items()
-                if c > 4 and w not in ['which','their','about','these','there','where','would','could','should']]
+    STOP = {'which','their','about','these','there','where','would','could',
+            'should','experience','skills','resume','years','using','various',
+            'multiple','different','ability','strong','excellent'}
+    freq = {}
+    for w in words:
+        w = w.lower().strip('.,;:()')
+        if len(w) > 4 and w not in STOP:
+            freq[w] = freq.get(w, 0) + 1
+    overused = sorted([w for w, c in freq.items() if c > 4], key=lambda x: -freq[x])
     if overused:
-        suggestions.append(f"Overused words: '{', '.join(overused[:3])}'. Try varying your language.")
+        suggestions.append(
+            f"Overused words detected: '{'\', \''.join(overused[:3])}'. "
+            "Use synonyms to vary your language and improve readability."
+        )
+
+    # ── 6. Passive voice detection ────────────────────────────────────────────
+    passive_patterns = [
+        r'\bwas responsible for\b', r'\bwere responsible for\b',
+        r'\bwas involved in\b',     r'\bwere involved in\b',
+        r'\bwas part of\b',         r'\bwere part of\b',
+        r'\bwas tasked with\b',     r'\bwere tasked with\b',
+        r'\bhas been\b',            r'\bhave been\b',
+    ]
+    passive_count = sum(1 for p in passive_patterns if re.search(p, text_lower))
+    if passive_count >= 3:
+        issues.append(
+            f"Passive voice detected {passive_count} times. "
+            "Replace with active verbs: 'Led', 'Designed', 'Built', 'Delivered'."
+        )
+    elif passive_count >= 1:
+        suggestions.append(
+            "Some passive voice detected. Replace 'was responsible for' → 'Led', "
+            "'was involved in' → 'Contributed to'."
+        )
+
+    # ── 7. Summary quality check ──────────────────────────────────────────────
+    summary_match = re.search(
+        r'(professional summary|summary|objective|profile)[\s\S]{0,500}',
+        text_lower
+    )
+    if summary_match:
+        summary_text = summary_match.group()
+        summary_words = len(summary_text.split())
+        if summary_words < 30:
+            issues.append(
+                "Professional summary is too short (under 30 words). "
+                "Write 3-5 sentences highlighting your expertise, key skills, and career goal."
+            )
+        elif summary_words > 120:
+            suggestions.append(
+                "Professional summary is too long (over 120 words). "
+                "Keep it to 3-5 punchy sentences — recruiters spend 6 seconds on it."
+            )
+
+    # ── 8. Education depth ────────────────────────────────────────────────────
+    if 'education' in text_lower:
+        has_year   = bool(re.search(r'\b(19|20)\d{2}\b', resume_text))
+        has_degree = any(d in text_lower for d in [
+            'bachelor', 'master', 'phd', 'b.sc', 'm.sc', 'b.e',
+            'b.tech', 'm.tech', 'mba', 'diploma'
+        ])
+        if not has_degree:
+            suggestions.append(
+                "Spell out your full degree name (e.g. 'Bachelor of Technology') "
+                "— abbreviations like B.E may not be parsed by ATS."
+            )
+        if not has_year:
+            suggestions.append(
+                "Add graduation year to your Education section — "
+                "ATS systems use this to calculate experience."
+            )
+
+    # ── 9. Projects section (for tech/design roles) ───────────────────────────
+    if predicted_role in tech_roles:
+        if 'project' not in text_lower:
+            suggestions.append(
+                "No Projects section detected. Adding 2-3 relevant projects with "
+                "tech stack and measurable outcomes greatly strengthens tech resumes."
+            )
+
+    # ── 10. Soft skills balance ───────────────────────────────────────────────
+    soft_skills = ['communication', 'teamwork', 'leadership', 'problem solving',
+                   'collaboration', 'adaptability', 'time management']
+    found_soft = [s for s in soft_skills if s in text_lower]
+    if len(found_soft) == 0:
+        suggestions.append(
+            "No soft skills mentioned. Add 2-3 like 'Team Leadership', "
+            "'Cross-functional Collaboration', 'Problem Solving'."
+        )
 
     return {'issues': issues, 'suggestions': suggestions}
 

@@ -4,260 +4,180 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Verify Email — AI ResumeAnalyzer</title>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
   <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
-      --primary: #3b6fd4;
-      --primary-end: #06b6d4;
-      --bg: #f0f2f8;
-      --white: #ffffff;
-      --navbar: #4361d8;
-      --navbar-end: #3b82f6;
-      --text: #1e293b;
-      --muted: #64748b;
-      --border: #e2e8f0;
-      --grad: linear-gradient(135deg, var(--primary) 0%, var(--primary-end) 100%);
+      --indigo: #4f46e5; --indigo-light: #eef2ff; --indigo-glow: rgba(79,70,229,0.14);
+      --accent: #00b37a; --teal: #0097b2;
+      --border: #e2e8f0; --text: #0f172a; --muted: #475569;
+      --red-pale: #fef2f2; --red-border: #fecaca;
     }
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
+    html, body {
+      height: 100%; min-height: 100vh;
       font-family: 'Plus Jakarta Sans', sans-serif;
-      background: var(--bg);
-      min-height: 100vh;
-      color: var(--text);
-      display: flex;
-      flex-direction: column;
+      font-size: 14px; background: #dbeafe;
+      display: flex; align-items: center; justify-content: center; overflow: hidden;
     }
-
-    /* background grid */
     body::before {
-      content: '';
-      position: fixed; inset: 0; z-index: 0;
-      background-image:
-        linear-gradient(rgba(59,111,212,0.04) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(59,111,212,0.04) 1px, transparent 1px);
-      background-size: 32px 32px;
-      pointer-events: none;
+      content: ''; position: fixed; inset: 0; z-index: 0;
+      background:
+        radial-gradient(ellipse 55% 50% at 10% 15%, rgba(99,179,237,0.35) 0%, transparent 55%),
+        radial-gradient(ellipse 50% 55% at 90% 80%, rgba(110,231,183,0.28) 0%, transparent 55%),
+        radial-gradient(ellipse 40% 40% at 50% 50%, rgba(167,139,250,0.15) 0%, transparent 60%);
+      animation: bgPulse 14s ease-in-out infinite alternate; pointer-events: none;
     }
-
-    .navbar {
-      position: relative; z-index: 1;
-      background: linear-gradient(90deg, var(--navbar) 0%, var(--navbar-end) 100%);
-      padding: 0 32px;
-      height: 60px;
-      display: flex;
-      align-items: center;
-      box-shadow: 0 2px 12px rgba(59,111,212,0.18);
-    }
-    .navbar-brand { font-size: 1.25em; font-weight: 800; color: white; letter-spacing: -0.5px; }
-    .navbar-brand span { font-weight: 400; opacity: 0.85; }
-
-    .page {
-      flex: 1; position: relative; z-index: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 40px 20px;
-    }
-
-    .wrapper {
-      width: 100%; max-width: 420px;
-      animation: fadeUp 0.45s cubic-bezier(0.23,1,0.32,1) both;
-    }
-    @keyframes fadeUp {
-      from { opacity: 0; transform: translateY(20px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-
-    .page-title { text-align: center; margin-bottom: 28px; }
-    .email-icon {
-      width: 72px; height: 72px;
-      background: var(--grad);
-      border-radius: 20px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 2em;
-      margin: 0 auto 16px;
-      box-shadow: 0 8px 24px rgba(59,111,212,0.3);
-    }
-    .page-title h1 {
-      font-size: 1.8em; font-weight: 800;
-      background: var(--grad);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      margin-bottom: 8px;
-    }
-    .page-title p { color: var(--muted); font-size: 0.92em; line-height: 1.6; }
-    .page-title .email-highlight {
-      font-weight: 700;
-      color: var(--primary);
-      -webkit-text-fill-color: var(--primary);
+    @keyframes bgPulse { from { opacity: 1; } to { opacity: 0.7; filter: hue-rotate(8deg); } }
+    body::after {
+      content: ''; position: fixed; inset: 0; z-index: 0;
+      background-image: radial-gradient(rgba(79,70,229,0.06) 1px, transparent 1px);
+      background-size: 28px 28px; pointer-events: none;
     }
 
     .card {
-      background: var(--white);
-      border-radius: 20px;
-      padding: 36px;
-      box-shadow: 0 4px 24px rgba(59,111,212,0.10);
-      border: 1px solid var(--border);
+      position: relative; z-index: 1; display: flex;
+      width: min(980px, 94vw); height: min(630px, 94vh);
+      border-radius: 24px; overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.85);
+      box-shadow: 0 2px 0 rgba(255,255,255,0.9) inset, 0 32px 80px rgba(79,70,229,0.15), 0 8px 32px rgba(0,0,0,0.08);
+      animation: cardIn 0.6s cubic-bezier(0.23,1,0.32,1) both;
     }
+    @keyframes cardIn { from { opacity: 0; transform: translateY(28px) scale(0.97); } to { opacity: 1; transform: none; } }
 
-    .alert {
-      padding: 12px 16px;
-      border-radius: 10px;
-      font-size: 0.88em;
-      font-weight: 600;
-      margin-bottom: 20px;
-      display: none;
-      align-items: center;
-      gap: 8px;
+    .panel-left {
+      flex: 1; background: linear-gradient(145deg, #1e3a8a 0%, #1d4ed8 55%, #2563eb 100%);
+      position: relative; overflow: hidden; display: flex; flex-direction: column; padding: 38px 42px;
     }
-    .alert.error   { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; display: flex; }
-    .alert.success { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; display: flex; }
+    .mesh { position: absolute; inset: 0; z-index: 0;
+      background: radial-gradient(ellipse 70% 50% at 90% 5%, rgba(96,165,250,0.4) 0%, transparent 55%),
+        radial-gradient(ellipse 55% 60% at 5% 90%, rgba(110,231,183,0.25) 0%, transparent 55%),
+        radial-gradient(ellipse 45% 45% at 50% 48%, rgba(165,180,252,0.2) 0%, transparent 60%);
+      animation: meshShift 12s ease-in-out infinite alternate;
+    }
+    @keyframes meshShift { from { opacity: 1; } to { opacity: 0.7; filter: hue-rotate(10deg); } }
+    .dots { position: absolute; inset: 0; z-index: 0; background-image: radial-gradient(rgba(255,255,255,0.12) 1px, transparent 1px); background-size: 26px 26px; }
+    .ring { position: absolute; border-radius: 50%; pointer-events: none; }
+    .ring-1 { width: 300px; height: 300px; top: -80px; right: -60px; border: 1px solid rgba(255,255,255,0.15); animation: spinRing 28s linear infinite; }
+    .ring-2 { width: 180px; height: 180px; bottom: 24px; right: 16px; border: 1px solid rgba(255,255,255,0.1); animation: spinRing 18s linear infinite reverse; }
+    @keyframes spinRing { to { transform: rotate(360deg); } }
+    .left-inner { position: relative; z-index: 1; display: flex; flex-direction: column; height: 100%; }
+    .logo { display: flex; align-items: center; gap: 10px; margin-bottom: 30px; animation: fadeUp 0.5s 0.08s both; }
+    .logo-icon { width: 36px; height: 36px; border-radius: 10px; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); display: flex; align-items: center; justify-content: center; font-size: 17px; backdrop-filter: blur(8px); }
+    .logo-name { font-size: 15px; font-weight: 800; color: #fff; letter-spacing: -0.02em; }
+    .logo-name .ai { color: #86efac; }
+    .hero { margin-bottom: 28px; animation: fadeUp 0.5s 0.16s both; }
+    .hero h1 { font-size: clamp(20px, 2.2vw, 26px); font-weight: 800; color: #fff; line-height: 1.22; letter-spacing: -0.03em; margin-bottom: 10px; }
+    .hero h1 .hl { background: linear-gradient(90deg, #86efac, #67e8f9); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .hero p { font-size: 12px; color: rgba(255,255,255,0.6); line-height: 1.7; }
 
-    /* OTP input boxes */
-    .otp-label {
-      font-size: 0.88em; font-weight: 700;
-      color: var(--text); margin-bottom: 14px;
-      text-align: center;
-    }
+    .feats { display: flex; flex-direction: column; gap: 8px; animation: fadeUp 0.5s 0.24s both; }
+    .feat { display: flex; align-items: center; gap: 12px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.18); border-radius: 12px; padding: 12px 14px; backdrop-filter: blur(8px); transition: background 0.2s, transform 0.2s; cursor: default; }
+    .feat:hover { background: rgba(255,255,255,0.17); transform: translateX(4px); }
+    .feat-icon { width: 34px; height: 34px; flex-shrink: 0; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 15px; }
+    .fi-g { background: rgba(134,239,172,0.2); } .fi-b { background: rgba(103,232,249,0.2); } .fi-i { background: rgba(196,181,253,0.2); }
+    .feat-text h4 { font-size: 12px; font-weight: 700; color: #fff; margin-bottom: 1px; }
+    .feat-text p  { font-size: 10.5px; color: rgba(255,255,255,0.52); line-height: 1.45; }
 
-    .otp-boxes {
-      display: flex;
-      gap: 10px;
-      justify-content: center;
-      margin-bottom: 24px;
-    }
-    .otp-box {
-      width: 52px; height: 60px;
-      border: 2px solid var(--border);
-      border-radius: 12px;
-      text-align: center;
-      font-size: 1.6em;
-      font-weight: 800;
-      font-family: inherit;
-      color: var(--text);
-      background: #f8fbff;
-      outline: none;
-      transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
-      caret-color: var(--primary);
-    }
-    .otp-box:focus {
-      border-color: var(--primary);
-      box-shadow: 0 0 0 3px rgba(59,111,212,0.12);
-      background: white;
-    }
-    .otp-box.filled {
-      border-color: var(--primary);
-      background: #eff6ff;
-    }
+    .trust { margin-top: auto; display: inline-flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.18); border-radius: 100px; padding: 7px 15px; font-size: 11px; color: rgba(255,255,255,0.6); font-weight: 500; width: fit-content; animation: fadeUp 0.5s 0.36s both; }
+    .trust-dot { width: 6px; height: 6px; border-radius: 50%; background: #86efac; box-shadow: 0 0 0 3px rgba(134,239,172,0.3); animation: pdot 2s ease-in-out infinite; flex-shrink: 0; }
+    @keyframes pdot { 0%,100% { box-shadow: 0 0 0 3px rgba(134,239,172,0.3); } 50% { box-shadow: 0 0 0 6px rgba(134,239,172,0.08); } }
 
-    .btn-primary {
-      width: 100%;
-      background: var(--grad);
-      color: white;
-      border: none;
-      padding: 14px;
-      font-size: 1em;
-      border-radius: 50px;
-      cursor: pointer;
-      font-weight: 700;
-      font-family: inherit;
-      transition: all 0.25s;
-      box-shadow: 0 4px 16px rgba(59,111,212,0.3);
-    }
-    .btn-primary:hover:not(:disabled) {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 24px rgba(59,111,212,0.4);
-    }
-    .btn-primary:disabled { background: #cbd5e1; cursor: not-allowed; box-shadow: none; transform: none; }
+    .panel-right { flex: 1; background: #fff; border-left: 1px solid #e8edf5; display: flex; align-items: center; justify-content: center; padding: 34px 40px; overflow-y: auto; position: relative; }
+    .panel-right::before { content: ''; position: absolute; inset: 0; z-index: 0; background: radial-gradient(ellipse 60% 50% at 100% 0%, rgba(238,242,255,0.8) 0%, transparent 50%), radial-gradient(ellipse 50% 40% at 0% 100%, rgba(236,253,245,0.6) 0%, transparent 50%); pointer-events: none; }
+    .form-box { position: relative; z-index: 1; width: 100%; max-width: 340px; }
 
-    .resend-row {
-      text-align: center;
-      margin-top: 20px;
-      font-size: 0.88em;
-      color: var(--muted);
-    }
-    .resend-btn {
-      background: none; border: none;
-      color: var(--primary); font-weight: 700;
-      cursor: pointer; font-family: inherit;
-      font-size: inherit;
-      padding: 0;
-    }
+    .form-header { margin-bottom: 24px; text-align: center; animation: fadeUp 0.5s 0.1s both; }
+    .email-icon { width: 56px; height: 56px; border-radius: 16px; background: linear-gradient(135deg, #4f46e5, #06b6d4); display: flex; align-items: center; justify-content: center; font-size: 22px; margin: 0 auto 14px; box-shadow: 0 4px 16px rgba(79,70,229,0.3); }
+    .form-header h2 { font-size: 22px; font-weight: 800; color: var(--text); letter-spacing: -0.03em; margin-bottom: 6px; }
+    .form-header p  { font-size: 12.5px; color: var(--muted); line-height: 1.6; }
+    .email-highlight { font-weight: 700; color: var(--indigo); }
+
+    .alert-box { display: none; align-items: flex-start; gap: 8px; padding: 10px 13px; border-radius: 10px; font-size: 12.5px; font-weight: 500; margin-bottom: 16px; }
+    .alert-box.show { display: flex; }
+    .alert-box.error   { background: var(--red-pale); color: #991b1b; border: 1px solid var(--red-border); }
+    .alert-box.success { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
+
+    .otp-label { font-size: 12px; font-weight: 700; color: var(--text); text-align: center; margin-bottom: 14px; animation: fadeUp 0.5s 0.2s both; }
+    .otp-boxes { display: flex; gap: 8px; justify-content: center; margin-bottom: 20px; animation: fadeUp 0.5s 0.22s both; }
+    .otp-box { width: 46px; height: 54px; border: 1.5px solid var(--border); border-radius: 12px; text-align: center; font-size: 1.5em; font-weight: 800; font-family: inherit; color: var(--text); background: #f8fafc; outline: none; transition: all 0.2s; caret-color: var(--indigo); }
+    .otp-box:focus { border-color: var(--indigo); box-shadow: 0 0 0 3px var(--indigo-glow); background: #fff; }
+    .otp-box.filled { border-color: var(--indigo); background: var(--indigo-light); }
+
+    .btn-submit { width: 100%; padding: 12px; background: linear-gradient(135deg, #4f46e5 0%, #0097b2 100%); color: #fff; border: none; border-radius: 50px; font-size: 14px; font-weight: 700; font-family: inherit; cursor: pointer; transition: all 0.25s; box-shadow: 0 4px 16px rgba(79,70,229,0.3); display: flex; align-items: center; justify-content: center; gap: 8px; animation: fadeUp 0.5s 0.28s both; }
+    .btn-submit:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(79,70,229,0.4); }
+    .btn-submit:disabled { background: #cbd5e1; cursor: not-allowed; box-shadow: none; transform: none; }
+
+    .resend-row { text-align: center; margin-top: 16px; font-size: 12px; color: var(--muted); animation: fadeUp 0.5s 0.32s both; }
+    .resend-btn { background: none; border: none; color: var(--indigo); font-weight: 700; cursor: pointer; font-family: inherit; font-size: inherit; padding: 0; }
     .resend-btn:hover { text-decoration: underline; }
-    .resend-btn:disabled { color: var(--muted); cursor: not-allowed; text-decoration: none; }
+    .resend-btn:disabled { color: var(--muted); cursor: not-allowed; }
+    .timer { font-weight: 700; color: var(--indigo); }
 
-    .timer { font-weight: 700; color: var(--primary); }
+    .back-link { text-align: center; margin-top: 16px; font-size: 12px; animation: fadeUp 0.5s 0.36s both; }
+    .back-link a { color: var(--muted); font-weight: 600; text-decoration: none; }
+    .back-link a:hover { color: var(--indigo); }
 
-    .back-link {
-      text-align: center;
-      margin-top: 16px;
-      font-size: 0.88em;
-    }
-    .back-link a { color: var(--muted); text-decoration: none; font-weight: 600; }
-    .back-link a:hover { color: var(--primary); }
-
-    .spinner-inline {
-      display: inline-block;
-      width: 16px; height: 16px;
-      border: 2px solid rgba(255,255,255,0.4);
-      border-top-color: white;
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-      margin-right: 8px;
-      vertical-align: middle;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    .success-state {
-      display: none;
-      text-align: center;
-      padding: 20px 0;
-    }
-    .success-icon {
-      font-size: 3.5em;
-      margin-bottom: 16px;
-      animation: pop 0.4s cubic-bezier(0.175,0.885,0.32,1.275);
-    }
-    @keyframes pop {
-      from { transform: scale(0); opacity: 0; }
-      to   { transform: scale(1); opacity: 1; }
-    }
-    .success-state h2 {
-      font-size: 1.4em; font-weight: 800;
-      background: var(--grad);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      margin-bottom: 8px;
-    }
+    /* Success state */
+    .success-state { display: none; text-align: center; padding: 24px 0; animation: fadeUp 0.5s both; }
+    .success-icon { font-size: 3.5em; margin-bottom: 16px; animation: pop 0.4s cubic-bezier(0.175,0.885,0.32,1.275); }
+    @keyframes pop { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .success-state h2 { font-size: 1.4em; font-weight: 800; background: linear-gradient(135deg, #4f46e5, #0097b2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin-bottom: 8px; }
     .success-state p { color: var(--muted); font-size: 0.9em; }
+
+    .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.4); border-top-color: white; border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
   </style>
 </head>
 <body>
-
-<nav class="navbar">
-  <div class="navbar-brand">AI <span>Resume</span>Analyzer</div>
-</nav>
-
-<div class="page">
-  <div class="wrapper">
-
-    <div class="page-title">
-      <div class="email-icon">📧</div>
-      <h1>Verify Your Email</h1>
-      <p>We sent a 6-digit OTP to<br>
-        <span class="email-highlight" id="emailDisplay">your email</span>
-      </p>
+<div class="card">
+  <div class="panel-left">
+    <div class="mesh"></div><div class="dots"></div>
+    <div class="ring ring-1"></div><div class="ring ring-2"></div>
+    <div class="left-inner">
+      <div class="logo">
+        <div class="logo-icon">📄</div>
+        <div class="logo-name"><span class="ai">AI</span> ResumeAnalyzer</div>
+      </div>
+      <div class="hero">
+        <h1>Verify your<br><span class="hl">email</span><br>to get started</h1>
+        <p>One last step — confirm your email<br>and unlock your AI resume toolkit.</p>
+      </div>
+      <div class="feats">
+        <div class="feat">
+          <div class="feat-icon fi-g">🎯</div>
+          <div class="feat-text"><h4>ATS Score Analysis</h4><p>Get instant feedback on how ATS systems read your resume</p></div>
+        </div>
+        <div class="feat">
+          <div class="feat-icon fi-b">🤖</div>
+          <div class="feat-text"><h4>AI-Powered Rewriting</h4><p>Auto-fix issues and tailor your resume to any role</p></div>
+        </div>
+        <div class="feat">
+          <div class="feat-icon fi-i">📊</div>
+          <div class="feat-text"><h4>Role Predictions</h4><p>ML model predicts your top 3 career paths</p></div>
+        </div>
+      </div>
+      <div class="trust" style="margin-top:auto;">
+        <div class="trust-dot"></div>
+        Your data is always private & secure
+      </div>
     </div>
+  </div>
 
-    <div class="card">
-      <div class="alert" id="alertBox"></div>
+  <div class="panel-right">
+    <div class="form-box">
 
-      <!-- OTP Form -->
+      <!-- OTP form -->
       <div id="otpForm">
-        <div class="otp-label">Enter the 6-digit code</div>
+        <div class="form-header">
+          <div class="email-icon">📧</div>
+          <h2>Check your inbox</h2>
+          <p>We sent a 6-digit code to<br><span class="email-highlight" id="emailDisplay">your email</span></p>
+        </div>
 
+        <div class="alert-box" id="alertBox"></div>
+
+        <div class="otp-label">Enter the 6-digit verification code</div>
         <div class="otp-boxes">
           <input class="otp-box" type="text" maxlength="1" id="otp0" inputmode="numeric"/>
           <input class="otp-box" type="text" maxlength="1" id="otp1" inputmode="numeric"/>
@@ -267,9 +187,7 @@
           <input class="otp-box" type="text" maxlength="1" id="otp5" inputmode="numeric"/>
         </div>
 
-        <button class="btn-primary" id="verifyBtn" onclick="verifyOTP()">
-          ✅ Verify & Continue
-        </button>
+        <button class="btn-submit" id="verifyBtn" onclick="verifyOTP()">✅ Verify & Continue</button>
 
         <div class="resend-row">
           Didn't receive the code?
@@ -279,177 +197,162 @@
         </div>
       </div>
 
-      <!-- Success state -->
+      <!-- Success: Email verified -->
       <div class="success-state" id="successState">
         <div class="success-icon">🎉</div>
         <h2>Email Verified!</h2>
-        <p>Redirecting you to login...</p>
+        <p style="color:var(--muted);font-size:.9em;">One last step before you continue.</p>
       </div>
 
-      <div class="back-link">
-        <a href="/signup">← Back to Sign Up</a>
+      <!-- Step 3: T&C Agreement -->
+      <div id="termsStep" style="display:none;animation:fadeUp .4s both">
+        <div style="text-align:center;margin-bottom:20px;">
+          <div style="font-size:2.2em;margin-bottom:10px;">📋</div>
+          <div style="font-size:17px;font-weight:800;color:var(--text);margin-bottom:6px;letter-spacing:-0.02em;">Almost there!</div>
+          <div style="font-size:13px;color:var(--muted);line-height:1.6;">Please review and accept our Terms of Service<br>and Privacy Policy to continue.</div>
+        </div>
+
+        <div style="background:var(--offwhite,#f8fafc);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:18px;max-height:180px;overflow-y:auto;font-size:12.5px;color:var(--muted);line-height:1.75;">
+          By using AI ResumeAnalyzer, you agree that we may process your resume and personal data to provide ATS scoring, role predictions, AI-powered rewriting, and AI mock interview services. Your data is never sold to third parties. You may delete your account and data at any time. For full details, read our
+          <a href="/terms" target="_blank" style="color:var(--indigo);font-weight:600;">Terms of Service</a>
+          and
+          <a href="/terms#privacy" target="_blank" style="color:var(--indigo);font-weight:600;">Privacy Policy</a>.
+        </div>
+
+        <label style="display:flex;align-items:flex-start;gap:12px;cursor:pointer;margin-bottom:20px;padding:14px;border:1.5px solid var(--border);border-radius:12px;transition:border-color .2s;" id="termsLabel">
+          <input type="checkbox" id="termsCheck" onchange="onTermsChange()"
+            style="width:18px;height:18px;margin-top:2px;flex-shrink:0;cursor:pointer;accent-color:var(--indigo);" />
+          <span style="font-size:13px;color:var(--text);line-height:1.6;">
+            I have read and agree to the
+            <a href="/terms" target="_blank" style="color:var(--indigo);font-weight:700;">Terms of Service</a>
+            and
+            <a href="/terms#privacy" target="_blank" style="color:var(--indigo);font-weight:700;">Privacy Policy</a>.
+            I confirm I am at least 16 years old.
+          </span>
+        </label>
+
+        <button id="proceedBtn" disabled onclick="handleProceed()"
+          style="width:100%;padding:13px;background:linear-gradient(135deg,#4f46e5,#0097b2);color:#fff;border:none;border-radius:50px;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;transition:all .25s;box-shadow:0 4px 16px rgba(79,70,229,0.3);opacity:.5;">
+          Continue to Login →
+        </button>
+        <div style="text-align:center;margin-top:12px;font-size:12px;color:var(--light);">
+          You can review the full documents before agreeing
+        </div>
+      </div>
+
+      <div class="back-link" id="backLinkRow"><a href="/signup">← Back to Sign Up</a></div>
+      <div style="text-align:center;margin-top:14px;font-size:11.5px;color:var(--light);">
+        By verifying your email, you agree to our
+        <a href="/terms" style="color:var(--muted);font-weight:600;">Terms of Service</a>
+        and
+        <a href="/terms#privacy" style="color:var(--muted);font-weight:600;">Privacy Policy</a>
       </div>
     </div>
-
   </div>
 </div>
 
 <script>
-  // Get email from URL
   const urlParams = new URLSearchParams(window.location.search);
   const email     = urlParams.get('email') || '';
   document.getElementById('emailDisplay').textContent = email || 'your email';
 
-  // ── OTP box auto-advance ──
   const boxes = document.querySelectorAll('.otp-box');
   boxes.forEach((box, i) => {
-    box.addEventListener('input', (e) => {
+    box.addEventListener('input', e => {
       const val = e.target.value.replace(/\D/g, '');
       e.target.value = val;
-      if (val) {
-        e.target.classList.add('filled');
-        if (i < 5) boxes[i + 1].focus();
-        else verifyOTP(); // auto-submit when last box filled
-      } else {
-        e.target.classList.remove('filled');
-      }
+      e.target.classList.toggle('filled', !!val);
+      if (val && i < 5) boxes[i + 1].focus();
+      else if (val && i === 5) verifyOTP();
     });
-
-    box.addEventListener('keydown', (e) => {
+    box.addEventListener('keydown', e => {
       if (e.key === 'Backspace' && !box.value && i > 0) {
-        boxes[i - 1].focus();
-        boxes[i - 1].value = '';
-        boxes[i - 1].classList.remove('filled');
+        boxes[i - 1].focus(); boxes[i - 1].value = ''; boxes[i - 1].classList.remove('filled');
       }
     });
-
-    // Handle paste
-    box.addEventListener('paste', (e) => {
+    box.addEventListener('paste', e => {
       e.preventDefault();
       const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
-      pasted.split('').forEach((ch, idx) => {
-        if (boxes[idx]) {
-          boxes[idx].value = ch;
-          boxes[idx].classList.add('filled');
-        }
-      });
+      pasted.split('').forEach((ch, idx) => { if (boxes[idx]) { boxes[idx].value = ch; boxes[idx].classList.add('filled'); } });
       if (pasted.length === 6) verifyOTP();
       else if (boxes[pasted.length]) boxes[pasted.length].focus();
     });
   });
-
-  // Focus first box on load
   setTimeout(() => boxes[0].focus(), 300);
 
-  // ── Countdown timer for resend ──
   let countdown = 60;
-  const timerEl   = document.getElementById('timer');
+  const timerEl = document.getElementById('timer');
   const resendBtn = document.getElementById('resendBtn');
-
   const interval = setInterval(() => {
     countdown--;
     timerEl.textContent = countdown;
-    if (countdown <= 0) {
-      clearInterval(interval);
-      resendBtn.disabled = false;
-      resendBtn.innerHTML = 'Resend OTP';
-    }
+    if (countdown <= 0) { clearInterval(interval); resendBtn.disabled = false; resendBtn.innerHTML = 'Resend OTP'; }
   }, 1000);
 
-  // ── Show alert ──
   function showAlert(msg, type) {
-    const box = document.getElementById('alertBox');
-    box.textContent = msg;
-    box.className = 'alert ' + type;
+    const b = document.getElementById('alertBox');
+    b.textContent = msg; b.className = 'alert-box show ' + type;
   }
+  function getOTP() { return Array.from(boxes).map(b => b.value).join(''); }
 
-  // ── Get OTP value ──
-  function getOTP() {
-    return Array.from(boxes).map(b => b.value).join('');
-  }
-
-  // ── Verify OTP ──
   async function verifyOTP() {
     const otp = getOTP();
-    if (otp.length < 6) {
-      showAlert('Please enter the complete 6-digit code.', 'error');
-      return;
-    }
-
+    if (otp.length < 6) { showAlert('Please enter the complete 6-digit code.', 'error'); return; }
     const btn = document.getElementById('verifyBtn');
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-inline"></span>Verifying...';
-
+    btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Verifying…';
     try {
-      const res = await fetch('/verify-otp', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ email, otp })
-      });
-
+      const res  = await fetch('/verify-otp', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({ email, otp }) });
       const data = await res.json();
-
       if (data.success) {
         document.getElementById('otpForm').style.display = 'none';
         document.getElementById('successState').style.display = 'block';
-        setTimeout(() => { window.location.href = '/login'; }, 2000);
+        // After showing success, transition to T&C step
+        setTimeout(() => {
+          document.getElementById('successState').style.display = 'none';
+          document.getElementById('termsStep').style.display    = 'block';
+          document.getElementById('backLinkRow').style.display  = 'none';
+        }, 1400);
       } else {
         showAlert(data.error || 'Invalid OTP. Please try again.', 'error');
-        // Clear boxes
         boxes.forEach(b => { b.value = ''; b.classList.remove('filled'); });
         boxes[0].focus();
-        btn.disabled = false;
-        btn.innerHTML = '✅ Verify & Continue';
+        btn.disabled = false; btn.innerHTML = '✅ Verify & Continue';
       }
-    } catch (err) {
-      showAlert('Server error. Please try again.', 'error');
-      btn.disabled = false;
-      btn.innerHTML = '✅ Verify & Continue';
-    }
+    } catch { showAlert('Server error. Please try again.', 'error'); btn.disabled = false; btn.innerHTML = '✅ Verify & Continue'; }
   }
 
-  // ── Resend OTP ──
+  function onTermsChange() {
+    const checked = document.getElementById('termsCheck').checked;
+    const btn     = document.getElementById('proceedBtn');
+    const label   = document.getElementById('termsLabel');
+    btn.disabled  = !checked;
+    btn.style.opacity = checked ? '1' : '0.5';
+    btn.style.cursor  = checked ? 'pointer' : 'not-allowed';
+    label.style.borderColor = checked ? 'var(--indigo)' : 'var(--border)';
+  }
+
+  function handleProceed() {
+    localStorage.setItem('terms_agreed', new Date().toISOString());
+    window.location.href = '/login';
+  }
+
   async function resendOTP() {
-    resendBtn.disabled = true;
-    resendBtn.textContent = 'Sending...';
-
+    resendBtn.disabled = true; resendBtn.textContent = 'Sending…';
     try {
-      const res = await fetch('/resend-otp', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
-      });
+      const res  = await fetch('/resend-otp', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ email }) });
       const data = await res.json();
-
       if (data.success) {
         showAlert('A new OTP has been sent to your email!', 'success');
-        // Restart countdown
-        let cd = 60;
-        timerEl.textContent = cd;
+        let cd = 60; timerEl.textContent = cd;
         resendBtn.innerHTML = 'Resend OTP (<span class="timer" id="timer">60</span>s)';
         resendBtn.disabled  = true;
-        const newInterval = setInterval(() => {
-          cd--;
-          document.getElementById('timer').textContent = cd;
-          if (cd <= 0) {
-            clearInterval(newInterval);
-            resendBtn.disabled = false;
-            resendBtn.innerHTML = 'Resend OTP';
-          }
+        const ni = setInterval(() => {
+          cd--; document.getElementById('timer').textContent = cd;
+          if (cd <= 0) { clearInterval(ni); resendBtn.disabled = false; resendBtn.innerHTML = 'Resend OTP'; }
         }, 1000);
-      } else {
-        showAlert(data.error || 'Could not resend OTP.', 'error');
-        resendBtn.disabled = false;
-        resendBtn.textContent = 'Resend OTP';
-      }
-    } catch (err) {
-      showAlert('Server error. Please try again.', 'error');
-      resendBtn.disabled = false;
-      resendBtn.textContent = 'Resend OTP';
-    }
+      } else { showAlert(data.error || 'Could not resend OTP.', 'error'); resendBtn.disabled = false; resendBtn.textContent = 'Resend OTP'; }
+    } catch { showAlert('Server error. Please try again.', 'error'); resendBtn.disabled = false; resendBtn.textContent = 'Resend OTP'; }
   }
 </script>
-
 </body>
 </html>

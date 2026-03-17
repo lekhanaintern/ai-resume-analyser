@@ -17,12 +17,82 @@ except ImportError:
     from preprocessor import ResumePreprocessor
 
 
+# ──────────────────────────────────────────────────────────────────────────────
+# DOMAIN GROUPS
+# Roles in the same group are considered "same domain".
+# Rank 2 and 3 will ONLY be picked from the same domain as rank 1.
+# ──────────────────────────────────────────────────────────────────────────────
+DOMAIN_GROUPS = {
+    # Tech & Engineering
+    'INFORMATION-TECHNOLOGY'   : 'tech',
+    'ENGINEERING'              : 'tech',
+    'DATA-ANALYST'             : 'tech',
+    'DATA-SCIENCE'             : 'tech',
+    'JAVA-DEVELOPER'           : 'tech',
+    'PYTHON-DEVELOPER'         : 'tech',
+    'DEVOPS'                   : 'tech',
+    'DOTNET-DEVELOPER'         : 'tech',
+    'DATABASE'                 : 'tech',
+    'ETL-DEVELOPER'            : 'tech',
+    'NETWORK-SECURITY-ENGINEER': 'tech',
+    'SAP-DEVELOPER'            : 'tech',
+    'REACT-DEVELOPER'          : 'tech',
+    'TESTING'                  : 'tech',
+
+    # Engineering & Trades
+    'CIVIL-ENGINEER'           : 'engineering',
+    'MECHANICAL-ENGINEER'      : 'engineering',
+    'ELECTRICAL-ENGINEERING'   : 'engineering',
+    'CONSTRUCTION'             : 'engineering',
+    'AUTOMOBILE'               : 'engineering',
+    'AVIATION'                 : 'engineering',
+
+    # Creative & Arts
+    'ARTS'                     : 'creative',
+    'APPAREL'                  : 'creative',
+    'DESIGNER'                 : 'creative',
+    'DIGITAL-MEDIA'            : 'creative',
+    'WEB-DESIGNING'            : 'creative',
+
+    # Business & Management
+    'BUSINESS-DEVELOPMENT'   : 'business',
+    'CONSULTANT'             : 'business',
+    'SALES'                  : 'business',
+    'PUBLIC-RELATIONS'       : 'business',
+
+    # Finance & Legal
+    'ACCOUNTANT'             : 'finance',
+    'FINANCE'                : 'finance',
+    'BANKING'                : 'finance',
+    'ADVOCATE'               : 'finance',
+
+    # People & Admin
+    'HR'                     : 'people',
+    'BPO'                    : 'people',
+    'TEACHER'                : 'people',
+
+    # Health & Lifestyle
+    'HEALTHCARE'             : 'health',
+    'FITNESS'                : 'health',
+    'FOOD-AND-BEVERAGES'     : 'health',
+    'CHEF'                   : 'health',
+    'AGRICULTURE'            : 'health',
+
+
+
+
+}
+
+
 class ResumePredictor:
     """
     Loads trained model and predicts job role from resume text.
-    Also exposes get_top_keywords_for_role() which extracts the keywords
-    the ML model ACTUALLY LEARNED are most important for each role.
+    Top 3 roles are always from the SAME DOMAIN as the top prediction,
+    so you never get unrelated roles like APPAREL for a UX Designer.
     """
+
+    # Minimum probability for rank 2/3 to be shown
+    MIN_CONFIDENCE = 0.05
 
     def __init__(self):
         self.preprocessor          = ResumePreprocessor()
@@ -30,8 +100,8 @@ class ResumePredictor:
         self.vectorizer            = None
         self.label_encoder         = None
         self.inverse_label_encoder = None
-        self._feature_names        = None   # TF-IDF vocabulary array
-        self._keyword_cache        = {}     # cache: "role_n" -> [keywords]
+        self._feature_names        = None
+        self._keyword_cache        = {}
         self.load_model()
 
     # ----------------------------------------------------------------
@@ -39,53 +109,84 @@ class ResumePredictor:
     # ----------------------------------------------------------------
     def load_model(self):
         """Load saved model, vectorizer, and label encoder."""
-        current_dir   = os.path.dirname(os.path.abspath(__file__))
-        models_dir    = os.path.join(os.path.dirname(current_dir), 'saved_models')
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        models_dir  = os.path.join(os.path.dirname(current_dir), 'saved_models')
 
         self.model         = joblib.load(os.path.join(models_dir, 'model.pkl'))
         self.vectorizer    = joblib.load(os.path.join(models_dir, 'vectorizer.pkl'))
         self.label_encoder = joblib.load(os.path.join(models_dir, 'label_encoder.pkl'))
 
-        # inverse mapping: encoded-int -> role-name
+        # Support both dict and list formats for label_encoder
+        if isinstance(self.label_encoder, list):
+            self.label_encoder = {role: idx for idx, role in enumerate(self.label_encoder)}
+
         self.inverse_label_encoder = {v: k for k, v in self.label_encoder.items()}
 
-        # Cache TF-IDF feature names once at load time
         try:
             self._feature_names = self.vectorizer.get_feature_names_out()
         except AttributeError:
-            # older sklearn
             self._feature_names = np.array(self.vectorizer.get_feature_names())
 
         print("Model loaded successfully!")
 
     # ----------------------------------------------------------------
-    # PREDICT
+    # PREDICT  (domain-aware top 3)
     # ----------------------------------------------------------------
-    def predict(self, resume_text):
+    def predict(self, resume_text: str) -> dict:
         """
         Predict job role from resume text.
 
         Returns:
-            dict with predicted_role, confidence, top_3_roles
+            dict with:
+                predicted_role  — top predicted role
+                confidence      — confidence of top prediction
+                top_3_roles     — list of (role, probability) tuples,
+                                  ALL from the same domain as predicted_role
         """
         cleaned_text  = self.preprocessor.preprocess(resume_text)
         features      = self.vectorizer.transform([cleaned_text])
-        prediction    = self.model.predict(features)[0]
         probabilities = self.model.predict_proba(features)[0]
 
-        predicted_role = self.inverse_label_encoder[prediction]
-        confidence     = probabilities[prediction]
+        # Sort ALL roles by probability descending
+        sorted_indices = probabilities.argsort()[::-1]
 
-        top_3_indices = probabilities.argsort()[-3:][::-1]
-        top_3_roles   = [
-            (self.inverse_label_encoder[idx], float(probabilities[idx]))
-            for idx in top_3_indices
-        ]
+        # Top prediction
+        top_idx        = sorted_indices[0]
+        predicted_role = self.inverse_label_encoder[top_idx]
+        confidence     = float(probabilities[top_idx])
+
+        # Find domain of top prediction
+        top_domain = DOMAIN_GROUPS.get(predicted_role, None)
+
+        # Strictly collect top 3 from same domain only — no fallback to other domains
+        same_domain_roles = []
+        for idx in sorted_indices:
+            role = self.inverse_label_encoder[idx]
+            prob = float(probabilities[idx])
+            if DOMAIN_GROUPS.get(role) == top_domain:
+                same_domain_roles.append((role, prob))
+
+        top_3_roles = same_domain_roles[:3]
+
+        # If domain has fewer than 3 roles total, pad with N/A
+        while len(top_3_roles) < 3:
+            top_3_roles.append(('N/A', 0.0))
+
+        # Low confidence = model is unsure (likely an unseen role)
+        LOW_CONFIDENCE_THRESHOLD = 0.30
+        is_low_confidence = confidence < LOW_CONFIDENCE_THRESHOLD
 
         return {
-            'predicted_role': predicted_role,
-            'confidence'    : float(confidence),
-            'top_3_roles'   : top_3_roles,
+            'predicted_role'   : predicted_role,
+            'confidence'       : confidence,
+            'top_3_roles'      : top_3_roles,
+            'domain'           : top_domain,
+            'low_confidence'   : is_low_confidence,
+            'low_conf_message' : (
+                "We couldn't confidently match your resume to a known role. "
+                "This may be because your role (e.g. Data Analyst, Product Manager) "
+                "isn't in our current model. The closest matches are shown below."
+            ) if is_low_confidence else None,
         }
 
     # ----------------------------------------------------------------
@@ -93,25 +194,8 @@ class ResumePredictor:
     # ----------------------------------------------------------------
     def get_top_keywords_for_role(self, role: str, n: int = 40) -> list:
         """
-        Ask the trained ML model which words it learned are most important
-        for a given job role — directly from classifier weights/log-probs.
-
-        Works with:
-          LogisticRegression  -> coef_[class_idx]
-          LinearSVC           -> coef_[class_idx]
-          SGDClassifier       -> coef_[class_idx]
-          MultinomialNB       -> feature_log_prob_[class_idx]
-          ComplementNB        -> feature_log_prob_[class_idx]
-          BernoulliNB         -> feature_log_prob_[class_idx]
-          RandomForestClassifier -> feature_importances_ (global proxy)
-          Pipeline wrappers   -> unwrapped automatically
-
-        Args:
-            role: Role name as it appears in label_encoder
-            n   : Number of keywords to return (default 40)
-
-        Returns:
-            list of cleaned, display-ready keyword strings
+        Returns the top-n keywords the ML model learned for a given role.
+        Works with LogisticRegression, LinearSVC, NaiveBayes, RandomForest.
         """
         cache_key = f"{role}_{n}"
         if cache_key in self._keyword_cache:
@@ -119,7 +203,7 @@ class ResumePredictor:
 
         class_idx = self._resolve_class_idx(role)
         if class_idx is None:
-            print(f"[get_top_keywords_for_role] Role '{role}' not found in label_encoder.")
+            print(f"[get_top_keywords_for_role] Role '{role}' not found.")
             return []
 
         if self._feature_names is None or len(self._feature_names) == 0:
@@ -138,7 +222,6 @@ class ResumePredictor:
     # PRIVATE HELPERS
     # ----------------------------------------------------------------
     def _resolve_class_idx(self, role: str):
-        """Find encoded class index for a role name — tries exact, case-insensitive, partial."""
         if role in self.label_encoder:
             return self.label_encoder[role]
         role_l = role.lower().strip()
@@ -151,7 +234,6 @@ class ResumePredictor:
         return None
 
     def _unwrap_pipeline(self, model):
-        """Unwrap sklearn Pipeline to get the actual classifier."""
         try:
             from sklearn.pipeline import Pipeline
             if isinstance(model, Pipeline):
@@ -161,7 +243,6 @@ class ResumePredictor:
         return model
 
     def _extract_top_features(self, model, class_idx: int, n: int) -> list:
-        """Extract top-n feature names using the correct attribute for each model type."""
         name = type(model).__name__
         try:
             if name in ('LogisticRegression', 'LogisticRegressionCV'):
@@ -185,7 +266,6 @@ class ResumePredictor:
                 return [self._feature_names[i] for i in w.argsort()[-n:][::-1]]
 
             else:
-                print(f"[_extract_top_features] Unknown model '{name}' — trying generic fallback.")
                 if hasattr(model, 'coef_'):
                     coef = np.asarray(model.coef_)
                     row  = coef[class_idx] if coef.ndim == 2 else coef[0]
@@ -199,7 +279,6 @@ class ResumePredictor:
         return []
 
     def _clean_keywords(self, raw: list, n: int) -> list:
-        """Remove noise tokens, stopwords; title-case; deduplicate."""
         STOPWORDS = {
             'the','and','for','with','that','this','from','have','been','will',
             'are','was','were','had','has','can','not','but','all','also','its',
@@ -238,24 +317,35 @@ class ResumePredictor:
 if __name__ == "__main__":
     predictor = ResumePredictor()
 
-    sample = """
-    JOHN DOE  |  john@example.com  |  +1-555-1234
-    PROFESSIONAL SUMMARY
-    Software Developer with 5 years in web development.
-    SKILLS
-    React.js, HTML5, CSS3, JavaScript, Node.js, Python, MongoDB, Git
-    EXPERIENCE
-    Senior Web Developer - Tech Corp (2020-2024)
-    - Developed full-stack apps using React and Node.js
-    - Built RESTful APIs, managed PostgreSQL databases
-    EDUCATION
-    B.Sc Computer Science - State University 2019
+    # Test 1: UX Designer
+    ux_resume = """
+    UX Designer with 5 years of experience.
+    Skills: Figma, Sketch, Adobe XD, User Research, Wireframing,
+    Prototyping, Usability Testing, Interaction Design, Design Thinking.
+    Experience:
+    Senior UX Designer at Product Co (2021-2024)
+    - Conducted user research and interviews
+    - Created wireframes and prototypes in Figma
+    - Ran usability testing sessions
     """
 
-    result = predictor.predict(sample)
-    print(f"Predicted: {result['predicted_role']} ({result['confidence']*100:.1f}%)")
+    # Test 2: Software Developer
+    dev_resume = """
+    Software Developer with 5 years in web development.
+    Skills: React.js, Node.js, Python, MongoDB, PostgreSQL, Docker, AWS, Git
+    Experience:
+    Senior Developer at Tech Corp (2020-2024)
+    - Built full-stack web applications
+    - Designed RESTful APIs and microservices
+    """
 
-    for role, prob in result['top_3_roles']:
-        kws = predictor.get_top_keywords_for_role(role, n=15)
-        print(f"\n{role} ({prob*100:.1f}%):")
-        print("  " + ", ".join(kws))
+    for label, resume in [("UX Designer", ux_resume), ("Software Developer", dev_resume)]:
+        print(f"\n{'='*55}")
+        print(f"TEST: {label}")
+        print('='*55)
+        result = predictor.predict(resume)
+        print(f"Domain   : {result['domain']}")
+        print(f"Top Role : {result['predicted_role']} ({result['confidence']*100:.1f}%)")
+        print("Top 3    :")
+        for i, (role, prob) in enumerate(result['top_3_roles'], 1):
+            print(f"  {i}. {role}: {prob*100:.1f}%")

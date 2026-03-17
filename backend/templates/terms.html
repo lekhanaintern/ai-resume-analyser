@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Terms of Service & Privacy Policy — AI ResumeAnalyzer</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Merriweather:wght@400;700&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --black:   #0a0a0a;
+      --dark:    #1a1a1a;
+      --grey1:   #333333;
+      --grey2:   #555555;
+      --grey3:   #888888;
+      --grey4:   #bbbbbb;
+      --grey5:   #e5e5e5;
+      --grey6:   #f5f5f5;
+      --white:   #ffffff;
+      --border:  #d4d4d4;
+    }
+
+    html { font-size: 15px; scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--white);
+      color: var(--dark);
+      min-height: 100vh;
+    }
+
+    /* ── NAVBAR ── */
+    .navbar {
+      position: sticky; top: 0; z-index: 100;
+      height: 56px;
+      background: var(--white);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center;
+      padding: 0 40px;
+      justify-content: space-between;
+    }
+    .nav-brand {
+      display: flex; align-items: center; gap: 10px;
+      text-decoration: none; color: var(--black);
+      font-size: 14px; font-weight: 700; letter-spacing: -0.02em;
+    }
+    .nav-brand-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--black); }
+    .nav-right { display: flex; align-items: center; gap: 24px; }
+    .nav-link { font-size: 13px; font-weight: 500; color: var(--grey2); text-decoration: none; transition: color .15s; }
+    .nav-link:hover { color: var(--black); }
+    .nav-back {
+      font-size: 13px; font-weight: 600; color: var(--black);
+      text-decoration: none; display: flex; align-items: center; gap: 5px;
+    }
+    .nav-back:hover { text-decoration: underline; }
+
+    /* ── HERO ── */
+    .hero {
+      border-bottom: 1px solid var(--border);
+      padding: 48px 40px 40px;
+      max-width: 900px; margin: 0 auto;
+    }
+    .hero-label {
+      font-size: 11px; font-weight: 600; color: var(--grey3);
+      letter-spacing: 0.1em; text-transform: uppercase;
+      margin-bottom: 14px;
+    }
+    .hero h1 {
+      font-family: 'Merriweather', Georgia, serif;
+      font-size: clamp(24px, 3.5vw, 36px);
+      font-weight: 700; color: var(--black);
+      line-height: 1.2; letter-spacing: -0.02em;
+      margin-bottom: 14px;
+    }
+    .hero p {
+      font-size: 14px; color: var(--grey2); line-height: 1.7;
+      max-width: 560px; margin-bottom: 20px;
+    }
+    .hero-meta { display: flex; gap: 24px; flex-wrap: wrap; }
+    .hero-meta-item { font-size: 12px; color: var(--grey3); font-weight: 500; }
+    .hero-meta-item strong { color: var(--dark); }
+
+    /* ── LAYOUT ── */
+    .page {
+      max-width: 900px; margin: 0 auto;
+      padding: 0 40px 80px;
+      display: grid;
+      grid-template-columns: 200px 1fr;
+      gap: 48px;
+      align-items: flex-start;
+    }
+
+    /* ── SIDEBAR ── */
+    .sidebar {
+      position: sticky; top: 72px;
+      padding-top: 32px;
+    }
+    .sidebar-section { margin-bottom: 28px; }
+    .sidebar-label {
+      font-size: 10px; font-weight: 700; color: var(--grey3);
+      letter-spacing: 0.1em; text-transform: uppercase;
+      margin-bottom: 10px; padding-bottom: 6px;
+      border-bottom: 1px solid var(--grey5);
+    }
+    .toc-btn {
+      display: block; width: 100%;
+      padding: 7px 0; border: none; background: none;
+      font-family: inherit; font-size: 12.5px;
+      font-weight: 500; color: var(--grey2);
+      text-align: left; cursor: pointer;
+      transition: color .15s; line-height: 1.4;
+      border-left: 2px solid transparent;
+      padding-left: 10px;
+    }
+    .toc-btn:hover { color: var(--black); border-left-color: var(--grey4); }
+    .toc-btn.active { color: var(--black); font-weight: 600; border-left-color: var(--black); }
+
+    /* Tab switch in sidebar */
+    .tab-group { display: flex; flex-direction: column; gap: 4px; margin-bottom: 24px; }
+    .tab-pill {
+      padding: 8px 12px; border: 1px solid var(--border);
+      border-radius: 6px; background: none;
+      font-family: inherit; font-size: 12.5px; font-weight: 600;
+      color: var(--grey2); cursor: pointer; text-align: left;
+      transition: all .15s;
+    }
+    .tab-pill:hover { background: var(--grey6); color: var(--black); }
+    .tab-pill.active { background: var(--black); color: var(--white); border-color: var(--black); }
+
+    /* ── CONTENT ── */
+    .content { padding-top: 32px; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* Section */
+    .section {
+      padding-bottom: 36px; margin-bottom: 36px;
+      border-bottom: 1px solid var(--grey5);
+    }
+    .section:last-child { border-bottom: none; margin-bottom: 0; }
+
+    .section-num {
+      font-size: 10px; font-weight: 700; color: var(--grey3);
+      letter-spacing: 0.1em; text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+    .section-title {
+      font-family: 'Merriweather', Georgia, serif;
+      font-size: 17px; font-weight: 700; color: var(--black);
+      letter-spacing: -0.01em; margin-bottom: 14px; line-height: 1.3;
+    }
+    .section-body {
+      font-size: 13.5px; color: var(--grey1); line-height: 1.85;
+    }
+    .section-body p { margin-bottom: 12px; }
+    .section-body p:last-child { margin-bottom: 0; }
+    .section-body strong { color: var(--black); font-weight: 600; }
+    .section-body a { color: var(--black); }
+
+    /* Lists */
+    .doc-list { padding: 0; margin: 10px 0 14px; list-style: none; }
+    .doc-list li {
+      display: flex; align-items: flex-start; gap: 10px;
+      font-size: 13.5px; color: var(--grey1); line-height: 1.7;
+      padding: 5px 0; border-bottom: 1px solid var(--grey6);
+    }
+    .doc-list li:last-child { border-bottom: none; }
+    .doc-list li::before {
+      content: '–'; color: var(--grey3); font-weight: 600;
+      flex-shrink: 0; margin-top: 1px;
+    }
+
+    /* Notice box */
+    .notice {
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--black);
+      background: var(--grey6);
+      border-radius: 0 6px 6px 0;
+      padding: 13px 16px;
+      font-size: 13px; color: var(--grey1);
+      line-height: 1.65; margin: 14px 0;
+    }
+    .notice.warn { border-left-color: var(--grey3); }
+
+    /* Table */
+    .doc-table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 13px; }
+    .doc-table th {
+      text-align: left; padding: 10px 12px;
+      font-size: 10.5px; font-weight: 700; color: var(--grey3);
+      letter-spacing: 0.07em; text-transform: uppercase;
+      border-bottom: 2px solid var(--border);
+      background: var(--grey6);
+    }
+    .doc-table td {
+      padding: 10px 12px; border-bottom: 1px solid var(--grey5);
+      color: var(--grey1); line-height: 1.5; vertical-align: top;
+    }
+    .doc-table td:first-child { font-weight: 600; color: var(--dark); }
+    .doc-table tr:last-child td { border-bottom: none; }
+
+    /* Rights grid */
+    .rights-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 14px 0; }
+    .right-item {
+      border: 1px solid var(--border); border-radius: 6px;
+      padding: 12px 14px;
+    }
+    .right-item-title { font-size: 12.5px; font-weight: 700; color: var(--black); margin-bottom: 4px; }
+    .right-item p { font-size: 12px; color: var(--grey2); line-height: 1.55; margin: 0; }
+
+    /* ── AGREEMENT FOOTER ── */
+    .agreement-wrap {
+      position: sticky; bottom: 0; z-index: 100;
+      background: var(--white);
+      border-top: 1px solid var(--border);
+      padding: 18px 40px;
+      display: flex; align-items: center;
+      justify-content: space-between;
+      gap: 20px; flex-wrap: wrap;
+      box-shadow: 0 -4px 16px rgba(0,0,0,0.06);
+    }
+    .agreement-left { display: flex; align-items: flex-start; gap: 12px; }
+    .checkbox-wrap { position: relative; flex-shrink: 0; margin-top: 2px; }
+    .agreement-checkbox {
+      width: 18px; height: 18px;
+      border: 1.5px solid var(--grey4);
+      border-radius: 4px; cursor: pointer;
+      appearance: none; -webkit-appearance: none;
+      background: var(--white);
+      transition: all .15s;
+      display: block;
+    }
+    .agreement-checkbox:hover { border-color: var(--black); }
+    .agreement-checkbox:checked {
+      background: var(--black); border-color: var(--black);
+    }
+    .agreement-checkbox:checked::after {
+      content: '';
+      position: absolute; left: 5px; top: 2px;
+      width: 5px; height: 9px;
+      border: 2px solid var(--white);
+      border-top: none; border-left: none;
+      transform: rotate(45deg);
+    }
+    .agreement-text { font-size: 13px; color: var(--grey2); line-height: 1.55; }
+    .agreement-text strong { color: var(--black); font-weight: 600; }
+    .agreement-text a { color: var(--black); font-weight: 600; }
+    .agreement-right { display: flex; gap: 10px; flex-shrink: 0; }
+    .btn-decline {
+      padding: 10px 20px; border: 1px solid var(--border);
+      border-radius: 6px; background: var(--white);
+      font-family: inherit; font-size: 13px; font-weight: 600;
+      color: var(--grey2); cursor: pointer; transition: all .15s;
+    }
+    .btn-decline:hover { background: var(--grey6); color: var(--dark); }
+    .btn-agree {
+      padding: 10px 24px; border: none;
+      border-radius: 6px; background: var(--black);
+      font-family: inherit; font-size: 13px; font-weight: 600;
+      color: var(--white); cursor: pointer; transition: all .15s;
+    }
+    .btn-agree:hover:not(:disabled) { background: var(--grey1); }
+    .btn-agree:disabled {
+      background: var(--grey5); color: var(--grey3); cursor: not-allowed;
+    }
+
+    /* ── FOOTER ── */
+    .page-footer {
+      border-top: 1px solid var(--grey5);
+      padding: 24px 40px;
+      max-width: 900px; margin: 0 auto;
+      display: flex; justify-content: space-between;
+      align-items: center; flex-wrap: wrap; gap: 10px;
+    }
+    .page-footer p { font-size: 12px; color: var(--grey3); }
+    .page-footer-links { display: flex; gap: 18px; }
+    .page-footer-links a { font-size: 12px; color: var(--grey3); text-decoration: none; }
+    .page-footer-links a:hover { color: var(--dark); }
+
+    /* Agreed state */
+    .agreed-banner {
+      display: none;
+      background: var(--grey6); border: 1px solid var(--border);
+      border-radius: 6px; padding: 10px 16px;
+      font-size: 13px; color: var(--grey1); font-weight: 500;
+      align-items: center; gap: 8px;
+    }
+    .agreed-banner.show { display: flex; }
+
+    @media (max-width: 700px) {
+      .page { grid-template-columns: 1fr; padding: 0 20px 100px; }
+      .sidebar { display: none; }
+      .hero, .navbar, .page-footer { padding-left: 20px; padding-right: 20px; }
+      .agreement-wrap { padding: 14px 20px; }
+      .rights-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar">
+  <a class="nav-brand" href="/">
+    <div class="nav-brand-dot"></div>
+    AI ResumeAnalyzer
+  </a>
+  <div class="nav-right">
+    <a class="nav-link" href="/login">Sign In</a>
+    <a class="nav-back" href="/login">← Back</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-label">Legal Documents</div>
+  <h1>Terms of Service &amp;<br>Privacy Policy</h1>
+  <p>Please read these documents carefully. They govern your use of AI ResumeAnalyzer and explain how we handle your personal data.</p>
+  <div class="hero-meta">
+    <div class="hero-meta-item"><strong>Version:</strong> 2.1</div>
+    <div class="hero-meta-item"><strong>Effective:</strong> March 15, 2026</div>
+    <div class="hero-meta-item"><strong>Jurisdiction:</strong> Bengaluru, India</div>
+    <div class="hero-meta-item"><strong>Compliance:</strong> GDPR</div>
+  </div>
+</div>
+
+<!-- PAGE -->
+<div class="page">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="tab-group">
+      <button class="tab-pill active" onclick="switchTab('terms')">Terms of Service</button>
+      <button class="tab-pill" onclick="switchTab('privacy')">Privacy Policy</button>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label" id="tocLabel">Contents</div>
+      <div id="tocLinks"></div>
+    </div>
+  </aside>
+
+  <!-- CONTENT -->
+  <main class="content">
+
+    <!-- ══ TERMS ══ -->
+    <div class="tab-panel active" id="panel-terms">
+
+      <div class="section" id="t1">
+        <div class="section-num">01 — Acceptance</div>
+        <div class="section-title">Acceptance of Terms</div>
+        <div class="section-body">
+          <p>By accessing, registering for, or using AI ResumeAnalyzer ("the Service"), you agree to be legally bound by these Terms of Service and our Privacy Policy. If you do not agree, you must not use the Service.</p>
+          <p>These Terms apply to all visitors, registered users, and subscribers. Your continued use of the platform following any amendments constitutes acceptance of the revised Terms.</p>
+          <div class="notice">By creating an account or uploading a resume, you confirm you are at least 16 years old and have read and accepted these Terms in full.</div>
+        </div>
+      </div>
+
+      <div class="section" id="t2">
+        <div class="section-num">02 — Service</div>
+        <div class="section-title">Description of Service</div>
+        <div class="section-body">
+          <p>AI ResumeAnalyzer provides AI-powered career tools to help job seekers optimise their resumes and prepare for interviews. Our <strong>ATS Score Analysis</strong> evaluates your resume on a 0–100 scale across nine dimensions including contact information, section structure, action verbs, formatting, and quantified achievements. Our <strong>AI Resume Rewriting</strong> engine uses natural language processing to rewrite and tailor your resume for specific job roles by injecting role-relevant keywords and strong action verbs.</p>
+          <p>The platform's <strong>Role Prediction</strong> feature uses a trained machine learning model to predict your top three best-fit career paths based on your resume content and skills. Our <strong>AI Mock Interview</strong> tool generates role-specific multiple choice questions tailored to your predicted job role, scores your responses, and provides performance insights to help you prepare for real interviews. Finally, our <strong>PDF Export</strong> feature allows you to download your optimised resume as a professionally formatted, ATS-friendly document.</p>
+          <p>We reserve the right to modify or discontinue any feature at any time. Material changes will be communicated via email or in-app notice.</p>
+        </div>
+      </div>
+
+      <div class="section" id="t3">
+        <div class="section-num">03 — Accounts</div>
+        <div class="section-title">User Accounts &amp; Eligibility</div>
+        <div class="section-body">
+          <p>To access most features, you must register an account. By registering, you agree to provide accurate, truthful, and complete information at the time of registration and to keep it updated at all times. You are solely responsible for maintaining the confidentiality of your password and for all activity that occurs under your account. You must notify us immediately of any suspected unauthorised access.</p>
+          <p>You must be at least 16 years of age to use this Service. Use by persons under 16 is strictly prohibited. You also agree not to create multiple accounts in order to circumvent usage limits or subscription restrictions.</p>
+          <div class="notice warn">We reserve the right to suspend or permanently terminate accounts that provide false information, violate these Terms, or engage in abusive behaviour.</div>
+        </div>
+      </div>
+
+      <div class="section" id="t4">
+        <div class="section-num">04 — Content</div>
+        <div class="section-title">User Content &amp; Intellectual Property</div>
+        <div class="section-body">
+          <p><strong>Your Ownership.</strong> You retain full ownership of all resumes and documents you upload. We claim no intellectual property rights over your content.</p>
+          <p><strong>Licence You Grant.</strong> By uploading, you grant us a limited, non-exclusive, royalty-free licence to process your content solely to provide the Service. This licence ends when you delete your content or account.</p>
+          <p><strong>AI Output.</strong> AI-generated resume rewrites are suggestions. You are responsible for reviewing all AI output before using it in job applications. We do not guarantee accuracy or suitability for any specific role.</p>
+          <p><strong>MCQ Interview Data.</strong> Your answers to mock interview questions are used solely to display your score and performance insights within the platform. Interview responses are not stored beyond your active session unless explicitly saved, and are never shared with third parties or prospective employers.</p>
+          <div class="notice">Your resume content and interview responses are used exclusively to deliver the Service and are never shared with employers, recruiters, or advertisers without your explicit consent.</div>
+        </div>
+      </div>
+
+      <div class="section" id="t4b">
+        <div class="section-num">04b — Interviews</div>
+        <div class="section-title">AI Mock Interview Feature</div>
+        <div class="section-body">
+          <p>The AI Mock Interview feature generates role-specific multiple choice questions based on your predicted job role. All questions are AI-generated and intended solely for self-preparation purposes — they do not represent real interview questions from any specific employer, and we make no representation that completing mock interviews will result in job offers or interview success.</p>
+          <p>Your MCQ answers and scores are stored in your account to display your performance history. They are not shared with any third party, including prospective employers. Interview scores and feedback are indicative only. The number of mock interview sessions available per month is determined by your subscription plan.</p>
+        </div>
+      </div>
+
+      <div class="section" id="t5">
+        <div class="section-num">05 — Billing</div>
+        <div class="section-title">Subscription Plans &amp; Billing</div>
+        <div class="section-body">
+          <p>AI ResumeAnalyzer offers three subscription tiers. The <strong>Free Plan</strong> provides limited monthly resume analyses and exports at no charge. The <strong>Pro Plan</strong> offers expanded usage limits, access to all platform features, and priority processing, billed on a monthly or annual basis. The <strong>Enterprise Plan</strong> provides unlimited access, an admin dashboard, and dedicated support under a custom billing arrangement.</p>
+          <p>All fees are non-refundable unless required by applicable law. Subscriptions automatically renew at the end of each billing period unless cancelled before the renewal date. Any pricing changes will be communicated with at least 30 days' written notice by email. Failure to pay may result in automatic downgrade to the Free plan.</p>
+        </div>
+      </div>
+
+      <div class="section" id="t6">
+        <div class="section-num">06 — Conduct</div>
+        <div class="section-title">Prohibited Conduct</div>
+        <div class="section-body">
+          <p>You agree not to upload false, misleading, fabricated, or defamatory resume information, or impersonate any person or entity. You must not attempt to reverse-engineer, copy, or extract our AI models or scoring algorithms, nor use automated tools, bots, or scrapers to access the platform beyond normal use.</p>
+          <p>Sharing your account credentials with third parties is strictly prohibited, as is uploading files containing malware, viruses, or any malicious code. You must not attempt to bypass usage limits, subscription gates, or any security mechanism on the platform.</p>
+          <div class="notice warn">Violations may result in immediate account suspension, permanent termination, and legal action where appropriate. We cooperate fully with law enforcement investigations.</div>
+        </div>
+      </div>
+
+      <div class="section" id="t7">
+        <div class="section-num">07 — Liability</div>
+        <div class="section-title">Disclaimers &amp; Limitation of Liability</div>
+        <div class="section-body">
+          <p>The Service is provided on an "as is" and "as available" basis without warranties of any kind. We do not warrant that ATS scores guarantee employment outcomes, that AI output is error-free, or that the Service will be continuously available.</p>
+          <p>To the maximum extent permitted by law, AI ResumeAnalyzer shall not be liable for indirect, incidental, punitive, or consequential damages arising from your use of the Service.</p>
+          <div class="notice">Our total liability for any claim shall not exceed the amount you paid us in the 12 months preceding the claim, or INR 1,000 — whichever is greater.</div>
+        </div>
+      </div>
+
+      <div class="section" id="t8">
+        <div class="section-num">08 — Changes</div>
+        <div class="section-title">Modifications to Terms</div>
+        <div class="section-body">
+          <p>We may update these Terms from time to time. For material changes, we will notify you by email and display a notice on the platform at least 14 days before changes take effect. Your continued use after that date constitutes acceptance of the revised Terms.</p>
+        </div>
+      </div>
+
+      <div class="section" id="t9">
+        <div class="section-num">09 — Governing Law</div>
+        <div class="section-title">Governing Law &amp; Contact</div>
+        <div class="section-body">
+          <p>These Terms are governed by the laws of India. Any disputes shall be subject to the exclusive jurisdiction of the courts of Bengaluru, Karnataka.</p>
+          <p>For questions about these Terms, contact us at <a href="/cdn-cgi/l/email-protection#077472777768757347666e756274726a626669666b7e7d62752964686a"><strong><span class="__cf_email__" data-cfemail="7c0f090c0c130e083c1d150e190f0911191d121d100506190e521f1311">[email&#160;protected]</span></strong></a>. We respond within 2 business days.</p>
+        </div>
+      </div>
+
+    </div><!-- /terms -->
+
+    <!-- ══ PRIVACY ══ -->
+    <div class="tab-panel" id="panel-privacy">
+
+      <div class="section" id="p1">
+        <div class="section-num">01 — Commitment</div>
+        <div class="section-title">Our Privacy Commitment</div>
+        <div class="section-body">
+          <p>At AI ResumeAnalyzer, we collect only what we need, protect what we hold, and give you full control over your data.</p>
+          <div class="notice">We never sell, rent, or trade your personal data or resume content to any third party. Ever.</div>
+        </div>
+      </div>
+
+      <div class="section" id="p2">
+        <div class="section-num">02 — Collection</div>
+        <div class="section-title">Information We Collect</div>
+        <div class="section-body">
+          <p>We collect <strong>account information</strong> including your name, email address, username, and hashed password when you register. If you sign in via Google or LinkedIn, we also receive your OAuth profile name, email, and avatar. This information is used for authentication and account management.</p>
+          <p>When you use the core features of the platform, we collect <strong>resume content</strong> including your uploaded resume text, ATS scores, role predictions, and any edited or AI-enhanced versions. If you use the AI Mock Interview feature, we collect your <strong>interview data</strong> — including MCQ responses, scores, your selected role, and performance metrics — used solely to display your results within the platform.</p>
+          <p>We collect <strong>subscription data</strong> such as your plan type, monthly usage counts, and billing events (but never payment card details). We also collect <strong>anonymised usage data</strong> including pages visited, features used, and session duration to improve the product, and <strong>technical data</strong> such as IP address, browser type, operating system, and device type for security and fraud prevention purposes.</p>
+          <div class="notice">We never collect or store payment card details directly. All payments are processed by PCI-DSS compliant third-party payment processors.</div>
+        </div>
+      </div>
+
+      <div class="section" id="p3">
+        <div class="section-num">03 — Use</div>
+        <div class="section-title">How We Use Your Data</div>
+        <div class="section-body">
+          <p>We use your data for the following purposes. Under our contractual obligation to deliver the Service, we process your resume, generate ATS scores, run role predictions, create tailored PDF exports, and deliver AI-powered MCQ mock interviews with scoring and performance feedback. We also use your data to authenticate your account, manage your subscription, and handle support requests.</p>
+          <p>On the basis of legitimate interest, we send transactional communications including OTP verification codes, password reset links, subscription confirmations, and critical service updates. We also analyse anonymised and aggregated usage patterns to improve our AI models and user experience — your individual resume is never used for model training without your explicit opt-in consent. Additionally, we use your data to detect and prevent fraud, abuse, and unauthorised access.</p>
+          <p>Where legally required, we comply with lawful requests from regulatory authorities and law enforcement, and use your data to enforce these Terms of Service.</p>
+        </div>
+      </div>
+
+      <div class="section" id="p4">
+        <div class="section-num">04 — Sharing</div>
+        <div class="section-title">Data Sharing &amp; Third Parties</div>
+        <div class="section-body">
+          <p>We do not sell your data. We share it only with trusted service providers who are contractually bound to protect it. <strong>Supabase</strong> serves as our authentication, database, and file storage provider and holds your account data, resume content, and usage logs within encrypted, secure infrastructure. Our <strong>email provider</strong> receives only your email address and message content in order to deliver transactional communications such as OTP codes and password resets. Where you subscribe to a paid plan, our <strong>payment processor</strong> receives your email address and plan type only — we never store or transmit payment card details.</p>
+          <div class="notice warn">We may disclose your data to law enforcement, regulators, or courts when legally required to do so.</div>
+        </div>
+      </div>
+
+      <div class="section" id="p5">
+        <div class="section-num">05 — Cookies</div>
+        <div class="section-title">Cookies &amp; Local Storage</div>
+        <div class="section-body">
+          <p>We use a small number of cookies and local storage technologies to operate the platform. <strong>Session cookies</strong> keep you authenticated during your active browser session and expire when you close the browser. <strong>Authentication tokens</strong> (Supabase JWT) enable persistent login for up to 7 days if you choose to stay signed in. <strong>Preference storage</strong> via localStorage remembers your UI settings and choices across visits. <strong>Analytics cookies</strong> collect anonymised usage data to help us understand how the platform is used — these expire after 90 days.</p>
+          <p>You can control or delete cookies at any time through your browser settings. Disabling authentication cookies will require you to log in on each visit. We do not use third-party advertising cookies or tracking pixels of any kind.</p>
+        </div>
+      </div>
+
+      <div class="section" id="p6">
+        <div class="section-num">06 — Retention</div>
+        <div class="section-title">Data Retention</div>
+        <div class="section-body">
+          <p>We retain your data only for as long as necessary to provide the Service or comply with legal obligations. Account and profile data is retained until you delete your account, after which it is held for a further 30 days before permanent deletion. Resume uploads and analyses are stored for 12 months from the date of last use, or until you delete them, whichever comes first. Your MCQ interview responses and scores follow the same 12-month retention period.</p>
+          <p>Billing and subscription records are retained for 7 years to meet our legal and tax obligations. Security and access logs are kept for 90 days for fraud prevention purposes, and support correspondence is retained for 3 years.</p>
+          <div class="notice">When you delete your account, all personal data is permanently purged within 30 days, except where legally required to retain certain records.</div>
+        </div>
+      </div>
+
+      <div class="section" id="p7">
+        <div class="section-num">07 — Your Rights</div>
+        <div class="section-title">Your Rights (GDPR &amp; Applicable Law)</div>
+        <div class="section-body">
+          <p>Depending on your jurisdiction, you have the following rights over your personal data. You have the <strong>right of access</strong> — to request a complete copy of all personal data we hold about you. You have the <strong>right of rectification</strong> — to ask us to correct any inaccurate or incomplete information. You have the <strong>right to erasure</strong> — to request permanent deletion of your account and all associated personal data.</p>
+          <p>You also have the <strong>right to data portability</strong>, meaning you can request your data in a structured, machine-readable format. The <strong>right to object</strong> allows you to object to processing carried out on the basis of legitimate interests. The <strong>right to restrict processing</strong> allows you to ask us to pause data processing while a dispute is being resolved.</p>
+          <p>To exercise any of these rights, email <a href="mailto:privacy@airesumeanalyzer.com"><strong>privacy@airesumeanalyzer.com</strong></a>. We will respond within 30 days. EU and UK users may also lodge a complaint with their national Data Protection Authority.</p>
+        </div>
+      </div>
+
+      <div class="section" id="p8">
+        <div class="section-num">08 — Security</div>
+        <div class="section-title">Security Measures</div>
+        <div class="section-body">
+          <p>We implement industry-standard security controls across the platform. All data transmitted between your browser and our servers is protected by <strong>TLS 1.3 encryption</strong>, and all database content is encrypted at rest on Supabase infrastructure. Passwords are never stored in plaintext — we use <strong>bcrypt hashing</strong> with a high cost factor. All new accounts require <strong>OTP-based email verification</strong> before access is granted.</p>
+          <p>At the database level, row-level security ensures that each user can access only their own data. Our API endpoints are rate-limited to prevent brute-force attacks and abuse. We conduct periodic security reviews and vulnerability assessments to maintain the integrity of the platform.</p>
+          <div class="notice warn">In the unlikely event of a data breach affecting your personal information, we will notify you within 72 hours as required by applicable law.</div>
+        </div>
+      </div>
+
+      <div class="section" id="p9">
+        <div class="section-num">09 — Children</div>
+        <div class="section-title">Children's Privacy</div>
+        <div class="section-body">
+          <p>AI ResumeAnalyzer is not directed at children under 16. We do not knowingly collect personal information from any person under 16. If we discover a user under 16 has registered, we will immediately suspend the account and permanently delete all associated data within 7 days.</p>
+          <p>Parents or guardians who believe their child has created an account should contact us at <a href="/cdn-cgi/l/email-protection#a0d3d5d0d0cfd2d4e0c1c9d2c5d3d5cdc5c1cec1ccd9dac5d28ec3cfcd"><strong><span class="__cf_email__" data-cfemail="93e0e6e3e3fce1e7d3f2fae1f6e0e6fef6f2fdf2ffeae9f6e1bdf0fcfe">[email&#160;protected]</span></strong></a>.</p>
+        </div>
+      </div>
+
+      <div class="section" id="p10">
+        <div class="section-num">10 — Contact</div>
+        <div class="section-title">Contact &amp; Data Protection</div>
+        <div class="section-body">
+          <p>For privacy-related enquiries and data access requests, please email <a href="mailto:privacy@airesumeanalyzer.com"><strong>privacy@airesumeanalyzer.com</strong></a>. We respond to all data requests within 30 days. For general support questions, contact us at <a href="mailto:support@airesumeanalyzer.com"><strong>support@airesumeanalyzer.com</strong></a> and we will respond within 2 business days. For urgent or security-related matters, please mark your message as urgent and we will aim to respond within 24 hours.</p>
+        </div>
+      </div>
+
+    </div><!-- /privacy -->
+
+  </main>
+</div>
+
+<!-- PAGE FOOTER -->
+<div class="page-footer">
+  <p>© 2026 AI ResumeAnalyzer. All rights reserved.</p>
+  <div class="page-footer-links">
+    <a href="/login">Sign In</a>
+    <a href="/signup">Sign Up</a>
+    <a href="/cdn-cgi/l/email-protection#63101613130c111723020a110610160e06020d020f1a1906114d000c0e">Contact</a>
+  </div>
+</div>
+
+<!-- ── AGREEMENT BAR ── -->
+<div class="agreement-wrap" id="agreementBar">
+  <div class="agreement-left">
+    <div class="checkbox-wrap">
+      <input type="checkbox" class="agreement-checkbox" id="agreeCheck" onchange="onCheckChange()"/>
+    </div>
+    <div class="agreement-text">
+      I have read and agree to the <strong>Terms of Service</strong> and <strong>Privacy Policy</strong> of AI ResumeAnalyzer.
+      By checking this box I confirm I am at least 16 years old.
+    </div>
+  </div>
+  <div class="agreement-right">
+    <div class="agreed-banner" id="agreedBanner">✓ Agreement recorded</div>
+    <button class="btn-decline" onclick="handleDecline()">Decline</button>
+    <button class="btn-agree" id="agreeBtn" disabled onclick="handleAgree()">I Agree &amp; Continue</button>
+  </div>
+</div>
+
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+  /* ── Tab switching ── */
+  const TERMS_TOC = [
+    { id:'t1', label:'01 — Acceptance' },
+    { id:'t2', label:'02 — Description of Service' },
+    { id:'t3', label:'03 — User Accounts' },
+    { id:'t4', label:'04 — User Content' },
+    { id:'t4b', label:'04b — AI Mock Interviews' },
+    { id:'t5', label:'05 — Subscription & Billing' },
+    { id:'t6', label:'06 — Prohibited Conduct' },
+    { id:'t7', label:'07 — Disclaimers & Liability' },
+    { id:'t8', label:'08 — Modifications' },
+    { id:'t9', label:'09 — Governing Law' },
+  ];
+  const PRIVACY_TOC = [
+    { id:'p1',  label:'01 — Our Commitment' },
+    { id:'p2',  label:'02 — Information We Collect' },
+    { id:'p3',  label:'03 — How We Use Data' },
+    { id:'p4',  label:'04 — Data Sharing' },
+    { id:'p5',  label:'05 — Cookies' },
+    { id:'p6',  label:'06 — Data Retention' },
+    { id:'p7',  label:'07 — Your Rights' },
+    { id:'p8',  label:'08 — Security' },
+    { id:'p9',  label:"09 — Children's Privacy" },
+    { id:'p10', label:'10 — Contact' },
+  ];
+
+  let currentTab = 'terms';
+
+  function buildToc(items) {
+    document.getElementById('tocLinks').innerHTML = items.map(item =>
+      `<button class="toc-btn" id="toc-${item.id}" onclick="goTo('${item.id}')">${item.label}</button>`
+    ).join('');
+  }
+
+  function goTo(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const top = el.getBoundingClientRect().top + window.scrollY - 90;
+    window.scrollTo({ top, behavior: 'smooth' });
+    setActive(id);
+  }
+
+  function setActive(id) {
+    document.querySelectorAll('.toc-btn').forEach(b => b.classList.remove('active'));
+    const b = document.getElementById('toc-' + id);
+    if (b) b.classList.add('active');
+  }
+
+  function switchTab(tab) {
+    currentTab = tab;
+    document.querySelectorAll('.tab-pill').forEach((b, i) => {
+      b.classList.toggle('active', (i === 0 && tab === 'terms') || (i === 1 && tab === 'privacy'));
+    });
+    document.getElementById('panel-terms').classList.toggle('active', tab === 'terms');
+    document.getElementById('panel-privacy').classList.toggle('active', tab === 'privacy');
+    buildToc(tab === 'terms' ? TERMS_TOC : PRIVACY_TOC);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // Scroll spy
+  window.addEventListener('scroll', () => {
+    const toc = currentTab === 'terms' ? TERMS_TOC : PRIVACY_TOC;
+    let active = toc[0].id;
+    toc.forEach(item => {
+      const el = document.getElementById(item.id);
+      if (el && el.getBoundingClientRect().top < 120) active = item.id;
+    });
+    setActive(active);
+  },

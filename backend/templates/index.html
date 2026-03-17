@@ -502,9 +502,9 @@ body::before{
    PROFILE PANEL
 ═══════════════════════════════════════════ */
 .profile-trigger {
-  display:flex;align-items:center;gap:8px;
+  display:flex;align-items:center;gap:4px;
   background:rgba(255,255,255,.14);border:1.5px solid rgba(255,255,255,.25);
-  padding:5px 12px 5px 6px;border-radius:24px;cursor:pointer;
+  padding:4px 8px 4px 4px;border-radius:24px;cursor:pointer;
   transition:all .2s;color:#fff;font-family:inherit;font-size:.78em;font-weight:700;
 }
 .profile-trigger:hover { background:rgba(255,255,255,.22);border-color:rgba(255,255,255,.4);transform:translateY(-1px); }
@@ -694,10 +694,9 @@ body::before{
     <div class="brand-text">AI Resume<span>Analyzer</span></div>
   </div>
   <div class="nav-right">
-    <span class="nav-pill">🤖 ML Powered</span>
     <button class="profile-trigger" id="profileTrigger" onclick="openProfileDrawer()">
       <div class="profile-trigger-avatar" id="profileNavAvatar">?</div>
-      <span id="navUser">{{ session.get('user_name', 'Candidate') }}</span>
+      <span id="navUser" style="display:none">{{ session.get('user_name', 'Candidate') }}</span>
       <span class="profile-trigger-chevron">▾</span>
     </button>
   </div>
@@ -713,7 +712,6 @@ body::before{
       <div class="pd-avatar-ring"></div>
     </div>
     <div class="pd-name" id="pdName">Candidate</div>
-    <div class="pd-email" id="pdEmail">Loading…</div>
     <div class="pd-plan-badge" id="pdPlanBadge">🆓 Free Plan</div>
   </div>
   <div class="pd-body">
@@ -784,44 +782,25 @@ body::before{
   </div>
   <div class="pd-footer">
     <button class="pd-logout-btn" onclick="logout()">🚪 Sign Out</button>
-    <span class="pd-version">v2.0 · ML Powered</span>
+    <span class="pd-version">v2.0</span>
   </div>
 </div>
 
 <div class="page">
   <div class="hero">
-    <div class="hero-kicker">✦ ML + NLP + Smart ATS Scoring</div>
+    <div class="hero-kicker">✦ Smart ATS Scoring & Career Insights</div>
     <h1>Get Your Resume <em>ATS-Ready</em></h1>
     <p>Upload your resume — get your ATS score, career prediction, and 3 role-specific resume versions you can preview and download</p>
   </div>
 
   <!-- SUBSCRIPTION STATUS BAR -->
-  <div id="subStatusBar" style="display:none;background:linear-gradient(135deg,#4361ee,#4cc9f0);border-radius:16px;padding:18px 24px;margin-bottom:18px;color:#fff;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
-    <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
-      <div>
-        <div style="font-size:.72em;font-weight:700;letter-spacing:.8px;opacity:.8;text-transform:uppercase;margin-bottom:2px">Current Plan</div>
-        <div style="font-size:1.4em;font-weight:800;" id="subPlanName">Free</div>
-      </div>
-      <div style="width:1px;height:36px;background:rgba(255,255,255,.25);"></div>
-      <div>
-        <div style="font-size:.72em;font-weight:700;letter-spacing:.8px;opacity:.8;text-transform:uppercase;margin-bottom:2px">Resume Analyses</div>
-        <div style="font-size:1.1em;font-weight:700;" id="subResumeUsage">0 / 2</div>
-        <div style="height:5px;background:rgba(255,255,255,.25);border-radius:3px;margin-top:4px;width:100px;">
-          <div id="subResumeFill" style="height:100%;background:#fff;border-radius:3px;transition:width .5s;width:0%"></div>
-        </div>
-      </div>
-      <div style="width:1px;height:36px;background:rgba(255,255,255,.25);"></div>
-      <div>
-        <div style="font-size:.72em;font-weight:700;letter-spacing:.8px;opacity:.8;text-transform:uppercase;margin-bottom:2px">MCQ Tests</div>
-        <div style="font-size:1.1em;font-weight:700;" id="subMcqUsage">0 / 1</div>
-        <div style="height:5px;background:rgba(255,255,255,.25);border-radius:3px;margin-top:4px;width:100px;">
-          <div id="subMcqFill" style="height:100%;background:#fff;border-radius:3px;transition:width .5s;width:0%"></div>
-        </div>
-      </div>
-    </div>
-    <div id="subExpiry" style="font-size:.78em;opacity:.8;"></div>
-    <button onclick="openPlansModal()" style="background:rgba(255,255,255,.2);border:1.5px solid rgba(255,255,255,.4);color:#fff;padding:8px 20px;border-radius:20px;font-size:.82em;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;">⬆️ Change Plan</button>
-  </div>
+  <!-- Subscription data holders (hidden, used by profile drawer) -->
+  <span id="subPlanName" style="display:none">Free</span>
+  <span id="subResumeUsage" style="display:none">0 / 2</span>
+  <span id="subMcqUsage" style="display:none">0 / 1</span>
+  <span id="subResumeFill" style="display:none"></span>
+  <span id="subMcqFill" style="display:none"></span>
+  <span id="subExpiry" style="display:none"></span>
 
   <!-- LIMIT EXCEEDED BANNER -->
   <div id="limitBanner" style="display:none;background:#fef2f2;border:1.5px solid #fca5a5;border-radius:14px;padding:18px 22px;margin-bottom:18px;text-align:center;">
@@ -853,7 +832,7 @@ body::before{
   <div class="card loading" id="loadCard">
     <div class="load-ring"></div>
     <h3>Analyzing your resume…</h3>
-    <p>ML model + NLP pipeline running</p>
+    <p>Analyzing your resume, please wait…</p>
     <div class="load-step" id="loadStep">Reading document…</div>
   </div>
 
@@ -901,31 +880,25 @@ body::before{
       </div>
       <div class="rescore-load" id="rescoreLoad">
         <div class="mini-spin"></div>
-        <span>Re-analyzing enhanced resume with ML model…</span>
+        <span>Re-analyzing enhanced resume…</span>
       </div>
       <div class="rescore-banner" id="rescoreBanner">
         <p id="rescoreTxt"></p>
       </div>
       <div class="db-tag" id="dbTag"><div class="db-dot"></div><span id="dbTxt"></span></div>
-      <div id="issuesSec" style="display:none;margin-top:18px">
-        <div class="sec-head">⚠️ Issues Found</div>
-        <div id="issuesList"></div>
-      </div>
-      <div id="sugsSec" style="display:none;margin-top:16px">
-        <div class="sec-head">💡 Suggestions</div>
-        <div id="sugsList"></div>
-      </div>
+      <!-- Issues and Suggestions only in Editor Fix Issues tab -->
+      <div id="issuesSec" style="display:none!important"><div id="issuesList"></div></div>
+      <div id="sugsSec" style="display:none!important"><div id="sugsList"></div></div>
     </div>
 
     <!-- EDITOR CARD -->
     <div class="editor-card" id="editorCard" style="display:none">
       <div class="editor-head">
-        <div class="sec-head">✏️ Resume Editor &amp; NLP Optimizer</div>
+        <div class="sec-head">✏️ Resume Editor &amp; Optimizer</div>
       </div>
       <div class="editor-tabs">
         <button class="etab active" onclick="switchTab('tips')">💡 Fix Issues</button>
         <button class="etab" onclick="switchTab('editor')">✏️ Edit</button>
-        <button class="etab" onclick="switchTab('compare')">👁 Before &amp; After</button>
       </div>
 
       <div class="epanel active" id="panel-tips">
@@ -934,7 +907,7 @@ body::before{
           <div style="background:linear-gradient(135deg,#0f172a,#1e293b);border-radius:14px;padding:18px 20px;color:#fff;position:relative;overflow:hidden">
             <div style="position:absolute;top:-20px;right:-20px;width:100px;height:100px;border-radius:50%;background:rgba(67,97,238,.2)"></div>
             <div style="position:absolute;bottom:-30px;left:30%;width:80px;height:80px;border-radius:50%;background:rgba(76,201,240,.15)"></div>
-            <div style="font-size:.7em;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;opacity:.6;margin-bottom:6px">🔬 ML Pipeline — Fix Summary</div>
+            <div style="font-size:.7em;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;opacity:.6;margin-bottom:6px">🔬 Fix Summary</div>
             <div id="advAnalysisSummary" style="font-size:.92em;line-height:1.6;opacity:.9"></div>
           </div>
         </div>
@@ -966,14 +939,14 @@ body::before{
         <div id="tipsList"></div>
 
         <div class="ai-bar" id="aiBar">
-          <p>🧠 <strong>Apply All Fixes with ML Engine</strong>
-          <span>Local NLP pipeline reads every issue, applies targeted fixes in real-time, shows each change, then re-scores to push toward 100 — 100% free, no API needed</span></p>
+          <p>⚡ <strong>Apply All Fixes Automatically</strong>
+          <span>Our engine reads every issue, applies targeted fixes in real-time, shows each change, then re-scores to push toward 100 — 100% free, no API needed</span></p>
           <button class="btn-ai btn-ai-pulse" id="applyBtn" onclick="applyAllWithAI()">⚡ Apply All Fixes</button>
         </div>
 
         <div class="ai-writing" id="aiWriting">
           <div class="ai-write-icon">🤖</div>
-          <h4>ML Engine is fixing your resume…</h4>
+          <h4>Fixing your resume…</h4>
           <p id="aiWriteDesc">Analyzing every issue and applying precision fixes</p>
           <div class="ai-progress-bar"><div class="ai-progress-fill" id="aiFill"></div></div>
           <div class="ai-step-label" id="aiStepLabel">Analyzing structure…</div>
@@ -998,7 +971,7 @@ body::before{
       </div>
 
       <div class="epanel" id="panel-editor">
-        <p style="color:var(--muted);font-size:.84em;margin-bottom:12px">Your NLP-enhanced resume. Edit manually and it auto-saves.</p>
+        <p style="color:var(--muted);font-size:.84em;margin-bottom:12px">Your enhanced resume. Edit manually and it auto-saves.</p>
         <textarea class="resume-ta" id="resumeTa" placeholder="Resume text will appear here…"></textarea>
         <div class="char-bar">
           <span id="charCount">0 chars</span>
@@ -1007,9 +980,9 @@ body::before{
       </div>
 
       <div class="epanel" id="panel-compare">
-        <div id="impBadge" class="imp-badge" style="display:none">✅ NLP Improvements Applied</div>
+        <div id="impBadge" class="imp-badge" style="display:none">✅ Improvements Applied</div>
         <div class="changes-box" id="changesBox" style="display:none">
-          <strong>📋 Changes made by NLP engine:</strong>
+          <strong>📋 Changes made:</strong>
           <ul id="changesList"></ul>
         </div>
         <div class="diff-legend">
@@ -1018,7 +991,7 @@ body::before{
         </div>
         <div class="diff-grid">
           <div class="diff-panel bef"><h4>📄 Original Resume</h4><div class="diff-txt" id="diffBef"></div></div>
-          <div class="diff-panel aft"><h4>✨ NLP-Optimized Version</h4><div class="diff-txt" id="diffAft"></div></div>
+          <div class="diff-panel aft"><h4>✨ Optimized Version</h4><div class="diff-txt" id="diffAft"></div></div>
         </div>
       </div>
     </div>
@@ -1037,9 +1010,12 @@ body::before{
       </div>
       <div class="role-pred-header">
         <h3>🎯 Your 3 Predicted Career Paths</h3>
-        <p>Our ML model matched your resume to these roles. Each card has a <strong>tailored resume version</strong> — same skills from your resume, but with a rewritten summary/objective targeting that specific role. Preview it or download the PDF directly.</p>
+        <p>Our AI matched your resume to these roles. Each card has a <strong>tailored resume version</strong> — same skills from your resume, but with a rewritten summary/objective targeting that specific role. Preview it or download the PDF directly.</p>
       </div>
 
+      <div id="lowConfBanner" style="display:none;margin-bottom:16px;padding:14px 18px;background:#fff7e6;border:1.5px solid #f59e0b;border-radius:12px;color:#78350f;font-size:.88em;line-height:1.6">
+        ⚠️ <strong>Low confidence match.</strong> <span id="lowConfMsg"></span>
+      </div>
       <div class="role-pred-grid" id="rolePredGrid">
         <!-- Cards injected by JS -->
       </div>
@@ -1208,7 +1184,7 @@ function showErr(m) { const el = document.getElementById('errMsg'); el.textConte
 /* ---
    ANALYZE
 --- */
-const steps = ['Reading document…','Extracting text…','Running ATS checks…','Predicting career with ML…','Generating suggestions…'];
+const steps = ['Reading document…','Extracting text…','Running ATS checks…','Predicting career path…','Generating suggestions…'];
 let stepTimer;
 
 document.getElementById('analyzeBtn').addEventListener('click', async () => {
@@ -1232,7 +1208,26 @@ document.getElementById('analyzeBtn').addEventListener('click', async () => {
     const res  = await fetch(`${API}/upload-resume`, { method:'POST', body:fd });
     const data = await res.json();
     clearInterval(stepTimer);
-    if (!res.ok) throw new Error(data.error || 'Analysis failed');
+    if (!res.ok) {
+      if (data.name_mismatch) {
+        document.getElementById('loadCard').classList.remove('show');
+        document.getElementById('uploadCard').style.display = 'block';
+        const errDiv = document.getElementById('errMsg');
+        if (errDiv) {
+          errDiv.classList.add('show');
+          errDiv.innerHTML = `<div style="display:flex;align-items:flex-start;gap:12px;padding:16px 18px;background:#fef2f2;border:1.5px solid #fecaca;border-radius:14px;margin-top:12px;">
+            <span style="font-size:22px;flex-shrink:0;">🚫</span>
+            <div>
+              <div style="font-weight:800;color:#991b1b;font-size:14px;margin-bottom:5px;">Resume Name Mismatch</div>
+              <div style="color:#7f1d1d;font-size:13px;line-height:1.6;">${data.error}</div>
+              <div style="margin-top:8px;font-size:12px;color:#b91c1c;font-weight:600;">💡 The name at the top of your resume must match your account name exactly.</div>
+            </div>
+          </div>`;
+        }
+        return;
+      }
+      throw new Error(data.error || 'Analysis failed');
+    }
     document.getElementById('loadCard').classList.remove('show');
     showResults(data);
     document.getElementById('results').classList.add('show');
@@ -1335,7 +1330,7 @@ function setStatus() {
   const s = atsData.score;
   let icon, txt, sub;
   if (s >= 80)      { icon='🟢'; txt='ATS Ready';    sub='Excellent score!'; }
-  else if (s >= 60) { icon='🟡'; txt='Needs Work';   sub='Apply NLP fixes'; }
+  else if (s >= 60) { icon='🟡'; txt='Needs Work';   sub='Apply fixes below'; }
   else              { icon='🔴'; txt='Not ATS-Ready'; sub='Fix all issues'; }
   document.getElementById('sbStatus').textContent    = icon + ' ' + txt;
   document.getElementById('sbStatusSub').textContent = sub;
@@ -1434,7 +1429,7 @@ function renderATS(a) {
     banTxt = `✅ Your resume <strong>IS ATS-Friendly</strong> (${score}/100) — Excellent!`;
   } else if (score >= 60) {
     col='#f59e0b'; cls='fair'; banCls='warn';
-    banTxt = `⚠️ Your resume <strong>Needs Improvement</strong> (${score}/100) — apply NLP fixes below.`;
+    banTxt = `⚠️ Your resume <strong>Needs Improvement</strong> (${score}/100) — apply fixes below.`;
   } else {
     col='#ef4444'; cls='poor'; banCls='bad';
     banTxt = `❌ Resume is <strong>NOT ATS-Friendly</strong> (${score}/100) — fix all issues below.`;
@@ -1456,17 +1451,10 @@ function renderATS(a) {
     return `<div class="det-item"><strong>${fmtKey(k)}</strong><span style="color:${c}">${v}</span></div>`;
   }).join('');
 
-  if (a.issues?.length) {
-    document.getElementById('issuesSec').style.display = 'block';
-    document.getElementById('issuesList').innerHTML = a.issues.map(i =>
-      `<div class="issue-item"><span>⚠️</span><span>${i}</span></div>`).join('');
-  } else { document.getElementById('issuesSec').style.display = 'none'; }
-
-  if (a.suggestions?.length) {
-    document.getElementById('sugsSec').style.display = 'block';
-    document.getElementById('sugsList').innerHTML = a.suggestions.map(s =>
-      `<div class="sug-item"><span>💡</span><span>${s}</span></div>`).join('');
-  } else { document.getElementById('sugsSec').style.display = 'none'; }
+  // Issues and suggestions shown only in the Fix Issues tab (renderTips)
+  // Not shown separately above the editor
+  document.getElementById('issuesSec').style.display = 'none';
+  document.getElementById('sugsSec').style.display   = 'none';
 }
 
 /* ---
@@ -1492,6 +1480,17 @@ function setupRolePredictionCards(analysis) {
   window._rawRole  = analysis.top_3_roles[0][0];
   window._normRole = analysis.normalized_role;
 
+  // Show low confidence warning if model is unsure
+  const banner = document.getElementById('lowConfBanner');
+  const msgEl  = document.getElementById('lowConfMsg');
+  const currentScore = atsData?.score || 0;
+  if (banner && analysis.low_confidence && analysis.low_conf_message && currentScore < 80) {
+    msgEl.textContent = analysis.low_conf_message;
+    banner.style.display = 'block';
+  } else if (banner) {
+    banner.style.display = 'none';
+  }
+
   const grid = document.getElementById('rolePredGrid');
   const tops  = analysis.top_3_roles.slice(0, 3);
 
@@ -1509,9 +1508,9 @@ function setupRolePredictionCards(analysis) {
           <div class="rpc-icon">${icon}</div>
           <div class="rpc-role-name">${role}</div>
           <div class="rpc-conf-bar">
-            <div class="rpc-conf-fill" style="width:${pct}%"></div>
+            <div class="rpc-conf-fill" style="width:${isTop ? pct : '100'}%"></div>
           </div>
-          <div class="rpc-conf-label">${pct}% match confidence</div>
+          <div class="rpc-conf-label">${isTop ? pct + '% match confidence' : '🔗 Related Role'}</div>
         </div>
         <div class="rpc-body">
           <div class="rpc-summary-label">📝 Summary rewritten for this role:</div>
@@ -1543,7 +1542,7 @@ function setupRolePredictionCards(analysis) {
       <div class="role-dot"></div>
       <div class="role-opt-info">
         <div class="role-opt-name">${getRoleIcon(role)} ${role}</div>
-        <div class="role-opt-conf">${(prob*100).toFixed(1)}% match</div>
+        <div class="role-opt-conf">${i === 0 ? (prob*100).toFixed(1) + '% match' : '🔗 Related Role'}</div>
       </div>
     </label>`).join('');
 
@@ -1929,6 +1928,49 @@ function setupEditor(data) {
   resetApplyState();
 }
 
+function resetToOriginal() {
+  if (!origText) return;
+  if (!confirm('Reset to your original uploaded resume? All fixes will be lost.')) return;
+
+  // 1. Restore text
+  editText = origText;
+  const ta = document.getElementById('resumeTa');
+  if (ta) { ta.value = origText; updateCounts(origText); }
+
+  // 2. Hide reset bar
+  const rb = document.getElementById('resetOriginalBar');
+  if (rb) rb.style.display = 'none';
+
+  // 3. Full UI reset — same as setupEditor
+  resetApplyState();
+
+  // 4. Hide all progress/writing states explicitly
+  const aiWriting = document.getElementById('aiWriting');
+  if (aiWriting) aiWriting.classList.remove('show');
+  const aiFill = document.getElementById('aiFill');
+  if (aiFill) aiFill.style.width = '5%';
+  const aiStepLabel = document.getElementById('aiStepLabel');
+  if (aiStepLabel) aiStepLabel.textContent = 'Analyzing structure…';
+  const aiTipsDone = document.getElementById('aiTipsDone');
+  if (aiTipsDone) aiTipsDone.innerHTML = '';
+
+  // 5. Re-score with original text so tips reflect original resume
+  atsData.score = origScore;
+  renderTips({ ats_check: atsData });
+  animScore(origScore);
+
+  // 6. Hide improvements badge
+  const impBadge = document.getElementById('impBadge');
+  if (impBadge) impBadge.style.display = 'none';
+  const changesBox = document.getElementById('changesBox');
+  if (changesBox) changesBox.style.display = 'none';
+
+  // 7. Switch to Fix Issues tab
+  switchTab('tips');
+
+  toast('✅ Reset to your original resume', 'success');
+}
+
 function resetApplyState() {
   const btn = document.getElementById('applyBtn');
   btn.disabled    = false;
@@ -2134,7 +2176,7 @@ async function applyAllWithAI() {
 
   btn.disabled = true;
   btn.classList.remove('btn-ai-pulse');
-  btn.textContent = '⏳ ML Engine Running…';
+  btn.textContent = '⏳ Processing…';
   document.getElementById('okMsg').classList.remove('show');
   document.getElementById('progSteps').classList.remove('show');
   document.getElementById('appliedFixesWrap').style.display = 'none';
@@ -2155,7 +2197,7 @@ async function applyAllWithAI() {
   const suggs  = (atsData.suggestions || []);
   const role   = mlData?.predicted_role || 'Professional';
 
-  rtLog(`Starting ML pipeline — ${issues.length} issues + ${suggs.length} suggestions`, 'info');
+  rtLog(`Starting analysis — ${issues.length} issues + ${suggs.length} suggestions`, 'info');
 
   const aiSteps = [
     `Parsing resume structure…`,
@@ -2203,8 +2245,14 @@ async function applyAllWithAI() {
     }
 
     const apiData = await apiRes.json();
+    console.log('[DEBUG] claude-fix response:', JSON.stringify({
+      success: apiData.success,
+      predicted_score: apiData.predicted_score,
+      fixed_resume_length: apiData.fixed_resume?.length,
+      summary: apiData.summary
+    }));
     if (!apiData.success || !apiData.fixed_resume) {
-      throw new Error(apiData.error || 'ML pipeline returned no result');
+      throw new Error(apiData.error || 'Analysis returned no result');
     }
 
     const improved = apiData.fixed_resume;
@@ -2216,7 +2264,7 @@ async function applyAllWithAI() {
     }
 
     // Animate each fix one-by-one in the live feed + checklist
-    rtLog('ML pipeline complete ✓', 'done');
+    rtLog('Analysis complete ✓', 'done');
     const fixes = apiData.fixes || [];
     for (let i = 0; i < fixes.length; i++) {
       const f = fixes[i];
@@ -2262,7 +2310,7 @@ async function applyAllWithAI() {
     // Progress steps: save → re-score
     const pSteps = [
       { id: 'ps-save',  label: 'Saving enhanced resume' },
-      { id: 'ps-score', label: 'Re-scoring with ML ATS model' },
+      { id: 'ps-score', label: 'Re-scoring with ATS analysis' },
     ];
     document.getElementById('progList').innerHTML = pSteps.map(s =>
       `<div class="pstep" id="${s.id}"><div class="pdot"></div>${s.label}</div>`).join('');
@@ -2274,19 +2322,49 @@ async function applyAllWithAI() {
     setP('ps-save', 'done');
 
     setP('ps-score', 'run');
-    rtLog('Re-scoring with ML ATS model…', 'info');
-    const rescoreResult = await reScore(improved);
+    rtLog('Re-scoring resume…', 'info');
+
+    // Use predicted_score from claude-fix directly — avoids re-processing the fixed text
+    // Only call reScore if claude-fix didn't return a score
+    let rescoreResult, newScore, newIssues, newSuggs;
+    if (apiData.predicted_score && apiData.predicted_score > origScore) {
+      // Use the score already computed by the backend during fixing
+      rescoreResult = {
+        score       : apiData.predicted_score,
+        issues      : [],
+        suggestions : [],
+        overall     : apiData.predicted_score >= 90 ? 'Excellent — Highly ATS-friendly' : 'Good — ATS-friendly',
+        details     : {},
+        score_breakdown: {}
+      };
+      animScore(apiData.predicted_score);
+      atsData = rescoreResult;
+      newScore  = apiData.predicted_score;
+      newIssues = [];
+      newSuggs  = [];
+    } else {
+      // Fallback: call reScore if backend score not available or didn't improve
+      rescoreResult = await reScore(improved);
+      newScore  = rescoreResult.score;
+      newIssues = rescoreResult.issues || [];
+      newSuggs  = rescoreResult.suggestions || [];
+    }
+
     fill.style.width = '100%';
     setP('ps-score', 'done');
     document.getElementById('progSteps').classList.remove('show');
 
-    const newScore  = rescoreResult.score;
-    const newIssues = rescoreResult.issues || [];
-    const newSuggs  = rescoreResult.suggestions || [];
-
     // Animate score progress bar
+    const scoreDiff = newScore - origScore;
     startScoreRace(origScore, newScore);
-    rtLog(`Score: ${origScore} → ${newScore} (+${newScore - origScore} pts)`, 'done');
+    document.getElementById('sbScore').textContent = newScore;
+    const chEl = document.getElementById('sbScoreChange');
+    if (chEl) {
+      chEl.style.display = 'block';
+      chEl.textContent = scoreDiff > 0 ? `▲ +${scoreDiff} pts improved!` : '✅ Score maintained';
+      chEl.style.color = scoreDiff > 0 ? '#fff' : '#86efac';
+    }
+    rtLog(`Score: ${origScore} → ${newScore} (+${scoreDiff} pts)`, 'done');
     document.getElementById('rtFeedTitle').textContent = '✓ Fix Feed Complete';
     document.getElementById('rtPulseDot').style.animation = 'none';
     document.getElementById('rtPulseDot').style.background = '#10b981';
@@ -2365,7 +2443,7 @@ async function reScore(text) {
   try {
     const res  = await fetch(`${API}/analyze-resume`, {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ resume_text: text })
+      body: JSON.stringify({ resume_text: text, is_enhanced: true })
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Re-score failed');
@@ -2396,9 +2474,15 @@ async function reScore(text) {
 
       if (newS >= 80) {
         window.roleResumeCache = {};
+        // Hide low confidence banner when score is good
+        const lcBanner = document.getElementById('lowConfBanner');
+        if (lcBanner) lcBanner.style.display = 'none';
         setupRolePredictionCards(mlData);
         document.getElementById('rolePredSection').style.display = 'block';
         setUnlockCallout(newS, true);
+        // Update saveToDB with fresh score
+        atsData = data.ats_check;
+        saveToDB();
         bt.innerHTML = diff > 0
           ? `🎉 ATS score improved from <span class="score-badge">${origScore} → ${newS} &nbsp;▲ +${diff} pts</span> &nbsp;🎯 Role predictions unlocked!`
           : `✅ Score: <strong>${newS}/100</strong> — 🎯 Role predictions are now live!`;
@@ -2445,7 +2529,7 @@ function animScore(target) {
 --- */
 async function saveToDB() {
   const score = atsData?.score||0;
-  if (score < 80) { setDB('skip', `⚠️ Score ${score}/100 below 80 — Apply NLP improvements!`); return; }
+  if (score < 80) { setDB('skip', `Score ${score}/100 — reach 80+ to save`); return; }
   const {data, error} = await db.from('resumes').insert([{
     file_name:selFile?.name||'unknown', original_text:origText, edited_text:null,
     ats_score:score, ats_overall:atsData?.overall||'',
@@ -2553,38 +2637,70 @@ async function loadSubscription() {
     const sub  = d.subscription;
     const plan = (sub.subscription_plans && typeof sub.subscription_plans === 'object') ? sub.subscription_plans : {};
     const planName = plan.name || sub.plan_name || 'Free';
+
+    // Update global plan name
+    _currentPlanName = planName;
+
+    // Update hidden badge (legacy compat)
     const badge = document.getElementById('subBadge');
-    if (badge) {
-      const icons = { Free:'🆓', Pro:'⭐', Enterprise:'💎' };
-      badge.textContent = (icons[planName] || '📋') + ' ' + planName;
+    if (badge) { const icons = { Free:'🆓', Pro:'⭐', Enterprise:'💎' }; badge.textContent = (icons[planName] || '📋') + ' ' + planName; }
+
+    // Always update hidden data spans (used by profile drawer)
+    const rUsed = sub.resumes_used  || 0;
+    const mUsed = sub.mcq_used      || 0;
+    const rMax  = (plan.max_resumes   === -1 || plan.max_resumes   == null) ? 'Unlimited' : (plan.max_resumes   || 2);
+    const mMax  = (plan.max_mcq_tests === -1 || plan.max_mcq_tests == null) ? 'Unlimited' : (plan.max_mcq_tests || 1);
+
+    const elPlanName = document.getElementById('subPlanName');
+    const elRUsage   = document.getElementById('subResumeUsage');
+    const elMUsage   = document.getElementById('subMcqUsage');
+    const elExpiry   = document.getElementById('subExpiry');
+    if (elPlanName) elPlanName.textContent = planName;
+    if (elRUsage)   elRUsage.textContent   = rUsed + ' / ' + rMax;
+    if (elMUsage)   elMUsage.textContent   = mUsed + ' / ' + mMax;
+
+    const rPct = rMax === 'Unlimited' ? 0 : Math.min(100, (rUsed / Number(rMax)) * 100);
+    const mPct = mMax === 'Unlimited' ? 0 : Math.min(100, (mUsed / Number(mMax)) * 100);
+    const elRFill = document.getElementById('subResumeFill');
+    const elMFill = document.getElementById('subMcqFill');
+    if (elRFill) elRFill.style.width = rPct + '%';
+    if (elMFill) elMFill.style.width = mPct + '%';
+
+    if (sub.expires_at && elExpiry) {
+      elExpiry.textContent = 'Expires: ' + new Date(sub.expires_at).toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric'});
     }
-    const bar = document.getElementById('subStatusBar');
-    if (bar) {
-      bar.style.display = 'flex';
-      _currentPlanName = planName;
-      document.getElementById('subPlanName').textContent = planName;
-      const rUsed = sub.resumes_used  || 0;
-      const mUsed = sub.mcq_used      || 0;
-      const rMax  = (plan.max_resumes   === -1 || plan.max_resumes   == null) ? 'Unlimited' : (plan.max_resumes   || 2);
-      const mMax  = (plan.max_mcq_tests === -1 || plan.max_mcq_tests == null) ? 'Unlimited' : (plan.max_mcq_tests || 1);
-      document.getElementById('subResumeUsage').textContent = rUsed + ' / ' + rMax;
-      document.getElementById('subMcqUsage').textContent    = mUsed + ' / ' + mMax;
-      const rPct = rMax === 'Unlimited' ? 0 : Math.min(100, (rUsed / Number(rMax)) * 100);
-      const mPct = mMax === 'Unlimited' ? 0 : Math.min(100, (mUsed / Number(mMax)) * 100);
-      document.getElementById('subResumeFill').style.width = rPct + '%';
-      document.getElementById('subMcqFill').style.width    = mPct + '%';
-      if (sub.expires_at) {
-        document.getElementById('subExpiry').textContent =
-          'Expires: ' + new Date(sub.expires_at).toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric'});
-      }
-      const rLimit = plan.max_resumes;
-      if (rLimit !== -1 && rLimit != null && rUsed >= rLimit) {
-        document.getElementById('limitBanner').style.display = 'block';
-        document.getElementById('limitTitle').textContent = 'Resume Analysis Limit Reached';
-        document.getElementById('limitMsg').textContent = 'You have used all ' + rLimit + ' resume ' + (rLimit===1?'analysis':'analyses') + ' on your ' + planName + ' plan. Ask your admin to upgrade.';
-        document.getElementById('analyzeBtn').disabled = true;
-      }
+
+    // Populate email in profile drawer directly
+    const email = sub.email || sub.user_email || (d.user && d.user.email) || '';
+    if (email) {
+      const pdEmail = document.getElementById('pdEmail');
+      if (pdEmail) pdEmail.textContent = email;
+    } else {
+      try {
+        const { data: { session: sbSession } } = await db.auth.getSession();
+        const sbEmail = sbSession?.user?.email || '';
+        const pdEmail = document.getElementById('pdEmail');
+        if (pdEmail && sbEmail) pdEmail.textContent = sbEmail;
+        else if (pdEmail) pdEmail.textContent = '';
+      } catch(_) {}
     }
+
+    // Limit banner
+    const rLimit = plan.max_resumes;
+    if (rLimit !== -1 && rLimit != null && rUsed >= rLimit) {
+      const lb = document.getElementById('limitBanner');
+      if (lb) lb.style.display = 'block';
+      const lt = document.getElementById('limitTitle');
+      if (lt) lt.textContent = 'Resume Analysis Limit Reached';
+      const lm = document.getElementById('limitMsg');
+      if (lm) lm.textContent = 'You have used all ' + rLimit + ' resume ' + (rLimit===1?'analysis':'analyses') + ' on your ' + planName + ' plan. Ask your admin to upgrade.';
+      const ab = document.getElementById('analyzeBtn');
+      if (ab) ab.disabled = true;
+    }
+
+    // If drawer is open, refresh it now
+    if (document.getElementById('profileDrawer').classList.contains('open')) syncProfileDrawer();
+
   } catch(e) { console.warn('[subscription] error:', e); }
 }
 loadSubscription();
@@ -2788,12 +2904,96 @@ function openProfileDrawer() {
   document.getElementById('profileTrigger').classList.add('open');
   document.body.style.overflow = 'hidden';
   syncProfileDrawer();
+  // Also fetch fresh subscription data so drawer is always accurate
+  fetchAndPopulateDrawer();
 }
 function closeProfileDrawer() {
   document.getElementById('profileOverlay').classList.remove('show');
   document.getElementById('profileDrawer').classList.remove('open');
   document.getElementById('profileTrigger').classList.remove('open');
   document.body.style.overflow = '';
+}
+
+async function fetchAndPopulateDrawer() {
+  try {
+    const res = await fetch('/api/my-subscription', { credentials: 'include' });
+    if (!res.ok) return;
+    const d = await res.json();
+    if (!d.success || !d.subscription) return;
+    const sub  = d.subscription;
+    const plan = (sub.subscription_plans && typeof sub.subscription_plans === 'object') ? sub.subscription_plans : {};
+    const planName = plan.name || sub.plan_name || 'Free';
+    _currentPlanName = planName;
+
+    const rUsed = sub.resumes_used  || 0;
+    const mUsed = sub.mcq_used      || 0;
+    const rMax  = (plan.max_resumes   === -1 || plan.max_resumes   == null) ? 'Unlimited' : (plan.max_resumes   || 2);
+    const mMax  = (plan.max_mcq_tests === -1 || plan.max_mcq_tests == null) ? 'Unlimited' : (plan.max_mcq_tests || 1);
+    const rUsageText = rUsed + ' / ' + rMax;
+    const mUsageText = mUsed + ' / ' + mMax;
+
+    // Email — try API first, then Supabase auth session
+    const email = sub.email || sub.user_email || (d.user && d.user.email) || '';
+    if (email) {
+      const pdEmail = document.getElementById('pdEmail');
+      if (pdEmail) pdEmail.textContent = email;
+    } else {
+      // Fallback: get from Supabase auth
+      try {
+        const { data: { session: sbSession } } = await db.auth.getSession();
+        const sbEmail = sbSession?.user?.email || '';
+        const pdEmail = document.getElementById('pdEmail');
+        if (pdEmail && sbEmail) pdEmail.textContent = sbEmail;
+        else if (pdEmail) pdEmail.textContent = '';
+      } catch(_) {
+        const pdEmail = document.getElementById('pdEmail');
+        if (pdEmail) pdEmail.textContent = '';
+      }
+    }
+
+    // Plan badge & icons
+    const planIcons = { Free:'🆓', Pro:'⭐', Enterprise:'💎' };
+    const planIcon = planIcons[planName] || '📋';
+    const el = (id) => document.getElementById(id);
+    if (el('pdPlanBadge'))  el('pdPlanBadge').textContent  = planIcon + ' ' + planName + ' Plan';
+    if (el('pdPlanIcon'))   el('pdPlanIcon').textContent   = planIcon;
+    if (el('pdPlanName2'))  el('pdPlanName2').textContent  = planName;
+
+    // Stats tiles
+    if (el('pdResumesUsed')) el('pdResumesUsed').textContent = rUsed;
+    if (el('pdResumesMax'))  el('pdResumesMax').textContent  = 'of ' + rMax + ' available';
+    if (el('pdMcqUsed'))     el('pdMcqUsed').textContent     = mUsed;
+    if (el('pdMcqMax'))      el('pdMcqMax').textContent      = 'of ' + mMax + ' available';
+
+    // Usage counts
+    if (el('pdResumeCount')) el('pdResumeCount').textContent = rUsageText;
+    if (el('pdMcqCount'))    el('pdMcqCount').textContent    = mUsageText;
+
+    // Progress bars
+    const rPct = rMax === 'Unlimited' ? 0 : Math.min(100, (rUsed / Number(rMax)) * 100);
+    const mPct = mMax === 'Unlimited' ? 0 : Math.min(100, (mUsed / Number(mMax)) * 100);
+    const rBar = el('pdResumeBar'), mBar = el('pdMcqBar');
+    if (rBar) { rBar.style.width = rPct + '%'; rBar.className = 'pd-bar-fill' + (rPct >= 100 ? ' danger' : rPct >= 75 ? ' warn' : ''); }
+    if (mBar) { mBar.style.width = mPct + '%'; mBar.className = 'pd-bar-fill' + (mPct >= 100 ? ' danger' : mPct >= 75 ? ' warn' : ''); }
+
+    // Expiry
+    if (sub.expires_at) {
+      const exp = new Date(sub.expires_at).toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric'});
+      const exEl = el('pdExpiry2'); if (exEl) { exEl.textContent = 'Expires: ' + exp; exEl.style.display = 'block'; }
+    }
+
+    // Plan card colors
+    const planColors   = { Free:'linear-gradient(135deg,#eff6ff,#e0f2fe)', Pro:'linear-gradient(135deg,#ecfdf5,#d1fae5)', Enterprise:'linear-gradient(135deg,#fdf4ff,#ede9fe)' };
+    const planBorders  = { Free:'#bfdbfe', Pro:'#6ee7b7', Enterprise:'#c4b5fd' };
+    const planTextColors = { Free:'#1e40af', Pro:'#065f46', Enterprise:'#6d28d9' };
+    const pc = el('pdPlanCard');
+    if (pc) {
+      pc.style.background  = planColors[planName]   || planColors.Free;
+      pc.style.borderColor = planBorders[planName]  || planBorders.Free;
+      const pname = el('pdPlanName2'); if (pname) pname.style.color = planTextColors[planName] || planTextColors.Free;
+      const ptag  = pc.querySelector('.pd-plan-tag'); if (ptag) ptag.style.background = planTextColors[planName] || planTextColors.Free;
+    }
+  } catch(e) { console.warn('[drawer] fetch error:', e); }
 }
 
 function getInitials(name) {
@@ -2804,76 +3004,17 @@ function getInitials(name) {
 }
 
 function syncProfileDrawer() {
-  // username from navbar
   const userName = document.getElementById('navUser')?.textContent?.trim() || 'Candidate';
   const initials = getInitials(userName);
-  
-  // Update avatar with initials
+
   const pdAvatar = document.getElementById('pdAvatar');
   if (pdAvatar) { pdAvatar.textContent = initials; pdAvatar.style.fontSize = initials.length > 1 ? '.9em' : '1.3em'; }
-  
-  // Nav avatar initials too
+
   const navAv = document.getElementById('profileNavAvatar');
   if (navAv) { navAv.textContent = initials; navAv.style.fontSize = initials.length > 1 ? '.65em' : '.8em'; }
-  
+
   document.getElementById('pdName').textContent = userName;
 
-  // Get plan data from existing subscription state
-  const planName = _currentPlanName || 'Free';
-  const planIcons = { Free:'🆓', Pro:'⭐', Enterprise:'💎' };
-  const planIcon = planIcons[planName] || '📋';
-  
-  if (document.getElementById('pdPlanBadge')) document.getElementById('pdPlanBadge').textContent = planIcon + ' ' + planName + ' Plan';
-  if (document.getElementById('pdPlanIcon')) document.getElementById('pdPlanIcon').textContent = planIcon;
-  if (document.getElementById('pdPlanName2')) document.getElementById('pdPlanName2').textContent = planName;
-
-  // Plan card color
-  const planColors = { Free:'linear-gradient(135deg,#eff6ff,#e0f2fe)', Pro:'linear-gradient(135deg,#ecfdf5,#d1fae5)', Enterprise:'linear-gradient(135deg,#fdf4ff,#ede9fe)' };
-  const planBorders = { Free:'#bfdbfe', Pro:'#6ee7b7', Enterprise:'#c4b5fd' };
-  const planTextColors = { Free:'#1e40af', Pro:'#065f46', Enterprise:'#6d28d9' };
-  const pc = document.getElementById('pdPlanCard');
-  if (pc) {
-    pc.style.background = planColors[planName] || planColors.Free;
-    pc.style.borderColor = planBorders[planName] || planBorders.Free;
-    const pname = document.getElementById('pdPlanName2');
-    if (pname) pname.style.color = planTextColors[planName] || planTextColors.Free;
-    const ptag = pc.querySelector('.pd-plan-tag');
-    if (ptag) { ptag.style.background = planTextColors[planName] || planTextColors.Free; }
-  }
-
-  // Usage from existing DOM
-  const rUsageText = document.getElementById('subResumeUsage')?.textContent || '0 / —';
-  const mUsageText = document.getElementById('subMcqUsage')?.textContent || '0 / —';
-  const rParts = rUsageText.split('/').map(s => s.trim());
-  const mParts = mUsageText.split('/').map(s => s.trim());
-  const rUsed = parseInt(rParts[0]) || 0;
-  const mUsed = parseInt(mParts[0]) || 0;
-  const rMaxStr = rParts[1] || '—';
-  const mMaxStr = mParts[1] || '—';
-  const rMax = parseInt(rMaxStr) || 0;
-  const mMax = parseInt(mMaxStr) || 0;
-
-  if (document.getElementById('pdResumesUsed')) document.getElementById('pdResumesUsed').textContent = rUsed;
-  if (document.getElementById('pdResumesMax')) document.getElementById('pdResumesMax').textContent = 'of ' + rMaxStr + ' available';
-  if (document.getElementById('pdMcqUsed')) document.getElementById('pdMcqUsed').textContent = mUsed;
-  if (document.getElementById('pdMcqMax')) document.getElementById('pdMcqMax').textContent = 'of ' + mMaxStr + ' available';
-  if (document.getElementById('pdResumeCount')) document.getElementById('pdResumeCount').textContent = rUsageText;
-  if (document.getElementById('pdMcqCount')) document.getElementById('pdMcqCount').textContent = mUsageText;
-
-  // Progress bars
-  const rPct = rMax > 0 ? Math.min(100, (rUsed / rMax) * 100) : 0;
-  const mPct = mMax > 0 ? Math.min(100, (mUsed / mMax) * 100) : 0;
-  const rBar = document.getElementById('pdResumeBar');
-  const mBar = document.getElementById('pdMcqBar');
-  if (rBar) { rBar.style.width = rPct + '%'; rBar.className = 'pd-bar-fill' + (rPct >= 100 ? ' danger' : rPct >= 75 ? ' warn' : ''); }
-  if (mBar) { mBar.style.width = mPct + '%'; mBar.className = 'pd-bar-fill' + (mPct >= 100 ? ' danger' : mPct >= 75 ? ' warn' : ''); }
-
-  // Expiry
-  const expiryText = document.getElementById('subExpiry')?.textContent || '';
-  const exEl = document.getElementById('pdExpiry2');
-  if (exEl && expiryText) { exEl.textContent = expiryText; exEl.style.display = 'block'; }
-
-  // Load latest request status for drawer
   loadPdRequestStatus();
 }
 
@@ -2896,18 +3037,6 @@ async function loadPdRequestStatus() {
     el.innerHTML = '<strong>' + s.icon + ' ' + s.label + ':</strong> ' + latest.requested_plan_name + ' Plan' + (latest.admin_note ? ' · "' + latest.admin_note + '"' : '');
   } catch(e) {}
 }
-
-// Patch loadSubscription to also sync drawer when it updates
-const _origLoadSubscription = loadSubscription;
-window.loadSubscription = async function() {
-  await _origLoadSubscription();
-  if (document.getElementById('profileDrawer').classList.contains('open')) syncProfileDrawer();
-  // Also update navbar avatar with initials on load
-  const userName = document.getElementById('navUser')?.textContent?.trim() || 'Candidate';
-  const initials = getInitials(userName);
-  const navAv = document.getElementById('profileNavAvatar');
-  if (navAv) { navAv.textContent = initials; navAv.style.fontSize = initials.length > 1 ? '.65em' : '.8em'; }
-};
 
 // Initialize nav avatar on DOM ready
 document.addEventListener('DOMContentLoaded', () => {

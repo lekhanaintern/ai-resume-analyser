@@ -424,7 +424,7 @@
                 <span id="saveStatusText"></span>
             </div>
 
-            <div class="review-heading">📊 Detailed Review</div>
+            <div class="review-heading">❌ Questions You Got Wrong</div>
             <div id="reviewContainer"></div>
 
             <div class="controls">
@@ -677,25 +677,35 @@
             card.className  = 'question-card';
             const isCorrect = result.is_correct;
 
+            // Only show wrong questions — skip correct ones
+            if (isCorrect) return;
+
             card.innerHTML = `
                 <div class="question-number">Question ${index + 1}
-                    <span class="difficulty-badge ${isCorrect ? 'difficulty-easy' : 'difficulty-hard'}">${isCorrect ? '✅ CORRECT' : '❌ WRONG'}</span>
+                    <span class="difficulty-badge difficulty-hard">❌ WRONG</span>
                 </div>
                 <div class="question-text">${result.question}</div>
                 <div class="options">
                    ${result.options.map(opt => {
+                   // Highlight only the user's wrong answer in red — don't reveal correct answer
                    let cls = 'option';
-                   if (isCorrect && opt === result.correct_answer) cls += ' correct';
-                   else if (!isCorrect && opt === result.user_answer) cls += ' incorrect';
+                   if (opt === result.user_answer) cls += ' incorrect';
                    return `<div class="${cls}"><span>${opt}</span></div>`;
                 }).join('')}
                 </div>
-                ${result.explanation
-                    ? `<div class="explanation show"><strong>💡 Explanation:</strong> ${result.explanation}</div>`
-                    : (!isCorrect ? '<div class="explanation show"><strong>❌ Incorrect</strong> — Review this topic and try again next time!</div>' : '')
-                }`;
+                <div class="explanation show"><strong>❌ Your answer was incorrect.</strong> Review this topic and try again next time!</div>`;
             reviewContainer.appendChild(card);
         });
+
+        // If no wrong answers, show a congratulations message
+        if (reviewContainer.innerHTML === '') {
+            reviewContainer.innerHTML = `
+                <div class="question-card" style="text-align:center; padding: 36px;">
+                    <div style="font-size:3em; margin-bottom:12px;">🎉</div>
+                    <div style="font-size:1.1em; font-weight:700; color:#10b981;">Perfect Score! No wrong answers!</div>
+                    <div style="color:var(--muted); margin-top:8px; font-size:0.9em;">You got every question right. Excellent work!</div>
+                </div>`;
+        }
 
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }

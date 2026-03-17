@@ -5,16 +5,27 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from flask import Flask, jsonify, request, session, render_template, redirect, url_for
 from flask_cors import CORS
+from dotenv import load_dotenv
 from routes.auth import auth_bp
 from routes.subscriptions import subscriptions_bp
 from routes.resume import resume_bp
 from routes.mcq import mcq_bp
 from routes.admin import admin_bp
 
+load_dotenv()
+
 app = Flask(__name__, template_folder=os.path.join(os.path.dirname(__file__), 'templates'))
 CORS(app, supports_credentials=True)
 
-app.secret_key = 'resume-analyzer-secret-key-2026'
+# ── Secret key loaded from environment ───────────────────────────────────────
+_secret_key = os.getenv("FLASK_SECRET_KEY")
+if not _secret_key:
+    raise EnvironmentError(
+        "FLASK_SECRET_KEY is not set. Add it to your .env file. "
+        "Generate one with: python -c \"import secrets; print(secrets.token_hex(32))\""
+    )
+app.secret_key = _secret_key
+
 app.config['SESSION_COOKIE_SAMESITE']    = 'Lax'
 app.config['SESSION_COOKIE_HTTPONLY']    = True
 app.config['SESSION_COOKIE_SECURE']     = False
@@ -26,6 +37,11 @@ app.config['UPLOAD_EXTENSIONS']         = ['.pdf', '.docx']
 
 
 # ── PAGE ROUTES ───────────────────────────────────────────────────────────────
+
+@app.route('/terms')
+def terms_page():
+    return render_template('terms.html')
+
 
 @app.route('/login')
 def login_page():

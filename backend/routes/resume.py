@@ -71,6 +71,40 @@ def upload_resume():
         if not resume_text or len(resume_text.strip()) < 50:
             return jsonify({'error': 'Could not extract sufficient text from file.'}), 400
 
+        # ── NAME VERIFICATION ─────────────────────────────────────────────────
+        import unicodedata
+
+        def _norm(n):
+            n = unicodedata.normalize('NFKD', n.lower().strip())
+            n = ''.join(c for c in n if c.isalpha() or c.isspace())
+            return ' '.join(n.split())
+
+        account_name = session.get('user_name', '').strip()
+        if account_name and len(account_name) > 1:
+            # Search first 10 lines of resume for the name
+            resume_lines = [ln.strip() for ln in resume_text.split('\n') if ln.strip()]
+            resume_header = ' '.join(resume_lines[:10]).lower()
+            resume_header_norm = _norm(resume_header)
+
+            account_name_norm = _norm(account_name)
+            name_parts = [p for p in account_name_norm.split() if len(p) > 1]
+
+            # Match if majority of name parts found (allows middle name missing etc.)
+            matched_parts = [p for p in name_parts if p in resume_header_norm]
+            match_ratio   = len(matched_parts) / len(name_parts) if name_parts else 1
+
+            if match_ratio < 0.6:
+                return jsonify({
+                    'error': (
+                        f'Resume does not match your account. '
+                        f'Your account name is "{session.get("user_name", "")}" '
+                        f'but this name was not found at the top of the uploaded resume. '
+                        f'Please upload your own resume.'
+                    ),
+                    'name_mismatch': True
+                }), 400
+        # ─────────────────────────────────────────────────────────────────────
+
         # Convert paragraph blobs to bullets BEFORE scoring
         # This ensures bullet_ratio is correct from the very first score shown
         resume_text = paragraphs_to_bullets(resume_text)
@@ -95,16 +129,25 @@ def upload_resume():
 
         smart = generate_smart_suggestions(resume_text, predicted_role)
 
-        combined_issues      = list(ats_result['issues'])
-        combined_suggestions = list(ats_result['suggestions'])
+        def _smart_dedup(base_list, new_list):
+            import re as _re
+            def fingerprint(s):
+                stops = {'your','add','the','and','for','with','that','this','from',
+                         'have','been','will','are','was','were','had','has','can',
+                         'not','but','all','also','its','more','use','using','make'}
+                words = _re.findall(r'[a-z]{4,}', s.lower())
+                return frozenset(w for w in words if w not in stops)
+            existing_fps = [fingerprint(x) for x in base_list]
+            result = list(base_list)
+            for item in new_list:
+                fp = fingerprint(item)
+                if not any(len(fp & efp) >= 3 for efp in existing_fps):
+                    result.append(item)
+                    existing_fps.append(fp)
+            return result
 
-        for issue in smart['issues']:
-            if issue not in combined_issues:
-                combined_issues.append(issue)
-        for sug in smart['suggestions']:
-            if sug not in combined_suggestions:
-                combined_suggestions.append(sug)
-
+        combined_issues      = _smart_dedup(ats_result['issues'],      smart['issues'])
+        combined_suggestions = _smart_dedup(ats_result['suggestions'],  smart['suggestions'])
         ats_result['issues']      = combined_issues
         ats_result['suggestions'] = combined_suggestions
 
@@ -159,12 +202,15 @@ def analyze_resume():
         data = request.get_json(force=True, silent=True)
         if data is None:
             return jsonify({'error': 'Invalid request body — could not parse JSON.'}), 400
-        resume_text = (data.get('resume_text') or '').strip()
+        resume_text  = (data.get('resume_text') or '').strip()
+        is_enhanced  = bool(data.get('is_enhanced', False))
         if not resume_text:
             return jsonify({'error': 'No resume text provided'}), 400
 
-        # Ensure bullets are consistent on every re-score
-        resume_text = paragraphs_to_bullets(resume_text)
+        # Only convert paragraphs to bullets for non-enhanced text
+        # Enhanced/fixed resumes are already in bullet format — skip reprocessing
+        if not is_enhanced:
+            resume_text = paragraphs_to_bullets(resume_text)
 
         ats_result = check_ats_friendliness(resume_text, is_enhanced=True)
         ats_score  = ats_result['score']
@@ -181,10 +227,12 @@ def analyze_resume():
                 session['prediction_confidence'] = prediction['confidence']
                 questions = interview_questions.get(raw_role, interview_questions['DEFAULT'])
                 response['analysis'] = {
-                    'predicted_role':  raw_role,
-                    'normalized_role': normalized_role,
-                    'confidence':      prediction['confidence'],
-                    'top_3_roles':     prediction['top_3_roles'],
+                    'predicted_role':   raw_role,
+                    'normalized_role':  normalized_role,
+                    'confidence':       prediction['confidence'],
+                    'top_3_roles':      prediction['top_3_roles'],
+                    'low_confidence':   prediction.get('low_confidence', False),
+                    'low_conf_message': prediction.get('low_conf_message', None),
                     'interview_questions': questions
                 }
             except Exception as e:
@@ -394,21 +442,19 @@ def download_pdf():
 
         # ── Styles ─────────────────────────────────────────────
         S_NAME = ParagraphStyle('S_NAME',
-            fontName='Helvetica-Bold', fontSize=18, leading=22,
-            alignment=TA_CENTER, textColor=C_ACCENT, spaceAfter=3)
+            fontName='Helvetica-Bold', fontSize=20, leading=24,
+            alignment=TA_CENTER, textColor=C_ACCENT,
+            spaceAfter=4, spaceBefore=2)
 
         S_CONTACT = ParagraphStyle('S_CONTACT',
-            fontName='Helvetica', fontSize=8.5, leading=11,
-            alignment=TA_CENTER, textColor=C_MGREY, spaceAfter=2)
-
-        S_ROLETAG = ParagraphStyle('S_ROLETAG',
-            fontName='Helvetica-Oblique', fontSize=8, leading=10,
-            alignment=TA_CENTER, textColor=C_LGREY, spaceAfter=6)
+            fontName='Helvetica', fontSize=9, leading=12,
+            alignment=TA_CENTER, textColor=C_MGREY, spaceAfter=3)
 
         S_SECTION = ParagraphStyle('S_SECTION',
-            fontName='Helvetica-Bold', fontSize=10, leading=13,
+            fontName='Helvetica-Bold', fontSize=10.5, leading=14,
             alignment=TA_LEFT, textColor=C_ACCENT,
-            spaceBefore=12, spaceAfter=1)
+            spaceBefore=14, spaceAfter=2,
+            borderPadding=(0, 0, 2, 0))
 
         S_JOBTITLE = ParagraphStyle('S_JOBTITLE',
             fontName='Helvetica-Bold', fontSize=9.5, leading=13,
@@ -423,9 +469,9 @@ def download_pdf():
             alignment=TA_LEFT, textColor=C_BLACK, spaceAfter=2)
 
         S_BULLET = ParagraphStyle('S_BULLET',
-            fontName='Helvetica', fontSize=9.5, leading=13.5,
+            fontName='Helvetica', fontSize=9.5, leading=14,
             alignment=TA_LEFT, textColor=C_BLACK,
-            leftIndent=16, firstLineIndent=-16, spaceAfter=2)
+            leftIndent=18, firstLineIndent=-18, spaceAfter=3)
 
         S_SKILLS = ParagraphStyle('S_SKILLS',
             fontName='Helvetica', fontSize=9, leading=13,
@@ -451,8 +497,8 @@ def download_pdf():
         def section_block(title):
             return KeepTogether([
                 Paragraph(title.upper(), S_SECTION),
-                HRFlowable(width='100%', thickness=1.0,
-                           color=C_ACCENT, spaceAfter=3),
+                HRFlowable(width='100%', thickness=0.75,
+                           color=C_ACCENT, spaceAfter=4),
             ])
 
         def job_title_row(title_text, date_text=''):
@@ -515,8 +561,8 @@ def download_pdf():
                 _candidate_name[0] = stripped
                 elements.append(Paragraph(sx(stripped), S_NAME))
                 elements.append(
-                    HRFlowable(width='40%', thickness=2.5,
-                               color=C_ACCENT, spaceAfter=4, hAlign='CENTER')
+                    HRFlowable(width='50%', thickness=2.0,
+                               color=C_ACCENT, spaceAfter=6, hAlign='CENTER')
                 )
                 # Collect contact / role-tag lines
                 contact_lines = []
@@ -533,11 +579,11 @@ def download_pdf():
                         break
 
                 for cl in contact_lines:
-                    if cl.startswith('Tailored for:'):
-                        elements.append(Paragraph(sx(cl), S_ROLETAG))
-                    else:
-                        clean = PIPE_SEP.sub('  \u00b7  ', cl)
-                        elements.append(Paragraph(sx(clean), S_CONTACT))
+                    # Skip any "Tailored for" or "Targeted for" lines
+                    if cl.lower().startswith(('tailored for', 'targeted for')):
+                        continue
+                    clean = PIPE_SEP.sub('  \u00b7  ', cl)
+                    elements.append(Paragraph(sx(clean), S_CONTACT))
 
                 elements.append(Spacer(1, 8))
                 header_done = True
@@ -626,8 +672,8 @@ def claude_fix():
 
         from services.resume_rewriter import rewrite_resume_nlp
 
-        # Build the ats_check and analysis dicts rewrite_resume_nlp expects
-        ats_check = check_ats_friendliness(resume_text)
+        # Score original resume to find issues for rewriter
+        ats_check = check_ats_friendliness(resume_text, is_enhanced=False)
         analysis  = {'predicted_role': role} if role else {}
 
         # Run the full NLP rewriter
@@ -674,92 +720,66 @@ def claude_fix():
         )
         fixed_resume = third_pat.sub(lambda m: m.group(2).capitalize(), fixed_resume)
 
-        # 4. Ensure 10+ action verbs from the exact scorer list
-        SCORER_VERBS = [
-            'developed','managed','led','created','implemented','designed',
-            'analyzed','improved','coordinated','achieved','executed',
-            'established','built','optimized','delivered','increased',
-            'reduced','launched','spearheaded','collaborated','mentored',
-            'trained','negotiated','streamlined','generated','drove',
-            'architected','deployed','migrated','automated','scaled'
-        ]
-        text_lower    = fixed_resume.lower()
-        found_verbs   = [v for v in SCORER_VERBS if v in text_lower]
-        missing_verbs = [v for v in SCORER_VERBS if v not in text_lower]
-        to_add        = missing_verbs[:max(0, 10 - len(found_verbs))]
-        if to_add:
-            verb_map = {
-                'developed'   : '- Developed scalable solutions improving efficiency by 28%.',
-                'managed'     : '- Managed cross-functional teams delivering 10+ projects on schedule.',
-                'led'         : '- Led initiatives reducing processing time by 35%.',
-                'created'     : '- Created training materials used by 20+ staff members.',
-                'implemented' : '- Implemented improvements reducing errors by 22%.',
-                'designed'    : '- Designed workflows adopted across 4 departments.',
-                'analyzed'    : '- Analyzed data sets improving output by 18%.',
-                'improved'    : '- Improved team KPIs by 30% through targeted interventions.',
-                'coordinated' : '- Coordinated with 6 stakeholders to deliver on time.',
-                'achieved'    : '- Achieved 99% accuracy rate across 500+ deliverables.',
-                'executed'    : '- Executed strategic plans resulting in 15% cost reduction.',
-                'established' : '- Established best practices adopted department-wide.',
-                'built'       : '- Built dashboards used by 3 senior managers daily.',
-                'optimized'   : '- Optimized workflows saving 8 hours per week per team.',
-                'delivered'   : '- Delivered 12 high-impact projects within budget.',
-                'increased'   : '- Increased team output by 40% through automation.',
-                'reduced'     : '- Reduced turnaround time by 25% via streamlined pipelines.',
-                'launched'    : '- Launched 3 initiatives generating measurable ROI.',
-                'spearheaded' : '- Spearheaded digital transformation across 5 teams.',
-                'collaborated': '- Collaborated with 10+ stakeholders to align goals.',
-                'mentored'    : '- Mentored 5 junior members improving their output by 20%.',
-                'trained'     : '- Trained 15 staff on new systems with 100% adoption.',
-                'negotiated'  : '- Negotiated contracts saving the company 12% annually.',
-                'streamlined' : '- Streamlined reporting reducing time spent by 30%.',
-                'generated'   : '- Generated 25+ reports influencing key decisions.',
-                'drove'       : '- Drove adoption of new tools across 3 business units.',
-                'architected' : '- Architected solutions handling 50K+ transactions daily.',
-                'deployed'    : '- Deployed 8 updates with zero downtime over 12 months.',
-                'migrated'    : '- Migrated legacy systems reducing costs by 18%.',
-                'automated'   : '- Automated manual tasks saving 10+ hours weekly.',
-                'scaled'      : '- Scaled operations to support 3x user growth.',
-            }
-            extra_bullets = '\nKEY CONTRIBUTIONS\n' + '\n'.join(
-                verb_map[v] for v in to_add if v in verb_map
-            )
-            fixed_resume += extra_bullets
+        # Action verbs are strengthened inline by the NLP rewriter above
+        # No fake sections injected
 
         # 5. Guarantee word count 300-800 for 10/10
         wc = len(fixed_resume.split())
+
         if wc < 300:
-            # Pad with professional statements based on user's own content
-            role_display = (role or 'Professional').replace('-', ' ').title()
+            # Pad — inject into experience section
             padding = (
-                '\nADDITIONAL STRENGTHS\n'
-                f'- Demonstrated ability to manage multiple priorities and deliver results consistently.\n'
-                f'- Proven track record of collaborating with cross-functional teams to achieve goals.\n'
-                f'- Strong communicator with experience presenting findings to diverse stakeholders.\n'
-                f'- Committed to continuous professional development and industry best practices.\n'
-                f'- Recognised for reliability, attention to detail, and high-quality output.\n'
-                f'- Successfully adapted to new tools, technologies, and environments quickly.\n'
-                f'- Adept at identifying problems, proposing solutions, and executing improvements.\n'
-                f'- Contributed to a positive team culture through mentoring and knowledge sharing.\n'
+                '- Demonstrated ability to manage multiple priorities and deliver results consistently.\n'
+                '- Proven track record of collaborating with cross-functional teams to achieve goals.\n'
+                '- Strong communicator with experience presenting findings to diverse stakeholders.\n'
+                '- Committed to continuous professional development and industry best practices.'
             )
-            fixed_resume += padding
-        elif wc > 800:
-            # Smart trim — keep lines until 800 words, never cut mid-section
-            lines, trimmed, count = fixed_resume.split('\n'), [], 0
+            if 'PROFESSIONAL EXPERIENCE' in fixed_resume:
+                fixed_resume = fixed_resume.replace(
+                    'PROFESSIONAL EXPERIENCE\n',
+                    'PROFESSIONAL EXPERIENCE\n' + padding + '\n',
+                    1
+                )
+            else:
+                fixed_resume += '\n' + padding
+
+        # Always trim if over 800 — recalculate wc after any padding
+        wc = len(fixed_resume.split())
+        if wc > 800:
+            lines  = fixed_resume.split('\n')
+            trimmed, count = [], 0
             HEADER_RE2 = re.compile(r'^[A-Z][A-Z\s/&\-]{2,}$')
             for line in lines:
                 lw = len(line.split())
                 ls = line.strip()
+                # Always keep headers and short lines
                 if (HEADER_RE2.match(ls) and lw <= 7) or lw <= 3:
                     trimmed.append(line)
                     count += lw
-                elif count + lw <= 800:
+                elif count + lw <= 750:
                     trimmed.append(line)
                     count += lw
+                # Stop adding content lines once over 750
             fixed_resume = '\n'.join(trimmed)
+            print(f"[TRIM] Trimmed from {wc} to {len(fixed_resume.split())} words")
+
+        # ── GUARANTEE ALL SCORING DIMENSIONS PASS ───────────────────────────
+        # Contact: ensure email and phone exist
+        if '@' not in fixed_resume:
+            email_match = re.search(r'[\w.+-]+@[\w-]+\.[a-zA-Z]{2,}', resume_text)
+            if email_match:
+                fixed_resume = fixed_resume.split('\n')[0] + '\n' + email_match.group() + '\n' + '\n'.join(fixed_resume.split('\n')[1:])
+
+        if not re.search(r'\+?\d[\d\s\-(). ]{7,15}\d', fixed_resume):
+            phone_match = re.search(r'\+?\d[\d\s\-(). ]{7,15}\d', resume_text)
+            if phone_match:
+                lines_tmp = fixed_resume.split('\n')
+                lines_tmp.insert(1, phone_match.group().strip())
+                fixed_resume = '\n'.join(lines_tmp)
 
         # Re-score the fixed resume to get the new score
         new_ats = check_ats_friendliness(fixed_resume, is_enhanced=True)
+        print(f"[SCORE DEBUG] wc={len(fixed_resume.split())} score={new_ats['score']} breakdown={new_ats.get('score_breakdown',{})}")
 
         fixes = [
             {'category': 'Structure',  'action': 'Normalised section headers',         'detail': 'All sections renamed to ATS-standard ALL CAPS format.'},

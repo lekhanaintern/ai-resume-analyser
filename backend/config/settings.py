@@ -1,22 +1,22 @@
+import os
 import time as _time
 from supabase import create_client, Client
 from dotenv import load_dotenv
 
 load_dotenv()
 
-SUPABASE_URL = "https://kxqzncqubkzxdjqkmstq.supabase.co"
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
-# Anon key — normal DB operations
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4cXpuY3F1Ymt6eGRqcWttc3RxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE2NDg3MDksImV4cCI6MjA4NzIyNDcwOX0.82b2UA_f3BPpwwvymmcXqBiBxDCvC1EYf7nvryUefPI"
-
-# ── Email config for OTP sending (add these to your .env file) ──
-# EMAIL_ADDRESS  = your Gmail address      e.g. yourapp@gmail.com
-# EMAIL_PASSWORD = your Gmail App Password (NOT your real Gmail password)
-#   How to get App Password:
-#   Gmail → Settings → Security → 2-Step Verification → App Passwords → Generate
+if not SUPABASE_URL or not SUPABASE_KEY:
+    raise EnvironmentError(
+        "Missing required environment variables: SUPABASE_URL and SUPABASE_KEY. "
+        "Copy .env.example to .env and fill in the values."
+    )
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
+# ── Simple in-memory cache ──────────────────────────────────────────────────
 _stats_cache: dict = {}
 
 def _cache_get(key: str, ttl: int = 300):
