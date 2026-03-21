@@ -265,8 +265,8 @@
     .field input:focus { border-color: var(--border-focus); background: var(--indigo-light); box-shadow: 0 0 0 3px var(--indigo-glow); }
     .field input.err { border-color: var(--red); background: var(--red-pale); }
 
-    /* Two-col row for sign up */
-    .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    /* Single-col layout for sign up */
+    .field-row { display: grid; grid-template-columns: 1fr; gap: 0; }
 
     .toggle-pw { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 13px; color: var(--light); padding: 2px; }
     .toggle-pw:hover { color: var(--muted); }

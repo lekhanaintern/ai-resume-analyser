@@ -669,6 +669,12 @@
                 <span class="nav-icon">💳</span> Subscriptions
             </button>
         </div>
+        <div class="sidebar-section">
+            <div class="sidebar-label">Settings</div>
+            <button class="nav-item" onclick="showPage('email-config')">
+                <span class="nav-icon">📧</span> Email Configuration
+            </button>
+        </div>
     </aside>
 
     <!-- MAIN CONTENT -->
@@ -1248,6 +1254,144 @@ DATA-SCIENCE,What is pandas?,A library,A language,A framework,A database,A libra
             </div>
         </div>
 
+        <!-- ═══════════════════════════════════ EMAIL CONFIG ═══ -->
+        <div class="page-section" id="page-email-config">
+            <div class="page-header">
+                <div>
+                    <h2>📧 Email Configuration</h2>
+                    <p>Set up the Gmail account used to send OTP verification emails to your users</p>
+                </div>
+            </div>
+
+            <!-- Current Status Card -->
+            <div class="card" style="margin-bottom:20px;border-left:4px solid var(--primary);">
+                <div class="card-header" style="margin-bottom:10px;">
+                    <div>
+                        <div class="card-title">📬 Current Email Status</div>
+                        <div class="card-subtitle">The Gmail account currently configured for sending OTPs</div>
+                    </div>
+                    <span id="emailStatusBadge" class="badge badge-active" style="font-size:.82em;padding:5px 14px;">Checking...</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:#f8fafc;border-radius:10px;border:1px solid var(--border);">
+                    <span style="font-size:1.6em;">📨</span>
+                    <div>
+                        <div style="font-size:.78em;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px;">Configured Email</div>
+                        <div style="font-weight:700;color:var(--text);font-size:.95em;" id="currentEmailDisplay">Loading...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step-by-step Guide -->
+            <div class="card" style="margin-bottom:20px;background:linear-gradient(135deg,#f0f7ff,#e8f4fd);border:1.5px solid #93c5fd;">
+                <div style="font-size:1em;font-weight:800;color:#1e40af;margin-bottom:16px;">📋 How to Get Your Gmail App Password — Step by Step</div>
+
+                <div style="display:flex;flex-direction:column;gap:12px;">
+                    <div style="display:flex;align-items:flex-start;gap:14px;padding:12px 16px;background:#fff;border-radius:10px;border:1px solid #bfdbfe;">
+                        <div style="width:28px;height:28px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:.8em;font-weight:800;flex-shrink:0;">1</div>
+                        <div>
+                            <div style="font-weight:700;font-size:.88em;color:var(--text);margin-bottom:2px;">Go to your Google Account</div>
+                            <div style="font-size:.8em;color:var(--muted);">Open <a href="https://myaccount.google.com" target="_blank" style="color:var(--primary);font-weight:600;">myaccount.google.com</a> and sign in with the Gmail you want to use for sending OTPs.</div>
+                        </div>
+                    </div>
+                    <div style="display:flex;align-items:flex-start;gap:14px;padding:12px 16px;background:#fff;border-radius:10px;border:1px solid #bfdbfe;">
+                        <div style="width:28px;height:28px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:.8em;font-weight:800;flex-shrink:0;">2</div>
+                        <div>
+                            <div style="font-weight:700;font-size:.88em;color:var(--text);margin-bottom:2px;">Enable 2-Step Verification</div>
+                            <div style="font-size:.8em;color:var(--muted);">Go to <strong>Security</strong> → <strong>2-Step Verification</strong> → Turn it ON. This is required before you can create an App Password.</div>
+                        </div>
+                    </div>
+                    <div style="display:flex;align-items:flex-start;gap:14px;padding:12px 16px;background:#fff;border-radius:10px;border:1px solid #bfdbfe;">
+                        <div style="width:28px;height:28px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:.8em;font-weight:800;flex-shrink:0;">3</div>
+                        <div>
+                            <div style="font-weight:700;font-size:.88em;color:var(--text);margin-bottom:2px;">Create an App Password</div>
+                            <div style="font-size:.8em;color:var(--muted);">Go to <strong>Security</strong> → <strong>App Passwords</strong> (search for it if not visible) → Select App: <em>Mail</em> → Select Device: <em>Windows Computer</em> → Click <strong>Generate</strong>.</div>
+                        </div>
+                    </div>
+                    <div style="display:flex;align-items:flex-start;gap:14px;padding:12px 16px;background:#fff;border-radius:10px;border:1px solid #bfdbfe;">
+                        <div style="width:28px;height:28px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:.8em;font-weight:800;flex-shrink:0;">4</div>
+                        <div>
+                            <div style="font-weight:700;font-size:.88em;color:var(--text);margin-bottom:2px;">Copy the 16-character password</div>
+                            <div style="font-size:.8em;color:var(--muted);">Google will show a <strong>16-character password</strong> like <code style="background:#f1f5f9;padding:1px 6px;border-radius:4px;font-family:monospace;">xxxx xxxx xxxx xxxx</code>. Copy it — you'll paste it in the field below. <span style="color:#ef4444;font-weight:600;">Do NOT use your regular Gmail password.</span></div>
+                        </div>
+                    </div>
+                    <div style="display:flex;align-items:flex-start;gap:14px;padding:12px 16px;background:#f0fdf4;border-radius:10px;border:1px solid #86efac;">
+                        <div style="width:28px;height:28px;border-radius:50%;background:#10b981;color:#fff;display:flex;align-items:center;justify-content:center;font-size:.8em;font-weight:800;flex-shrink:0;">5</div>
+                        <div>
+                            <div style="font-weight:700;font-size:.88em;color:#065f46;margin-bottom:2px;">Paste below and Save</div>
+                            <div style="font-size:.8em;color:#047857;">Fill in your Gmail address and the App Password in the form below, then click Save. OTPs will immediately start sending from your Gmail.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Configuration Form -->
+            <div class="card" style="max-width:580px;">
+                <div class="card-header" style="margin-bottom:20px;">
+                    <div>
+                        <div class="card-title">⚙️ Update Email Settings</div>
+                        <div class="card-subtitle">Changes are saved to your .env file and take effect immediately</div>
+                    </div>
+                </div>
+
+                <div class="alert" id="emailConfigAlert"></div>
+
+                <div class="form-group" style="margin-bottom:16px;">
+                    <label style="display:block;font-size:.82em;font-weight:700;color:var(--text);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">
+                        📧 Gmail Address <span style="color:#ef4444;">*</span>
+                    </label>
+                    <input
+                        type="email"
+                        id="emailConfigAddress"
+                        placeholder="yourname@gmail.com"
+                        style="width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:.9em;font-family:inherit;outline:none;transition:border-color .2s;"
+                        onfocus="this.style.borderColor='var(--primary)'"
+                        onblur="this.style.borderColor='var(--border)'"
+                    />
+                    <div style="font-size:.76em;color:var(--muted);margin-top:5px;">Enter the Gmail address that will send OTP emails to your users.</div>
+                </div>
+
+                <div class="form-group" style="margin-bottom:24px;">
+                    <label style="display:block;font-size:.82em;font-weight:700;color:var(--text);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">
+                        🔑 Gmail App Password <span style="color:#ef4444;">*</span>
+                    </label>
+                    <div style="position:relative;">
+                        <input
+                            type="password"
+                            id="emailConfigPassword"
+                            placeholder="xxxx xxxx xxxx xxxx"
+                            style="width:100%;padding:11px 44px 11px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:.9em;font-family:monospace;outline:none;transition:border-color .2s;"
+                            onfocus="this.style.borderColor='var(--primary)'"
+                            onblur="this.style.borderColor='var(--border)'"
+                        />
+                        <button type="button"
+                            onclick="toggleEmailPw()"
+                            id="emailPwToggle"
+                            style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:1em;color:var(--muted);">
+                            👁️
+                        </button>
+                    </div>
+                    <div style="font-size:.76em;color:var(--muted);margin-top:5px;">This is the <strong>16-character App Password</strong> from Google — NOT your regular Gmail password.</div>
+                </div>
+
+                <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+                    <button class="btn-primary" onclick="saveEmailConfig()" id="saveEmailBtn">
+                        💾 Save Configuration
+                    </button>
+                    <button class="btn-sm" onclick="testEmailConfig()" id="testEmailBtn" style="padding:10px 18px;">
+                        🧪 Send Test Email
+                    </button>
+                    <div id="emailSaveSpinner" style="display:none;font-size:.82em;color:var(--muted);">
+                        <span style="animation:spin .8s linear infinite;display:inline-block;">⏳</span> Saving...
+                    </div>
+                </div>
+
+                <!-- Warning box -->
+                <div style="margin-top:18px;padding:12px 16px;background:#fffbeb;border:1.5px solid #fde68a;border-radius:10px;font-size:.8em;color:#78350f;line-height:1.6;">
+                    ⚠️ <strong>Security Note:</strong> Your App Password is stored in the <code style="background:#fef3c7;padding:1px 5px;border-radius:3px;">.env</code> file on your server. Never share this file publicly or commit it to GitHub. Add <code style="background:#fef3c7;padding:1px 5px;border-radius:3px;">.env</code> to your <code style="background:#fef3c7;padding:1px 5px;border-radius:3px;">.gitignore</code>.
+                </div>
+            </div>
+        </div>
+
     </main>
 </div>
 
@@ -1309,7 +1453,8 @@ function showPage(name) {
         name === 'bulk-upload'   ? 'Bulk Upload' :
         name === 'roles'         ? 'By Role' :
         name === 'results'       ? 'Test Results' :
-        name === 'subscriptions' ? 'Subscriptions' : ''
+        name === 'subscriptions' ? 'Subscriptions' :
+        name === 'email-config'  ? 'Email Configuration' : ''
     ));
     if (btn) btn.classList.add('active');
 
@@ -1318,6 +1463,7 @@ function showPage(name) {
     if (name === 'roles')         loadRoleGrid();
     if (name === 'results')       loadResults();
     if (name === 'subscriptions') loadSubscriptions();
+    if (name === 'email-config')  loadEmailConfig();
 }
 
 // ─── LOAD ALL (dashboard) — single API call ──────────────
@@ -2478,6 +2624,105 @@ async function saveEditPlan() {
 document.getElementById('editPlanModal').addEventListener('click', function(e) {
     if (e.target === this) closeEditPlanModal();
 });
+
+// ─── EMAIL CONFIGURATION ──────────────────────────────────
+async function loadEmailConfig() {
+    try {
+        const r = await api('/api/admin/email-config');
+        const badge = document.getElementById('emailStatusBadge');
+        const display = document.getElementById('currentEmailDisplay');
+        if (r.success) {
+            display.textContent = r.email || 'Not configured';
+            if (r.email) {
+                badge.textContent = '✅ Configured';
+                badge.className = 'badge badge-active';
+                document.getElementById('emailConfigAddress').value = r.email;
+            } else {
+                badge.textContent = '⚠️ Not Set';
+                badge.className = 'badge badge-inactive';
+            }
+        }
+    } catch(e) {
+        document.getElementById('currentEmailDisplay').textContent = 'Could not load';
+    }
+}
+
+function toggleEmailPw() {
+    const inp = document.getElementById('emailConfigPassword');
+    const btn = document.getElementById('emailPwToggle');
+    if (inp.type === 'password') {
+        inp.type = 'text';
+        btn.textContent = '🙈';
+    } else {
+        inp.type = 'password';
+        btn.textContent = '👁️';
+    }
+}
+
+async function saveEmailConfig() {
+    const email    = document.getElementById('emailConfigAddress').value.trim();
+    const password = document.getElementById('emailConfigPassword').value.trim();
+    const alertEl  = document.getElementById('emailConfigAlert');
+    const saveBtn  = document.getElementById('saveEmailBtn');
+    const spinner  = document.getElementById('emailSaveSpinner');
+
+    if (!email || !password) {
+        showAlert(alertEl, '⚠️ Both Gmail address and App Password are required.', 'error');
+        return;
+    }
+    if (!email.includes('@gmail.com')) {
+        showAlert(alertEl, '⚠️ Please enter a valid Gmail address (must end in @gmail.com).', 'error');
+        return;
+    }
+    if (password.replace(/\s/g,'').length < 16) {
+        showAlert(alertEl, '⚠️ App Password must be 16 characters. Make sure you copied it correctly.', 'error');
+        return;
+    }
+
+    saveBtn.disabled = true;
+    spinner.style.display = 'inline';
+
+    try {
+        const r = await api('/api/admin/email-config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
+        });
+        if (r.success) {
+            showAlert(alertEl, '✅ Email configuration saved successfully! OTPs will now send from ' + email, 'success');
+            document.getElementById('currentEmailDisplay').textContent = email;
+            document.getElementById('emailStatusBadge').textContent = '✅ Configured';
+            document.getElementById('emailStatusBadge').className = 'badge badge-active';
+            document.getElementById('emailConfigPassword').value = '';
+        } else {
+            showAlert(alertEl, '❌ ' + (r.error || 'Failed to save configuration.'), 'error');
+        }
+    } catch(e) {
+        showAlert(alertEl, '❌ Server error. Please try again.', 'error');
+    }
+
+    saveBtn.disabled = false;
+    spinner.style.display = 'none';
+}
+
+async function testEmailConfig() {
+    const alertEl = document.getElementById('emailConfigAlert');
+    const testBtn = document.getElementById('testEmailBtn');
+    testBtn.disabled = true;
+    testBtn.textContent = '⏳ Sending...';
+    try {
+        const r = await api('/api/admin/email-config/test', { method: 'POST' });
+        if (r.success) {
+            showAlert(alertEl, '✅ Test email sent to ' + r.sent_to + '! Check your inbox.', 'success');
+        } else {
+            showAlert(alertEl, '❌ Test failed: ' + (r.error || 'Unknown error'), 'error');
+        }
+    } catch(e) {
+        showAlert(alertEl, '❌ Could not send test email. Make sure configuration is saved first.', 'error');
+    }
+    testBtn.disabled = false;
+    testBtn.textContent = '🧪 Send Test Email';
+}
 </script>
 <!-- ═══════════════════ EDIT PLAN MODAL ═══════════════════ -->
 <div class="modal-overlay" id="editPlanModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;align-items:center;justify-content:center;">

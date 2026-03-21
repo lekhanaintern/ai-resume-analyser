@@ -164,7 +164,7 @@ body::before{
 .tip-label{font-weight:800;font-size:.72em;text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;display:block}
 .tip-check{font-size:1.2em;display:none;flex-shrink:0}
 
-.ai-bar{background:linear-gradient(135deg,#eff6ff,#e0f2fe);border:1.5px solid #93c5fd;border-radius:14px;padding:18px 20px;margin-top:18px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.ai-bar{background:linear-gradient(135deg,#eff6ff,#e0f2fe);border:1.5px solid #93c5fd;border-radius:14px;padding:18px 20px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
 .ai-bar p{color:#1e40af;font-size:.84em;font-weight:600;flex:1;line-height:1.5}
 .ai-bar p span{display:block;font-weight:400;font-size:.9em;opacity:.85;margin-top:2px}
 .btn-ai{padding:12px 26px;background:var(--grad);color:#fff;border:none;border-radius:10px;font-size:.88em;font-weight:800;cursor:pointer;font-family:inherit;transition:all .25s;white-space:nowrap;display:flex;align-items:center;gap:8px;position:relative;overflow:hidden}
@@ -482,6 +482,153 @@ body::before{
 .soon-tag{display:inline-block;background:#fef3c7;color:#92400e;border:1px solid #fde68a;padding:2px 10px;border-radius:20px;font-size:.7em;font-weight:700;margin-bottom:8px}
 
 .footer{text-align:center;color:var(--muted);font-size:.78em;margin-top:16px;padding-top:16px;border-top:1px solid var(--border)}
+
+/* ═══════════════════════════════════════════
+   RESULTS — SVG RING (kept for animation)
+═══════════════════════════════════════════ */
+.ats-ring-wrap{position:relative;width:130px;height:130px;margin:0 auto 14px}
+.ats-ring-svg{width:130px;height:130px;transform:rotate(-90deg)}
+.ats-ring-track{fill:none;stroke:#e2e8f0;stroke-width:10}
+.ats-ring-fill{fill:none;stroke-width:10;stroke-linecap:butt;transition:stroke-dashoffset 1.2s cubic-bezier(.4,0,.2,1),stroke .5s}
+.ats-ring-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.ats-ring-num{font-size:2.4em;font-weight:800;line-height:1}
+.ats-ring-sub{font-size:.62em;color:var(--muted);font-weight:600;margin-top:1px}
+
+/* det-item override for new style */
+.det-item-new{background:#fff;border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center;transition:box-shadow .2s}
+.det-item-new:hover{box-shadow:0 2px 12px rgba(67,97,238,.1)}
+.det-item-new strong{display:block;font-size:.7em;color:var(--p);margin-bottom:4px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+.det-item-new span{font-size:.84em;font-weight:600}
+
+/* ═══════════════════════════════════════════
+   ACCORDION — See Issues / Fix Issues
+═══════════════════════════════════════════ */
+.accordion-wrap{
+  display:flex;flex-direction:column;gap:14px;
+  margin-bottom:22px;
+}
+
+/* Accordion trigger button */
+.acc-btn{
+  width:100%;display:flex;align-items:center;justify-content:space-between;
+  padding:16px 22px;border:none;border-radius:16px;cursor:pointer;
+  font-family:'Plus Jakarta Sans',sans-serif;font-size:.95em;font-weight:700;
+  transition:all .25s cubic-bezier(.4,0,.2,1);
+  position:relative;overflow:hidden;
+}
+.acc-btn::before{
+  content:'';position:absolute;inset:0;
+  background:rgba(255,255,255,.18);
+  transform:translateX(-100%);
+  transition:transform .4s ease;
+}
+.acc-btn:hover::before{transform:translateX(100%)}
+
+/* Fix Issues button — purple-to-cyan */
+.acc-btn.fix-btn{
+  background:linear-gradient(135deg,#7c3aed 0%,var(--p) 50%,var(--acc) 100%);
+  color:#fff;
+  box-shadow:0 4px 20px rgba(124,58,237,.28);
+}
+.acc-btn.fix-btn:hover{
+  transform:translateY(-2px);
+  box-shadow:0 8px 28px rgba(124,58,237,.38);
+}
+.acc-btn.fix-btn.open{
+  border-radius:16px 16px 0 0;
+  box-shadow:0 4px 20px rgba(124,58,237,.22);
+}
+
+/* Left side of button */
+.acc-btn-left{display:flex;align-items:center;gap:12px}
+.acc-btn-icon{
+  width:36px;height:36px;border-radius:10px;
+  background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.3);
+  display:flex;align-items:center;justify-content:center;
+  font-size:1em;flex-shrink:0;
+}
+.acc-btn-label{display:flex;flex-direction:column;align-items:flex-start;gap:1px}
+.acc-btn-title{font-size:.95em;font-weight:800;letter-spacing:-.1px}
+.acc-btn-sub{font-size:.72em;font-weight:500;opacity:.8}
+
+/* Right side — count badge + chevron */
+.acc-btn-right{display:flex;align-items:center;gap:10px}
+.acc-count{
+  background:rgba(255,255,255,.25);border:1px solid rgba(255,255,255,.35);
+  padding:3px 11px;border-radius:20px;font-size:.75em;font-weight:800;
+  min-width:28px;text-align:center;
+}
+.acc-btn.open .acc-expand-pill{
+  background:rgba(255,255,255,.95);
+  border-color:rgba(255,255,255,.9);
+}
+.acc-btn.open .acc-expand-pill .acc-pill-text{ color:#7c3aed; }
+.acc-btn.open .acc-expand-pill .acc-pill-icon{ transform:rotate(180deg); filter:none; }
+
+/* Creative expand pill */
+.acc-expand-pill{
+  position:relative;
+  display:flex;align-items:center;gap:8px;
+  background:rgba(255,255,255,.15);
+  border:1.5px solid rgba(255,255,255,.4);
+  padding:10px 20px 10px 14px;
+  border-radius:50px;
+  font-size:.82em;font-weight:800;
+  color:#fff;
+  transition:all .3s cubic-bezier(.4,0,.2,1);
+  white-space:nowrap;
+  user-select:none;
+  overflow:hidden;
+}
+/* shimmer sweep */
+.acc-expand-pill::before{
+  content:'';
+  position:absolute;inset:0;
+  background:linear-gradient(105deg,transparent 40%,rgba(255,255,255,.25) 50%,transparent 60%);
+  transform:translateX(-100%);
+  transition:none;
+}
+.acc-btn:hover .acc-expand-pill::before{
+  transform:translateX(100%);
+  transition:transform .55s ease;
+}
+.acc-btn:hover .acc-expand-pill{
+  background:rgba(255,255,255,.28);
+  border-color:rgba(255,255,255,.7);
+  transform:scale(1.04);
+}
+.acc-pill-icon{
+  width:26px;height:26px;border-radius:50%;
+  background:rgba(255,255,255,.25);
+  display:flex;align-items:center;justify-content:center;
+  font-size:.85em;font-weight:900;
+  transition:transform .35s cubic-bezier(.4,0,.2,1);
+  flex-shrink:0;
+}
+.acc-pill-text{
+  font-size:.78em;font-weight:800;
+  letter-spacing:.6px;text-transform:uppercase;
+  transition:color .2s;
+}
+
+/* Accordion body */
+.acc-body{
+  display:none;
+  border:1px solid var(--border);border-top:none;
+  border-radius:0 0 16px 16px;
+  background:#fff;
+  overflow:hidden;
+  box-shadow:0 8px 32px rgba(67,97,238,.08);
+}
+.acc-body.open{
+  display:block;
+  animation:accOpen .28s cubic-bezier(.4,0,.2,1);
+}
+@keyframes accOpen{
+  from{opacity:0;transform:translateY(-8px)}
+  to{opacity:1;transform:translateY(0)}
+}
+.acc-body-inner{padding:22px}
 
 @media(max-width:700px){
   .role-pred-grid{grid-template-columns:1fr}
@@ -839,7 +986,7 @@ body::before{
   <!-- RESULTS -->
   <div class="results" id="results">
 
-    <!-- SUMMARY BANNER -->
+    <!-- ══ SUMMARY BANNER (original full-width style) ══ -->
     <div class="summary-banner" id="summaryBanner" style="display:none">
       <div class="sb-title">📊 Analysis Summary</div>
       <div class="sb-grid">
@@ -851,7 +998,7 @@ body::before{
         <div class="sb-tile">
           <div class="sb-tile-label">Predicted Role</div>
           <div class="sb-tile-val" style="font-size:1.1em;line-height:1.3" id="sbRole">—</div>
-          <div class="sb-tile-sub" id="sbConf">—</div>
+          <div class="sb-tile-sub" id="sbConf" style="display:none"></div>
         </div>
         <div class="sb-tile">
           <div class="sb-tile-label">Issues Found</div>
@@ -866,18 +1013,29 @@ body::before{
       </div>
     </div>
 
-    <!-- ATS SCORE CARD -->
+    <!-- ══ ATS SCORE CARD (original centered style with SVG ring) ══ -->
     <div class="card" id="atsCard">
       <div class="ats-banner" id="atsBanner"></div>
       <div class="ats-block" id="atsBlock">
-        <h2 style="font-size:.85em;font-weight:700;margin-bottom:16px;color:var(--muted)">ATS FRIENDLINESS SCORE</h2>
-        <div class="score-ring" id="scoreRing">
-          <div class="score-num" id="scoreNum">—</div>
-          <div class="score-lbl">out of 100</div>
+        <h2 style="font-size:.85em;font-weight:700;margin-bottom:16px;color:var(--muted);text-align:center;letter-spacing:.8px;text-transform:uppercase">ATS Friendliness Score</h2>
+
+        <!-- SVG Ring (replaces old conic-gradient ring) -->
+        <div class="ats-ring-wrap">
+          <svg class="ats-ring-svg" viewBox="0 0 130 130">
+            <circle class="ats-ring-track" cx="65" cy="65" r="50"/>
+            <circle class="ats-ring-fill" id="atsRingFill" cx="65" cy="65" r="50"
+              stroke-dasharray="314.16" stroke-dashoffset="314.16" stroke="#4361ee"/>
+          </svg>
+          <div class="ats-ring-center">
+            <div class="ats-ring-num" id="scoreNum">—</div>
+            <div class="ats-ring-sub">out of 100</div>
+          </div>
         </div>
-        <div class="ats-overall" id="atsOverall"></div>
+
+        <div class="ats-overall" id="atsOverall" style="text-align:center;margin-bottom:16px"></div>
         <div class="det-grid" id="detGrid"></div>
       </div>
+
       <div class="rescore-load" id="rescoreLoad">
         <div class="mini-spin"></div>
         <span>Re-analyzing enhanced resume…</span>
@@ -886,20 +1044,44 @@ body::before{
         <p id="rescoreTxt"></p>
       </div>
       <div class="db-tag" id="dbTag"><div class="db-dot"></div><span id="dbTxt"></span></div>
-      <!-- Issues and Suggestions only in Editor Fix Issues tab -->
+
+      <!-- hidden legacy containers — JS populates these -->
       <div id="issuesSec" style="display:none!important"><div id="issuesList"></div></div>
-      <div id="sugsSec" style="display:none!important"><div id="sugsList"></div></div>
+      <div id="sugsSec"   style="display:none!important"><div id="sugsList"></div></div>
+
+      <!-- hidden legacy score-ring kept so JS refs don't break -->
+      <div id="scoreRing" style="display:none"></div>
     </div>
 
-    <!-- EDITOR CARD -->
-    <div class="editor-card" id="editorCard" style="display:none">
-      <div class="editor-head">
-        <div class="sec-head">✏️ Resume Editor &amp; Optimizer</div>
-      </div>
-      <div class="editor-tabs">
-        <button class="etab active" onclick="switchTab('tips')">💡 Fix Issues</button>
-        <button class="etab" onclick="switchTab('editor')">✏️ Edit</button>
-      </div>
+    <!-- ══ ACCORDION SECTION ══ -->
+    <div id="issuesTabWrap" style="display:none">
+      <div class="accordion-wrap">
+
+        <!-- ── ACCORDION: FIX ISSUES ── -->
+        <div class="acc-item" id="acc-fix">
+          <button class="acc-btn fix-btn" id="accBtn-fix" onclick="toggleAccordion('fix')">
+            <div class="acc-btn-left">
+              <div class="acc-btn-icon">🔧</div>
+              <div class="acc-btn-label">
+                <span class="acc-btn-title">Fix Issues</span>
+                <span class="acc-btn-sub">AI-powered fixes, editor &amp; score optimizer</span>
+              </div>
+            </div>
+            <div class="acc-btn-right">
+              <div class="acc-expand-pill" id="accPill-fix">
+                <div class="acc-pill-icon">▼</div>
+                <span class="acc-pill-text">Expand</span>
+              </div>
+            </div>
+          </button>
+          <div class="acc-body" id="accBody-fix">
+            <div class="acc-body-inner" style="padding:0">
+              <!-- Editor card lives here -->
+              <div class="editor-card" id="editorCard" style="margin-bottom:0;border:none;box-shadow:none;border-radius:0">
+                <div class="editor-tabs">
+                  <button class="etab active" onclick="switchTab('tips')">💡 Fix Issues</button>
+                  <button class="etab" onclick="switchTab('editor')">✏️ Edit Resume</button>
+                </div>
 
       <div class="epanel active" id="panel-tips">
         <!-- ADVANCED ISSUE ANALYSIS HEADER -->
@@ -937,12 +1119,6 @@ body::before{
         </div>
 
         <div id="tipsList"></div>
-
-        <div class="ai-bar" id="aiBar">
-          <p>⚡ <strong>Apply All Fixes Automatically</strong>
-          <span>Our engine reads every issue, applies targeted fixes in real-time, shows each change, then re-scores to push toward 100 — 100% free, no API needed</span></p>
-          <button class="btn-ai btn-ai-pulse" id="applyBtn" onclick="applyAllWithAI()">⚡ Apply All Fixes</button>
-        </div>
 
         <div class="ai-writing" id="aiWriting">
           <div class="ai-write-icon">🤖</div>
@@ -996,6 +1172,22 @@ body::before{
       </div>
     </div>
 
+        </div><!-- /editor-card -->
+              </div><!-- /acc-body-inner -->
+            </div><!-- /accBody-fix -->
+          </div><!-- /acc-item fix -->
+
+      </div><!-- /accordion-wrap -->
+
+      <!-- ⚡ APPLY ALL FIXES — always visible below Fix Issues button -->
+      <div class="ai-bar" id="aiBar" style="margin-top:14px;display:none">
+        <p>⚡ <strong>Apply All Fixes Automatically</strong>
+        <span>Our engine reads every issue, applies targeted fixes in real-time, shows each change, then re-scores to push toward 100 — 100% free, no API needed</span></p>
+        <button class="btn-ai btn-ai-pulse" id="applyBtn" onclick="applyAllWithAI()">⚡ Apply All Fixes</button>
+      </div>
+
+    </div><!-- /issuesTabWrap -->
+
     <!-- 
          3 ROLE PREDICTION CARDS — NEW FEATURE
      -->
@@ -1021,7 +1213,7 @@ body::before{
       </div>
 
       <div class="rpc-confirm-row">
-        <div class="rpc-confirm-label">Select your preferred role for the MCQ Mock Interview:</div>
+        <div class="rpc-confirm-label">Select your preferred role for the Mock Interview:</div>
         <div class="role-opts" id="roleOpts"></div>
         <button class="btn-confirm" id="confirmBtn" onclick="confirmRole()" disabled>✅ Confirm Role &amp; Prepare for Interview</button>
       </div>
@@ -1154,9 +1346,65 @@ const roleResumeCache = {};
 let modalCurrentRole = '';
 let modalCurrentText = '';
 
-/* ---
+/* ═══════════════════════════════════════════
+   ACCORDION — See Issues / Fix Issues
+═══════════════════════════════════════════ */
+function toggleAccordion(id) {
+  const btn  = document.getElementById('accBtn-'  + id);
+  const body = document.getElementById('accBody-' + id);
+  const pill = document.getElementById('accPill-' + id);
+  if (!btn || !body) return;
+  const isOpen = btn.classList.contains('open');
+  if (isOpen) {
+    btn.classList.remove('open');
+    body.classList.remove('open');
+    if (pill) {
+      pill.querySelector('.acc-pill-text').textContent = 'Expand';
+      pill.querySelector('.acc-pill-icon').style.transform = 'rotate(0deg)';
+    }
+  } else {
+    btn.classList.add('open');
+    body.classList.add('open');
+    if (pill) {
+      pill.querySelector('.acc-pill-text').textContent = 'Collapse';
+      pill.querySelector('.acc-pill-icon').style.transform = 'rotate(180deg)';
+    }
+  }
+}
+
+/* kept for backward compat — no-op now */
+function switchResultsTab() {}
+
+/* ATS Ring (SVG) animation */
+function animateAtsRing(score) {
+  const fill = document.getElementById('atsRingFill');
+  if (!fill) return;
+  const circumference = 314.16; // 2 * π * 50
+  const pct    = Math.min(100, Math.max(0, score)) / 100;
+  const offset = circumference - pct * circumference;
+  const color  = score >= 80 ? '#10b981' : score >= 60 ? '#4361ee' : score >= 40 ? '#f59e0b' : '#ef4444';
+  fill.setAttribute('stroke-dasharray',  circumference);
+  fill.style.stroke = color;
+  // Force reflow so transition fires correctly
+  fill.getBoundingClientRect();
+  setTimeout(() => { fill.style.strokeDashoffset = offset; }, 60);
+}
+
+/* populateIssuesPanel — See Issues accordion removed, no-op */
+function populateIssuesPanel() {}
+
+/* Show the issues+fix section and trigger ring animation */
+function revealResultsUI(score) {
+  document.getElementById('issuesTabWrap').style.display = 'block';
+  const ab = document.getElementById('aiBar');
+  if (ab) ab.style.display = 'flex';
+  animateAtsRing(score);
+  setTimeout(populateIssuesPanel, 400);
+}
+
+/* ═══════════════════════════════════════════
    UPLOAD
---- */
+═══════════════════════════════════════════ */
 const zone = document.getElementById('uploadZone');
 const fInp = document.getElementById('fileInput');
 zone.addEventListener('click', (e) => { if (e.target !== fInp) fInp.click(); });
@@ -1302,16 +1550,17 @@ function showResults(data) {
   setStatus();
   if (mlData?.predicted_role) {
     document.getElementById('sbRole').textContent = mlData.predicted_role;
-    document.getElementById('sbConf').textContent = `${(mlData.confidence*100).toFixed(1)}% confidence`;
+    document.getElementById('sbConf').textContent = '';
   } else {
     document.getElementById('sbRole').textContent = 'Needs more detail';
-    document.getElementById('sbConf').textContent = mlData?.message || '';
+    document.getElementById('sbConf').textContent = '';
   }
   document.getElementById('summaryBanner').style.display = 'block';
 
   renderATS(atsData);
   renderScoreBreakdown(atsData);
   setupEditor(data);
+  revealResultsUI(origScore);
 
   if (mlData?.predicted_role) {
     setupRolePredictionCards(mlData);
@@ -1339,75 +1588,10 @@ function setStatus() {
 /* ---
    SCORE BREAKDOWN PANEL
 --- */
+/* Score Breakdown card removed from UI — stubbed to no-op */
 function renderScoreBreakdown(atsData) {
-  const breakdown = atsData.score_breakdown || {};
-  const score     = atsData.score || 0;
-  const card      = document.getElementById('scoreBreakdownCard');
-  const grid      = document.getElementById('scoreBreakdownGrid');
-  if (!card || !grid || Object.keys(breakdown).length === 0) return;
-
-  const DIM_META = {
-    content_length  : { label:'Word Count',         max:10, icon:'📝' },
-    contact_info    : { label:'Contact Info',        max:10, icon:'📬' },
-    sections        : { label:'Key Sections',        max:20, icon:'🗂️' },
-    action_verbs    : { label:'Action Verbs',        max:10, icon:'💪' },
-    paragraph_format: { label:'Bullet Format',       max:18, icon:'📋' },
-    graphics_charts : { label:'No Graphics',         max:15, icon:'🖼️' },
-    writing_style   : { label:'Writing Style',       max:7,  icon:'✍️' },
-    quantification  : { label:'Quantified Results',  max:5,  icon:'📊' },
-    special_chars   : { label:'Clean Formatting',    max:5,  icon:'✅' },
-  };
-
-  grid.innerHTML = Object.entries(DIM_META).map(([key, meta]) => {
-    const got = breakdown[key] ?? 0;
-    const pct = Math.round((got / meta.max) * 100);
-    const col = pct >= 80 ? '#10b981' : pct >= 50 ? '#f59e0b' : '#ef4444';
-    const bg  = pct >= 80 ? '#f0fdf4' : pct >= 50 ? '#fffbeb' : '#fef2f2';
-    return `
-      <div style="background:${bg};border-radius:10px;padding:12px 14px;border:1px solid ${col}30">
-        <div style="font-size:.7em;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">${meta.icon} ${meta.label}</div>
-        <div style="display:flex;align-items:baseline;gap:4px;margin-bottom:6px">
-          <span style="font-size:1.4em;font-weight:800;color:${col}">${got}</span>
-          <span style="font-size:.78em;color:#94a3b8">/ ${meta.max}</span>
-        </div>
-        <div style="height:5px;background:#e2e8f0;border-radius:3px;overflow:hidden">
-          <div style="height:100%;width:${pct}%;background:${col};border-radius:3px;transition:width 1s ease"></div>
-        </div>
-      </div>`;
-  }).join('');
-
-  card.style.display = 'block';
-
-  // Show tip if score < 90
-  const tipEl = document.getElementById('scoreBreakdownTip');
-  if (score < 90 && tipEl) {
-    // Find lowest-scoring dimension
-    let lowestKey = null, lowestPct = 101;
-    for (const [key, meta] of Object.entries(DIM_META)) {
-      const got = breakdown[key] ?? 0;
-      const pct = Math.round((got / meta.max) * 100);
-      if (pct < lowestPct) { lowestPct = pct; lowestKey = key; }
-    }
-    const tips = {
-      content_length  : '📝 Tip: Aim for 300-800 words for maximum length score (10/10).',
-      contact_info    : '📬 Tip: Add email + phone + LinkedIn for full contact score (10/10).',
-      sections        : '🗂️ Tip: Ensure Summary, Skills, Experience and Education are all present (20/20).',
-      action_verbs    : '💪 Tip: Use 10+ action verbs (developed, managed, led…) for full verb score (10/10).',
-      paragraph_format: '📋 Tip: Convert all text to bullet points — bullet ratio > 30% gives 18/18.',
-
-      writing_style   : '✍️ Tip: Avoid "he/she/they" — use first-person implied style for 7/7.',
-      quantification  : '📊 Tip: Add 8+ numbers/percentages (e.g. "30% increase") for 5/5.',
-      special_chars   : '✅ Tip: Remove all special characters and symbols for clean formatting (5/5).',
-      graphics_charts : '🖼️ Tip: Remove all images, skill bars, charts and graphics — plain text resumes score 15/15.',
-    };
-    if (lowestKey && tips[lowestKey]) {
-      tipEl.textContent = `🎯 Biggest opportunity: ${tips[lowestKey]}`;
-      tipEl.style.display = 'block';
-    }
-  } else if (tipEl) {
-    tipEl.textContent = '🏆 All dimensions scoring well! Your resume is fully ATS-optimized.';
-    tipEl.style.display = 'block';
-  }
+  const card = document.getElementById('scoreBreakdownCard');
+  if (card) card.style.display = 'none';
 }
 
 /* ---
@@ -1415,14 +1599,12 @@ function renderScoreBreakdown(atsData) {
 --- */
 function renderATS(a) {
   const score = a.score;
-  const ring  = document.getElementById('scoreRing');
   const num   = document.getElementById('scoreNum');
   const over  = document.getElementById('atsOverall');
   const blk   = document.getElementById('atsBlock');
   const ban   = document.getElementById('atsBanner');
 
   num.textContent = score;
-  const pct = `${score}%`;
   let col, cls, banCls, banTxt;
   if (score >= 80) {
     col='#10b981'; cls='excellent'; banCls='good';
@@ -1434,25 +1616,31 @@ function renderATS(a) {
     col='#ef4444'; cls='poor'; banCls='bad';
     banTxt = `❌ Resume is <strong>NOT ATS-Friendly</strong> (${score}/100) — fix all issues below.`;
   }
-  ring.style.setProperty('--ring-color', col);
-  ring.style.setProperty('--ring-pct',   pct);
   num.style.color  = col;
-  blk.className    = 'ats-block ' + cls;
+  if (blk) blk.className = 'ats-block ' + cls;
   ban.className    = 'ats-banner ' + banCls;
   ban.innerHTML    = banTxt;
   over.textContent = a.overall || '';
   over.style.color = col;
 
+  // Render detail grid — color based on overall score + item text
   document.getElementById('detGrid').innerHTML = Object.entries(a.details||{}).map(([k,v]) => {
     const val = String(v).toLowerCase();
-    let c = '#10b981';
-    if (['poor','incomplete','detected','not','complex','multi-column','too long','risk'].some(w => val.includes(w))) c = '#ef4444';
-    else if (['fair','possible','average'].some(w => val.includes(w))) c = '#f59e0b';
+    let c = '#10b981'; // default green
+    // Only show orange/red if the overall score is below 80
+    if (score < 80) {
+      if (['poor','incomplete','detected','not detected','complex','multi-column','too long','risk'].some(w => val.includes(w))) c = '#ef4444';
+      else if (['fair','possible','average'].some(w => val.includes(w))) c = '#f59e0b';
+    } else if (score < 60) {
+      if (['fair','possible','average'].some(w => val.includes(w))) c = '#f59e0b';
+    }
     return `<div class="det-item"><strong>${fmtKey(k)}</strong><span style="color:${c}">${v}</span></div>`;
   }).join('');
 
-  // Issues and suggestions shown only in the Fix Issues tab (renderTips)
-  // Not shown separately above the editor
+  // Animate SVG ring
+  animateAtsRing(score);
+
+  // Issues hidden — shown via accordion
   document.getElementById('issuesSec').style.display = 'none';
   document.getElementById('sugsSec').style.display   = 'none';
 }
@@ -1507,10 +1695,6 @@ function setupRolePredictionCards(analysis) {
           ${isTop ? '<div class="rpc-best-tag">Best Match</div>' : ''}
           <div class="rpc-icon">${icon}</div>
           <div class="rpc-role-name">${role}</div>
-          <div class="rpc-conf-bar">
-            <div class="rpc-conf-fill" style="width:${isTop ? pct : '100'}%"></div>
-          </div>
-          <div class="rpc-conf-label">${isTop ? pct + '% match confidence' : '🔗 Related Role'}</div>
         </div>
         <div class="rpc-body">
           <div class="rpc-summary-label">📝 Summary rewritten for this role:</div>
@@ -1542,7 +1726,6 @@ function setupRolePredictionCards(analysis) {
       <div class="role-dot"></div>
       <div class="role-opt-info">
         <div class="role-opt-name">${getRoleIcon(role)} ${role}</div>
-        <div class="role-opt-conf">${i === 0 ? (prob*100).toFixed(1) + '% match' : '🔗 Related Role'}</div>
       </div>
     </label>`).join('');
 
@@ -1922,7 +2105,7 @@ function setupEditor(data) {
   document.getElementById('diffBef').textContent = origText;
   document.getElementById('diffAft').textContent = origText;
   renderTips(data);
-  document.getElementById('editorCard').style.display = 'block';
+  // editorCard is always visible inside the Fix Issues tab — no display toggle needed
   document.getElementById('impBadge').style.display   = 'none';
   document.getElementById('changesBox').style.display = 'none';
   resetApplyState();
@@ -2357,6 +2540,7 @@ async function applyAllWithAI() {
     // Animate score progress bar
     const scoreDiff = newScore - origScore;
     startScoreRace(origScore, newScore);
+    animateAtsRing(newScore); // ← update SVG ring with new score
     document.getElementById('sbScore').textContent = newScore;
     const chEl = document.getElementById('sbScoreChange');
     if (chEl) {
@@ -2409,6 +2593,7 @@ function showPerfectBanner(score) {
   document.getElementById('tipsList').innerHTML        = '';
   document.getElementById('scoreUnlockCallout').style.display = 'none';
   animScore(score);
+  animateAtsRing(score); // ← ensure ring shows perfect full circle
 
   const panel = document.getElementById('panel-tips');
   const existing = document.getElementById('perfectBanner');
@@ -2470,7 +2655,7 @@ async function reScore(text) {
     if (data.analysis && data.analysis.predicted_role) {
       mlData = data.analysis;
       document.getElementById('sbRole').textContent = mlData.predicted_role;
-      document.getElementById('sbConf').textContent = `${(mlData.confidence * 100).toFixed(1)}% confidence`;
+      document.getElementById('sbConf').textContent = '';
 
       if (newS >= 80) {
         window.roleResumeCache = {};
@@ -2717,7 +2902,8 @@ document.getElementById('resetBtn').addEventListener('click', () => {
   document.getElementById('results').classList.remove('show');
   document.getElementById('mockCard').classList.remove('show');
   document.getElementById('rolePredSection').style.display='none';
-  document.getElementById('editorCard').style.display='none';
+  document.getElementById('issuesTabWrap').style.display='none';
+  const ab = document.getElementById('aiBar'); if (ab) ab.style.display='none';
   document.getElementById('dbTag').className='db-tag';
   document.getElementById('atsBanner').className='ats-banner';
   document.getElementById('rescoreBanner').classList.remove('show');
@@ -2726,9 +2912,24 @@ document.getElementById('resetBtn').addEventListener('click', () => {
   document.getElementById('sbScoreChange').style.display='none';
   document.getElementById('summaryBanner').style.display='none';
   document.getElementById('aiTipsDone').innerHTML='';
+  // Reset accordion state
+  ['fix'].forEach(id => {
+    document.getElementById('accBtn-'  + id)?.classList.remove('open');
+    document.getElementById('accBody-' + id)?.classList.remove('open');
+    const pill = document.getElementById('accPill-' + id);
+    if (pill) {
+      pill.querySelector('.acc-pill-text').textContent = 'Expand';
+      pill.querySelector('.acc-pill-icon').style.transform = 'rotate(0deg)';
+    }
+  });
+  // Reset ring
+  const rf = document.getElementById('atsRingFill');
+  if (rf) { rf.style.strokeDashoffset='314.16'; rf.setAttribute('stroke-dasharray','314.16'); rf.style.stroke='#4361ee'; }
+  document.getElementById('scoreNum').textContent = '—';
+  document.getElementById('atsOverall').textContent = '';
+  document.getElementById('detGrid').innerHTML = '';
   origText=''; editText=''; rowId=null; origScore=0;
   atsData=null; mlData=null;
-  // Clear role resume cache
   Object.keys(roleResumeCache).forEach(k => delete roleResumeCache[k]);
   document.getElementById('limitBanner').style.display = 'none';
   loadSubscription();

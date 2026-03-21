@@ -1,3 +1,4 @@
+import os
 from flask import Blueprint, request, jsonify
 from config.settings import supabase, _cache_get, _cache_set, _cache_clear
 from utils.auth import admin_required
@@ -334,4 +335,167 @@ def admin_get_results():
         _cache_set(cache_key, payload)
         return jsonify(payload)
     except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# ============================================================
+# EMAIL CONFIGURATION ROUTES
+# GET  /api/admin/email-config  — return current EMAIL_ADDRESS (masked)
+# POST /api/admin/email-config  — write EMAIL_ADDRESS + EMAIL_PASSWORD to .env
+# POST /api/admin/email-config/test — send a test email to the configured address
+# ============================================================
+
+def _find_env_path():
+    """Walk up from this file to find the .env file."""
+    base = os.path.dirname(os.path.abspath(__file__))
+    for _ in range(4):  # look up to 4 levels up
+        candidate = os.path.join(base, '.env')
+        if os.path.exists(candidate):
+            return candidate
+        base = os.path.dirname(base)
+    # If not found, create in project root (2 levels up from routes/)
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    return os.path.join(root, '.env')
+
+
+def _read_env_file(path):
+    """Read .env file into a dict."""
+    pairs = {}
+    if os.path.exists(path):
+        with open(path, 'r', encoding='utf-8') as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith('#') and '=' in line:
+                    key, _, val = line.partition('=')
+                    pairs[key.strip()] = val.strip().strip('"').strip("'")
+    return pairs
+
+
+def _write_env_file(path, pairs):
+    """Write dict back to .env, preserving comments and order."""
+    existing_lines = []
+    if os.path.exists(path):
+        with open(path, 'r', encoding='utf-8') as f:
+            existing_lines = f.readlines()
+
+    updated_keys = set()
+    new_lines = []
+    for line in existing_lines:
+        stripped = line.strip()
+        if stripped and not stripped.startswith('#') and '=' in stripped:
+            key = stripped.split('=', 1)[0].strip()
+            if key in pairs:
+                new_lines.append(f'{key}={pairs[key]}\n')
+                updated_keys.add(key)
+                continue
+        new_lines.append(line if line.endswith('\n') else line + '\n')
+
+    # Append any new keys that weren't in the file
+    for key, val in pairs.items():
+        if key not in updated_keys:
+            new_lines.append(f'{key}={val}\n')
+
+    with open(path, 'w', encoding='utf-8') as f:
+        f.writelines(new_lines)
+
+
+@admin_bp.route('/api/admin/email-config', methods=['GET'])
+@admin_required
+def get_email_config():
+    try:
+        email = os.getenv('EMAIL_ADDRESS', '')
+        # Mask the email for display: show first 3 chars + *** + @domain
+        masked = ''
+        if email:
+            parts = email.split('@')
+            if len(parts) == 2:
+                local = parts[0]
+                masked = local[:3] + '***@' + parts[1] if len(local) > 3 else email
+            else:
+                masked = email
+        return jsonify({'success': True, 'email': email, 'masked': masked})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/api/admin/email-config', methods=['POST'])
+@admin_required
+def save_email_config():
+    try:
+        data     = request.get_json()
+        email    = (data.get('email')    or '').strip()
+        password = (data.get('password') or '').strip().replace(' ', '')
+
+        if not email or not password:
+            return jsonify({'error': 'Both email and password are required'}), 400
+        if '@gmail.com' not in email:
+            return jsonify({'error': 'Only Gmail addresses are supported'}), 400
+        if len(password) < 16:
+            return jsonify({'error': 'App Password must be at least 16 characters'}), 400
+
+        env_path = _find_env_path()
+        _write_env_file(env_path, {
+            'EMAIL_ADDRESS':  email,
+            'EMAIL_PASSWORD': password,
+        })
+
+        # Hot-reload into current process so it takes effect immediately
+        os.environ['EMAIL_ADDRESS']  = email
+        os.environ['EMAIL_PASSWORD'] = password
+
+        print(f'[email-config] Updated EMAIL_ADDRESS to {email} in {env_path}')
+        return jsonify({'success': True})
+
+    except Exception as e:
+        print(f'[email-config] ERROR: {e}')
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/api/admin/email-config/test', methods=['POST'])
+@admin_required
+def test_email_config():
+    try:
+        import smtplib
+        from email.mime.text import MIMEText
+        from email.mime.multipart import MIMEMultipart
+
+        from_email   = os.getenv('EMAIL_ADDRESS', '')
+        app_password = os.getenv('EMAIL_PASSWORD', '')
+
+        if not from_email or not app_password:
+            return jsonify({'error': 'No email configuration found. Please save your settings first.'}), 400
+
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = '✅ Test Email — AI Resume Analyser'
+        msg['From']    = from_email
+        msg['To']      = from_email  # send test to yourself
+
+        html = f"""
+        <div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:32px;border:1px solid #e5e7eb;border-radius:8px;">
+            <h2 style="color:#1f2937;">✅ Email Configuration Working!</h2>
+            <p style="color:#4b5563;">Your Gmail SMTP is correctly set up for AI Resume Analyser.</p>
+            <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:16px;margin:16px 0;">
+                <strong style="color:#065f46;">📧 Sending from:</strong> {from_email}
+            </div>
+            <p style="color:#9ca3af;font-size:13px;">OTP emails will be sent from this address when users sign up or reset their password.</p>
+        </div>
+        """
+        msg.attach(MIMEText(html, 'html'))
+
+        # Try port 465 first, fall back to 587
+        try:
+            with smtplib.SMTP_SSL('smtp.gmail.com', 465, timeout=15) as server:
+                server.login(from_email, app_password)
+                server.sendmail(from_email, from_email, msg.as_string())
+        except Exception:
+            with smtplib.SMTP('smtp.gmail.com', 587, timeout=15) as server:
+                server.ehlo()
+                server.starttls()
+                server.login(from_email, app_password)
+                server.sendmail(from_email, from_email, msg.as_string())
+
+        return jsonify({'success': True, 'sent_to': from_email})
+
+    except Exception as e:
+        print(f'[email-config/test] ERROR: {e}')
         return jsonify({'error': str(e)}), 500
