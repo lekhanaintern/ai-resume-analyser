@@ -559,18 +559,18 @@ body::before{
   min-width:28px;text-align:center;
 }
 .acc-btn.open .acc-expand-pill{
-  background:rgba(255,255,255,.95);
-  border-color:rgba(255,255,255,.9);
+  background:#dc2626;
+  border-color:#b91c1c;
 }
-.acc-btn.open .acc-expand-pill .acc-pill-text{ color:#7c3aed; }
+.acc-btn.open .acc-expand-pill .acc-pill-text{ color:#fff; }
 .acc-btn.open .acc-expand-pill .acc-pill-icon{ transform:rotate(180deg); filter:none; }
 
 /* Creative expand pill */
 .acc-expand-pill{
   position:relative;
   display:flex;align-items:center;gap:8px;
-  background:rgba(255,255,255,.15);
-  border:1.5px solid rgba(255,255,255,.4);
+  background:#ef4444;
+  border:1.5px solid #dc2626;
   padding:10px 20px 10px 14px;
   border-radius:50px;
   font-size:.82em;font-weight:800;
@@ -579,6 +579,7 @@ body::before{
   white-space:nowrap;
   user-select:none;
   overflow:hidden;
+  box-shadow:0 4px 14px rgba(239,68,68,.45);
 }
 /* shimmer sweep */
 .acc-expand-pill::before{
@@ -593,9 +594,10 @@ body::before{
   transition:transform .55s ease;
 }
 .acc-btn:hover .acc-expand-pill{
-  background:rgba(255,255,255,.28);
-  border-color:rgba(255,255,255,.7);
+  background:#dc2626;
+  border-color:#b91c1c;
   transform:scale(1.04);
+  box-shadow:0 6px 20px rgba(239,68,68,.55);
 }
 .acc-pill-icon{
   width:26px;height:26px;border-radius:50%;
@@ -1063,14 +1065,14 @@ body::before{
             <div class="acc-btn-left">
               <div class="acc-btn-icon">🔧</div>
               <div class="acc-btn-label">
-                <span class="acc-btn-title">Fix Issues</span>
+                <span class="acc-btn-title">Issues Found</span>
                 <span class="acc-btn-sub">AI-powered fixes, editor &amp; score optimizer</span>
               </div>
             </div>
             <div class="acc-btn-right">
               <div class="acc-expand-pill" id="accPill-fix">
                 <div class="acc-pill-icon">▼</div>
-                <span class="acc-pill-text">Expand</span>
+                <span class="acc-pill-text">See Issues</span>
               </div>
             </div>
           </button>
@@ -1359,14 +1361,14 @@ function toggleAccordion(id) {
     btn.classList.remove('open');
     body.classList.remove('open');
     if (pill) {
-      pill.querySelector('.acc-pill-text').textContent = 'Expand';
+      pill.querySelector('.acc-pill-text').textContent = 'See Issues';
       pill.querySelector('.acc-pill-icon').style.transform = 'rotate(0deg)';
     }
   } else {
     btn.classList.add('open');
     body.classList.add('open');
     if (pill) {
-      pill.querySelector('.acc-pill-text').textContent = 'Collapse';
+      pill.querySelector('.acc-pill-text').textContent = 'See Issues';
       pill.querySelector('.acc-pill-icon').style.transform = 'rotate(180deg)';
     }
   }
@@ -2918,7 +2920,7 @@ document.getElementById('resetBtn').addEventListener('click', () => {
     document.getElementById('accBody-' + id)?.classList.remove('open');
     const pill = document.getElementById('accPill-' + id);
     if (pill) {
-      pill.querySelector('.acc-pill-text').textContent = 'Expand';
+      pill.querySelector('.acc-pill-text').textContent = 'See Issues';
       pill.querySelector('.acc-pill-icon').style.transform = 'rotate(0deg)';
     }
   });
