@@ -1235,7 +1235,6 @@ body::before{
         </div>
         <div class="mock-opt">
           <div class="mock-icon">🤖</div>
-          <div class="soon-tag">Coming Soon</div>
           <h4>AI Mock Interview</h4>
           <p>Live conversational interview with an AI tailored to your role.</p>
           <button class="btn-ai-int" onclick="showComingSoon()">🚀 AI Interview</button>
@@ -1450,7 +1449,7 @@ document.getElementById('analyzeBtn').addEventListener('click', async () => {
   stepTimer = setInterval(() => {
     si = (si+1) % steps.length;
     document.getElementById('loadStep').textContent = steps[si];
-  }, 1600);
+  }, 700);
 
   try {
     const fd = new FormData();
@@ -1669,6 +1668,8 @@ function getRoleIcon(role) {
 function setupRolePredictionCards(analysis) {
   window._rawRole  = analysis.top_3_roles[0][0];
   window._normRole = analysis.normalized_role;
+  window._resumeSkills = analysis.skills || [];
+  window._expYears = analysis.experience_years || 2;
 
   // Show low confidence warning if model is unsure
   const banner = document.getElementById('lowConfBanner');
@@ -2095,9 +2096,470 @@ function confirmRole() {
   setTimeout(() => mc.scrollIntoView({ behavior:'smooth', block:'center' }), 300);
 }
 
-function goMCQ() { window.location.href = `/mcq_test?role=${encodeURIComponent(window._normRole||'DEFAULT')}`; }
-function showComingSoon() { alert('🚀 AI Mock Interview — Coming Soon!\n\nA live conversational AI interviewer tailored to your role. Stay tuned!'); }
+// ── MCQ Test launcher ────────────────────────────────────────────────────────
+function goMCQ() {
+  const role   = window._normRole || 'DEFAULT';
+  const skills = window._resumeSkills || [];
+  const exp    = window._expYears || 2;
 
+  // Show loading state on button
+  const btn = document.querySelector('.btn-mcq');
+  if (btn) { btn.textContent = '⏳ Loading questions...'; btn.disabled = true; }
+
+  fetch('/api/generate-questions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ role, skills, experience_years: exp, mcq_count: 10 })
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.success && data.mcq && data.mcq.length > 0) {
+      window._mcqData = data.mcq;
+      window._mcqRole = role;
+      _openMCQModal(data.mcq, role);
+    } else {
+      // Fallback: redirect to static MCQ page
+      window.location.href = `/mcq_test?role=${encodeURIComponent(role)}`;
+    }
+    if (btn) { btn.textContent = '🎯 Start MCQ Test'; btn.disabled = false; }
+  })
+  .catch(() => {
+    window.location.href = `/mcq_test?role=${encodeURIComponent(role)}`;
+    if (btn) { btn.textContent = '🎯 Start MCQ Test'; btn.disabled = false; }
+  });
+}
+
+// ── AI Mock Interview launcher ────────────────────────────────────────────────
+function showComingSoon() {
+  const role   = window._normRole || 'DEFAULT';
+  const skills = window._resumeSkills || [];
+  const exp    = window._expYears || 2;
+
+  const btn = document.querySelector('.btn-ai-int');
+  if (btn) { btn.textContent = '⏳ Preparing interview...'; btn.disabled = true; }
+
+  fetch('/api/generate-questions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ role, skills, experience_years: exp, interview_count: 5 })
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.success && data.interview && data.interview.length > 0) {
+      window._interviewQuestions = data.interview;
+      window._interviewRole = role;
+      _openMockInterviewModal(data.interview, role, skills);
+    } else {
+      alert('🚀 AI Mock Interview is loading. Please try again in a moment.');
+    }
+    if (btn) { btn.textContent = '🚀 AI Interview'; btn.disabled = false; }
+  })
+  .catch(() => {
+    alert('Could not start interview. Please check your connection.');
+    if (btn) { btn.textContent = '🚀 AI Interview'; btn.disabled = false; }
+  });
+}
+
+// ── MCQ Modal ─────────────────────────────────────────────────────────────────
+function _openMCQModal(questions, role) {
+  // Remove old modal if exists
+  const old = document.getElementById('mcqModal');
+  if (old) old.remove();
+
+  let current = 0;
+  let score = 0;
+  let answered = new Array(questions.length).fill(null);
+
+  const modal = document.createElement('div');
+  modal.id = 'mcqModal';
+  modal.style.cssText = `
+    position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);
+    z-index:9999;display:flex;align-items:center;justify-content:center;
+    font-family:inherit;padding:16px;box-sizing:border-box;
+  `;
+
+  function renderQuestion(idx) {
+    const q = questions[idx];
+    const roleName = role.replace(/-/g,' ');
+    modal.innerHTML = `
+      <div style="background:#fff;border-radius:20px;padding:32px;max-width:620px;width:100%;max-height:90vh;overflow-y:auto;position:relative;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+          <span style="font-size:.8em;color:#7c3aed;font-weight:700;text-transform:uppercase;letter-spacing:.05em;">${roleName} MCQ Test</span>
+          <span style="font-size:.8em;color:#888;">Question ${idx+1} / ${questions.length}</span>
+        </div>
+        <div style="height:4px;background:#f0e6ff;border-radius:4px;margin-bottom:22px;">
+          <div style="height:4px;background:#7c3aed;border-radius:4px;width:${((idx+1)/questions.length)*100}%;transition:width .3s;"></div>
+        </div>
+        <p style="font-size:1.05em;font-weight:700;color:#1a1a2e;line-height:1.5;margin-bottom:22px;">${q.q || q.question || q}</p>
+        <div id="optionsWrap" style="display:flex;flex-direction:column;gap:10px;margin-bottom:22px;">
+          ${q.options.map((opt, i) => `
+            <button onclick="window._mcqSelectOpt(${i})" id="mcqOpt${i}" style="
+              text-align:left;padding:13px 16px;border:2px solid #e9d5ff;border-radius:12px;
+              background:#faf5ff;cursor:pointer;font-size:.92em;color:#3b0764;
+              font-family:inherit;transition:all .2s;font-weight:500;
+            " onmouseover="if(!this.dataset.locked)this.style.borderColor='#7c3aed'"
+               onmouseout="if(!this.dataset.locked)this.style.borderColor='#e9d5ff'">
+              <strong style="color:#7c3aed;margin-right:8px;">${String.fromCharCode(65+i)}.</strong> ${opt}
+            </button>
+          `).join('')}
+        </div>
+        <div id="mcqFeedback" style="display:none;padding:14px 16px;border-radius:12px;margin-bottom:18px;font-size:.88em;line-height:1.5;"></div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;">
+          <button onclick="document.getElementById('mcqModal').remove()" style="
+            padding:10px 20px;border:2px solid #e9d5ff;border-radius:10px;background:#fff;
+            color:#7c3aed;font-weight:700;cursor:pointer;font-family:inherit;font-size:.88em;
+          ">✕ Close</button>
+          <button id="mcqNextBtn" onclick="window._mcqNext()" style="
+            padding:10px 22px;background:#7c3aed;color:#fff;border:none;border-radius:10px;
+            font-weight:700;cursor:pointer;font-family:inherit;font-size:.88em;display:none;
+          ">${idx < questions.length-1 ? 'Next →' : 'See Results'}</button>
+        </div>
+        <div style="text-align:center;margin-top:10px;font-size:.78em;color:#aaa;">Score: ${score} / ${idx} pts</div>
+      </div>
+    `;
+
+    window._mcqSelectOpt = function(i) {
+      const q = questions[idx];
+      const isCorrect = q.options[i] === q.answer;
+      answered[idx] = i;
+      if (isCorrect) score++;
+
+      // Lock all buttons
+      q.options.forEach((_, j) => {
+        const btn = document.getElementById('mcqOpt'+j);
+        if (!btn) return;
+        btn.dataset.locked = '1';
+        btn.style.cursor = 'default';
+        if (q.options[j] === q.answer) {
+          btn.style.background = '#f0fdf4';
+          btn.style.borderColor = '#22c55e';
+          btn.style.color = '#166534';
+        } else if (j === i && !isCorrect) {
+          btn.style.background = '#fef2f2';
+          btn.style.borderColor = '#ef4444';
+          btn.style.color = '#991b1b';
+        }
+      });
+
+      // Show feedback
+      const fb = document.getElementById('mcqFeedback');
+      fb.style.display = 'block';
+      fb.style.background = isCorrect ? '#f0fdf4' : '#fef2f2';
+      fb.style.borderLeft = `4px solid ${isCorrect ? '#22c55e' : '#ef4444'}`;
+      fb.innerHTML = `<strong>${isCorrect ? '✅ Correct!' : '❌ Incorrect'}</strong> — ${q.explanation || 'The correct answer is: '+q.answer}`;
+
+      document.getElementById('mcqNextBtn').style.display = 'inline-block';
+    };
+
+    window._mcqNext = function() {
+      if (idx < questions.length-1) {
+        renderQuestion(idx+1);
+        current = idx+1;
+      } else {
+        _showMCQResults(score, questions.length, role);
+      }
+    };
+  }
+
+  document.body.appendChild(modal);
+  renderQuestion(0);
+}
+
+function _showMCQResults(score, total, role) {
+  const modal = document.getElementById('mcqModal');
+  if (!modal) return;
+  const pct = Math.round((score/total)*100);
+  const grade = pct >= 80 ? '🏆 Excellent' : pct >= 60 ? '👍 Good' : pct >= 40 ? '📚 Fair' : '💪 Keep Practicing';
+  modal.querySelector('div').innerHTML = `
+    <div style="text-align:center;padding:20px 0;">
+      <div style="font-size:3em;margin-bottom:10px;">${pct>=80?'🏆':pct>=60?'🎯':'📚'}</div>
+      <h2 style="color:#7c3aed;margin-bottom:8px;">${grade}</h2>
+      <p style="font-size:2em;font-weight:800;color:#1a1a2e;margin-bottom:6px;">${score} / ${total}</p>
+      <p style="color:#888;font-size:.9em;margin-bottom:24px;">${pct}% score on ${role.replace(/-/g,' ')} MCQ</p>
+      <div style="background:#faf5ff;border-radius:14px;padding:18px;margin-bottom:22px;text-align:left;">
+        <p style="font-weight:700;color:#7c3aed;margin-bottom:8px;">What this means:</p>
+        <p style="color:#555;font-size:.88em;line-height:1.6;">
+          ${pct>=80 ? 'You have strong command of this role. You are interview-ready! Consider practicing mock interviews next.' :
+            pct>=60 ? 'Good foundation! Review the questions you missed and focus on those topic areas.' :
+            'Keep studying! Focus on the core concepts for this role and retake the test to track your progress.'}
+        </p>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+        <button onclick="goMCQ()" style="padding:11px 22px;background:#7c3aed;color:#fff;border:none;border-radius:10px;font-weight:700;cursor:pointer;font-family:inherit;">🔄 Retake Test</button>
+        <button onclick="showComingSoon()" style="padding:11px 22px;background:#fff;border:2px solid #7c3aed;color:#7c3aed;border-radius:10px;font-weight:700;cursor:pointer;font-family:inherit;">🤖 Try Mock Interview</button>
+        <button onclick="document.getElementById('mcqModal').remove()" style="padding:11px 22px;background:#f3f4f6;border:none;color:#555;border-radius:10px;font-weight:700;cursor:pointer;font-family:inherit;">✕ Close</button>
+      </div>
+    </div>
+  `;
+}
+
+// ── Mock Interview Modal — Voice + Typing ─────────────────────────────────────
+function _openMockInterviewModal(questions, role, skills) {
+  const old = document.getElementById('mockIntModal');
+  if (old) old.remove();
+
+  let current = 0;
+  let totalScore = 0;
+  const scoreHistory = [];
+  let recognition = null;
+  let isRecording = false;
+
+  // ── Speech synthesis (agent speaks) ──
+  const synth = window.speechSynthesis;
+  function speak(text, onEnd) {
+    synth.cancel();
+    const utt = new SpeechSynthesisUtterance(text);
+    utt.rate = 0.92; utt.pitch = 1.05; utt.volume = 1;
+    // prefer a natural-sounding voice
+    const voices = synth.getVoices();
+    const pref = voices.find(v => /en.*(GB|AU|US)/i.test(v.lang) && !v.name.includes('Google')) || voices[0];
+    if (pref) utt.voice = pref;
+    if (onEnd) utt.onend = onEnd;
+    synth.speak(utt);
+  }
+
+  // ── Speech recognition (user speaks) ──
+  function startVoiceInput(taId, btnId) {
+    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRec) { alert('Voice input not supported in this browser. Please type your answer.'); return; }
+    if (isRecording) { recognition && recognition.stop(); return; }
+
+    recognition = new SpeechRec();
+    recognition.lang = 'en-US';
+    recognition.continuous = true;
+    recognition.interimResults = true;
+
+    const ta = document.getElementById(taId);
+    const btn = document.getElementById(btnId);
+    let finalText = ta ? ta.value : '';
+
+    recognition.onstart = () => {
+      isRecording = true;
+      if (btn) { btn.innerHTML = '⏹ Stop Recording'; btn.style.background = '#ef4444'; }
+    };
+    recognition.onresult = (e) => {
+      let interim = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        if (e.results[i].isFinal) finalText += e.results[i][0].transcript + ' ';
+        else interim = e.results[i][0].transcript;
+      }
+      if (ta) ta.value = finalText + interim;
+    };
+    recognition.onend = () => {
+      isRecording = false;
+      if (ta) ta.value = finalText.trim();
+      if (btn) { btn.innerHTML = '🎤 Use Voice'; btn.style.background = '#7c3aed'; }
+    };
+    recognition.onerror = () => {
+      isRecording = false;
+      if (btn) { btn.innerHTML = '🎤 Use Voice'; btn.style.background = '#7c3aed'; }
+    };
+    recognition.start();
+  }
+
+  const modal = document.createElement('div');
+  modal.id = 'mockIntModal';
+  modal.style.cssText = `
+    position:fixed;top:0;left:0;width:100%;height:100%;
+    background:rgba(10,10,30,0.75);backdrop-filter:blur(6px);
+    z-index:9999;display:flex;align-items:center;justify-content:center;
+    font-family:inherit;padding:16px;box-sizing:border-box;
+  `;
+
+  function renderIntQuestion(idx) {
+    synth.cancel();
+    const q = questions[idx];
+    const roleName = role.replace(/-/g,' ');
+    const isLast = idx >= questions.length - 1;
+
+    modal.innerHTML = `
+      <div style="background:#fff;border-radius:24px;padding:0;max-width:680px;width:100%;max-height:92vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 32px 80px rgba(0,0,0,.4);">
+
+        <!-- Header -->
+        <div style="background:linear-gradient(135deg,#4f46e5,#7c3aed);padding:20px 28px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+          <div>
+            <div style="color:rgba(255,255,255,.75);font-size:.74em;font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:3px;">🤖 AI Mock Interview · ${roleName}</div>
+            <div style="color:#fff;font-size:.88em;font-weight:700;">Question ${idx+1} of ${questions.length}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div style="background:rgba(255,255,255,.15);border-radius:20px;padding:4px 14px;color:#fff;font-size:.78em;font-weight:700;">Score: ${totalScore}/${idx*10} pts</div>
+            <button onclick="synth.cancel();document.getElementById('mockIntModal').remove()" style="background:rgba(255,255,255,.15);border:none;color:#fff;width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:1em;">✕</button>
+          </div>
+        </div>
+
+        <!-- Progress bar -->
+        <div style="height:4px;background:rgba(79,70,229,.15);flex-shrink:0;">
+          <div style="height:100%;width:${((idx+1)/questions.length)*100}%;background:linear-gradient(90deg,#4f46e5,#7c3aed);transition:width .5s ease;"></div>
+        </div>
+
+        <!-- Scrollable body -->
+        <div style="overflow-y:auto;flex:1;padding:24px 28px;">
+
+          <!-- AI avatar + question bubble -->
+          <div style="display:flex;gap:14px;margin-bottom:22px;">
+            <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#4f46e5,#7c3aed);display:flex;align-items:center;justify-content:center;font-size:1.3em;flex-shrink:0;box-shadow:0 4px 14px rgba(79,70,229,.35);">🤖</div>
+            <div style="flex:1;">
+              <div style="font-size:.72em;font-weight:800;color:#6366f1;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px;">Interviewer</div>
+              <div style="background:linear-gradient(135deg,#eef2ff,#e0e7ff);border-radius:4px 16px 16px 16px;padding:16px 18px;font-size:.97em;font-weight:600;color:#1e1b4b;line-height:1.65;" id="intQuestionText">${q}</div>
+              <button onclick="speak(document.getElementById('intQuestionText').textContent)" style="margin-top:8px;background:none;border:1.5px solid #c7d2fe;border-radius:20px;padding:4px 12px;font-size:.73em;font-weight:700;color:#6366f1;cursor:pointer;">🔊 Hear Question</button>
+            </div>
+          </div>
+
+          <!-- Previous feedback (shown after answering) -->
+          <div id="intFeedbackBox" style="display:none;background:#f0fdf4;border:1.5px solid #86efac;border-radius:14px;padding:16px 18px;margin-bottom:18px;">
+            <div style="font-size:.74em;font-weight:800;color:#166534;text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;">📋 Feedback on your answer</div>
+            <div id="intFeedbackText" style="font-size:.88em;color:#166534;line-height:1.65;"></div>
+            <div id="intScoreChip" style="display:inline-flex;align-items:center;gap:5px;background:#dcfce7;border:1px solid #86efac;border-radius:20px;padding:4px 12px;font-size:.78em;font-weight:800;color:#166534;margin-top:10px;"></div>
+          </div>
+
+          <!-- Answer area -->
+          <div style="background:#f8fafc;border-radius:16px;padding:18px;border:1.5px solid #e0e7ff;">
+            <div style="font-size:.74em;font-weight:800;color:#4f46e5;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px;display:flex;align-items:center;gap:6px;">👤 Your Answer <span id="recIndicator" style="display:none;width:8px;height:8px;border-radius:50%;background:#ef4444;animation:pulse .8s infinite;margin-left:4px;"></span></div>
+            <textarea id="intAnswer" placeholder="Type your answer here — or click 🎤 Use Voice to speak it. Be specific, use examples: 'When I was at [Company], I...' with outcomes." style="
+              width:100%;min-height:110px;padding:12px 14px;border:1.5px solid #c7d2fe;border-radius:10px;
+              font-family:inherit;font-size:.92em;color:#1e1b4b;resize:vertical;box-sizing:border-box;
+              outline:none;background:#fff;transition:border-color .2s;line-height:1.6;
+            " onfocus="this.style.borderColor='#4f46e5'" onblur="this.style.borderColor='#c7d2fe'"></textarea>
+
+            <!-- Voice + tips row -->
+            <div style="display:flex;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap;">
+              <button id="voiceBtn" onclick="startVoiceInput('intAnswer','voiceBtn')" style="
+                padding:8px 16px;background:#7c3aed;color:#fff;border:none;border-radius:20px;
+                font-size:.8em;font-weight:700;cursor:pointer;font-family:inherit;transition:all .2s;
+                display:flex;align-items:center;gap:6px;">🎤 Use Voice</button>
+              <span style="font-size:.74em;color:#94a3b8;flex:1;">💡 Tip: Use STAR method — Situation, Task, Action, Result</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer actions -->
+        <div style="padding:16px 28px;border-top:1px solid #e2e8f0;background:#f8fafc;display:flex;gap:10px;justify-content:flex-end;flex-shrink:0;">
+          <button onclick="synth.cancel();document.getElementById('mockIntModal').remove()" style="
+            padding:10px 20px;border:1.5px solid #e0e7ff;border-radius:10px;background:#fff;
+            color:#4f46e5;font-weight:700;cursor:pointer;font-family:inherit;font-size:.88em;">✕ Exit</button>
+          <button id="intSubmitBtn" onclick="window._submitIntAnswer(${idx})" style="
+            padding:10px 26px;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;border:none;
+            border-radius:10px;font-weight:700;cursor:pointer;font-family:inherit;font-size:.88em;
+            display:flex;align-items:center;gap:7px;">
+            Submit Answer ${isLast ? '→ See Results' : '→ Next Question'}
+          </button>
+        </div>
+      </div>
+    `;
+
+    // Auto-speak the question after a short delay
+    setTimeout(() => speak(q), 600);
+
+    window._submitIntAnswer = function(qIdx) {
+      const answer = (document.getElementById('intAnswer')||{}).value || '';
+      if (!answer.trim()) { alert('Please type or speak your answer before submitting.'); return; }
+
+      // Stop any recording
+      if (recognition && isRecording) recognition.stop();
+      synth.cancel();
+
+      const submitBtn = document.getElementById('intSubmitBtn');
+      if (submitBtn) { submitBtn.innerHTML = '⏳ Evaluating…'; submitBtn.disabled = true; }
+
+      fetch('/api/mock-interview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          role, question: questions[qIdx], user_answer: answer,
+          question_number: qIdx + 1, skills
+        })
+      })
+      .then(r => r.json())
+      .then(resp => {
+        if (!resp.success) throw new Error(resp.error || 'Evaluation failed');
+        const sc = resp.score || 5;
+        totalScore += sc;
+        scoreHistory.push({ q: questions[qIdx], answer, score: sc, feedback: resp.feedback });
+
+        if (resp.is_complete || qIdx >= questions.length - 1) {
+          _showInterviewResults(scoreHistory, role);
+        } else {
+          // Show feedback then move to next question
+          const fb = document.getElementById('intFeedbackBox');
+          const ft = document.getElementById('intFeedbackText');
+          const fc = document.getElementById('intScoreChip');
+          if (fb && ft) {
+            fb.style.display = 'block';
+            ft.textContent = resp.feedback || 'Good answer!';
+            if (fc) fc.textContent = `Score: ${sc}/10 pts`;
+          }
+          // Speak the feedback briefly
+          const shortFb = (resp.feedback || '').split('.')[0] + '.';
+          speak(shortFb, () => {
+            setTimeout(() => renderIntQuestion(qIdx + 1), 600);
+          });
+        }
+      })
+      .catch(err => {
+        if (submitBtn) { submitBtn.innerHTML = 'Submit Answer →'; submitBtn.disabled = false; }
+        alert('Could not evaluate: ' + err.message);
+      });
+    };
+  }
+
+  document.body.appendChild(modal);
+  // Load voices async (Chrome needs this)
+  if (synth.getVoices().length === 0) synth.addEventListener('voiceschanged', () => {}, { once: true });
+  renderIntQuestion(0);
+}
+
+function _showInterviewResults(history, role) {
+  const modal = document.getElementById('mockIntModal');
+  if (!modal) return;
+  window.speechSynthesis && window.speechSynthesis.cancel();
+
+  const totalPts = history.reduce((s, h) => s + h.score, 0);
+  const maxPts   = history.length * 10;
+  const pct      = Math.round((totalPts / maxPts) * 100);
+  const grade    = pct >= 80 ? '🏆 Excellent' : pct >= 60 ? '👍 Good' : pct >= 40 ? '📚 Fair' : '💪 Keep Practicing';
+  const gradeColor = pct >= 80 ? '#059669' : pct >= 60 ? '#2563eb' : pct >= 40 ? '#d97706' : '#dc2626';
+  const gradeBg    = pct >= 80 ? '#d1fae5' : pct >= 60 ? '#dbeafe' : pct >= 40 ? '#fef3c7' : '#fee2e2';
+
+  const answersHtml = history.map((h, i) => `
+    <div style="background:#f8fafc;border-radius:12px;padding:14px;margin-bottom:10px;border-left:4px solid ${h.score>=7?'#10b981':h.score>=5?'#f59e0b':'#ef4444'};">
+      <div style="font-size:.75em;font-weight:800;color:#64748b;text-transform:uppercase;margin-bottom:5px;">Q${i+1} · Score: ${h.score}/10</div>
+      <div style="font-size:.86em;font-weight:700;color:#1e1b4b;margin-bottom:5px;">${h.q}</div>
+      <div style="font-size:.82em;color:#64748b;line-height:1.55;font-style:italic;margin-bottom:6px;">"${h.answer.substring(0,120)}${h.answer.length>120?'…':''}"</div>
+      <div style="font-size:.82em;color:#374151;line-height:1.5;">${h.feedback || ''}</div>
+    </div>`).join('');
+
+  modal.querySelector('div').innerHTML = `
+    <div style="background:#fff;border-radius:24px;max-width:680px;width:100%;max-height:90vh;overflow-y:auto;">
+      <div style="background:linear-gradient(135deg,#4f46e5,#7c3aed);padding:24px 28px;text-align:center;border-radius:24px 24px 0 0;">
+        <div style="font-size:2.5em;margin-bottom:8px;">🎯</div>
+        <h2 style="color:#fff;font-size:1.2em;font-weight:800;margin-bottom:4px;">Interview Complete!</h2>
+        <p style="color:rgba(255,255,255,.8);font-size:.84em;">${role.replace(/-/g,' ')} Mock Interview</p>
+      </div>
+      <div style="padding:24px 28px;">
+        <!-- Score card -->
+        <div style="background:${gradeBg};border-radius:16px;padding:22px;text-align:center;margin-bottom:22px;">
+          <div style="font-size:1.1em;font-weight:800;color:${gradeColor};margin-bottom:6px;">${grade}</div>
+          <div style="font-size:2.6em;font-weight:900;color:${gradeColor};line-height:1;">${totalPts}<span style="font-size:.45em;opacity:.7;">/${maxPts}</span></div>
+          <div style="font-size:.88em;color:${gradeColor};opacity:.8;margin-top:4px;">${pct}% overall score</div>
+          <div style="height:8px;background:rgba(0,0,0,.1);border-radius:4px;margin-top:14px;overflow:hidden;">
+            <div style="height:100%;width:${pct}%;background:${gradeColor};border-radius:4px;transition:width 1s ease;"></div>
+          </div>
+        </div>
+
+        <!-- Per-question breakdown -->
+        <div style="font-size:.8em;font-weight:800;color:#374151;text-transform:uppercase;letter-spacing:.6px;margin-bottom:12px;">📋 Answer Breakdown</div>
+        ${answersHtml}
+
+        <!-- Actions -->
+        <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:20px;">
+          <button onclick="showComingSoon()" style="padding:11px 22px;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;border:none;border-radius:10px;font-weight:700;cursor:pointer;font-family:inherit;">🔄 Retake Interview</button>
+          <button onclick="goMCQ()" style="padding:11px 22px;background:#fff;border:2px solid #4f46e5;color:#4f46e5;border-radius:10px;font-weight:700;cursor:pointer;font-family:inherit;">🎯 Try MCQ Test</button>
+          <button onclick="document.getElementById('mockIntModal').remove()" style="padding:11px 22px;background:#f1f5f9;border:none;color:#555;border-radius:10px;font-weight:700;cursor:pointer;font-family:inherit;">✕ Close</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
 /* ---
    EDITOR
 --- */
@@ -2523,6 +2985,8 @@ async function applyAllWithAI() {
         score_breakdown: {}
       };
       animScore(apiData.predicted_score);
+      // ── Also update the top banner and ring so they match the new score ──
+      renderATS({ ...atsData, score: apiData.predicted_score, overall: apiData.predicted_score >= 90 ? 'Excellent — Highly ATS-friendly' : 'Good — ATS-friendly', issues: [], suggestions: [], details: atsData?.details || {} });
       atsData = rescoreResult;
       newScore  = apiData.predicted_score;
       newIssues = [];

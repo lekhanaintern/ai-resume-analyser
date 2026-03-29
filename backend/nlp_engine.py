@@ -13,10 +13,8 @@ Returns a rich dict with enhanced resume, skill map, section scores, diff stats.
 """
 
 import re
-import random
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-import numpy as np
 
 # ─────────────────────────────────────────────────────────────
 # 1. ROLE TAXONOMY
@@ -1106,35 +1104,12 @@ def _starts_with_strong_verb(line: str, role_verbs: list) -> bool:
 
 def _inject_metric_if_missing(sentence: str, role_key: str) -> str:
     """
-    If a bullet has no metric, intelligently inject a plausible one
-    based on the sentence's domain context.
+    PRESERVE-FIRST: Never fabricate metrics.
+    Only returns the sentence unchanged — metrics must come from the candidate's
+    own resume. Fabricated numbers (even plausible-sounding ones) misrepresent
+    the candidate and will fail ATS verification or interviewer scrutiny.
     """
-    if _count_metrics(sentence) > 0:
-        return sentence
-
-    s = sentence.lower()
-    # Choose metric type based on context
-    if any(w in s for w in ['time','duration','speed','fast','slow','hours','days']):
-        n = random.choice([15, 20, 25, 30, 35, 40])
-        return sentence.rstrip('.') + f', reducing time by {n}%.'
-    elif any(w in s for w in ['cost','budget','expense','saving','spend']):
-        n = random.choice([10, 15, 20, 25])
-        return sentence.rstrip('.') + f', cutting costs by {n}%.'
-    elif any(w in s for w in ['user','customer','client','team','member','employee','stakeholder']):
-        n = random.choice([5, 8, 10, 12, 15, 20, 25])
-        return sentence.rstrip('.') + f', impacting {n}+ stakeholders.'
-    elif any(w in s for w in ['error','bug','defect','issue','problem','incident','fail']):
-        n = random.choice([20, 25, 30, 35, 40])
-        return sentence.rstrip('.') + f', reducing error rate by {n}%.'
-    elif any(w in s for w in ['process','workflow','pipeline','system','platform','tool']):
-        n = random.choice([20, 25, 30, 35])
-        return sentence.rstrip('.') + f', improving efficiency by {n}%.'
-    elif any(w in s for w in ['revenue','sales','growth','profit','conversion']):
-        n = random.choice([10, 15, 20, 25, 30])
-        return sentence.rstrip('.') + f', contributing to {n}% revenue growth.'
-    else:
-        n = random.choice([15, 20, 25, 30])
-        return sentence.rstrip('.') + f', achieving a {n}% improvement in outcomes.'
+    return sentence
 
 
 def _rewrite_bullet(line: str, role_verbs: list, role_key: str) -> tuple:
@@ -1169,21 +1144,34 @@ def _rewrite_bullet(line: str, role_verbs: list, role_key: str) -> tuple:
         result = re.sub(r'\bwas (developed|built|created|managed)\b', lambda m: m.group(1).capitalize() + 'd', result, flags=re.IGNORECASE)
         changes.append('Passive voice corrected')
 
-    # 4. Ensure starts with a strong past-tense verb if applicable
+    # 4. Ensure starts with a strong past-tense verb ONLY if the line genuinely
+    #    starts with a weak/vague opener. Never overwrite a bullet that begins
+    #    with a tool name, technology, or any already-meaningful word.
     words = result.split()
     if words and not _starts_with_strong_verb(result, role_verbs):
-        # Check if it looks like a job responsibility line
-        if len(words) > 4 and any(c.islower() for c in words[0]):
-            verb = random.choice(role_verbs[:8])
-            # Capitalize and prepend
+        first = words[0].lower()
+        WEAK_OPENERS = {
+            'responsible', 'worked', 'helped', 'did', 'made', 'handled',
+            'assisted', 'participated', 'involved', 'trying', 'attempt',
+            'i', 'my', 'we', 'our', 'the', 'a', 'an',
+        }
+        if first in WEAK_OPENERS and len(words) > 4:
+            verb = role_verbs[0] if role_verbs else 'Managed'
             result = verb.capitalize() + ' ' + result[0].lower() + result[1:]
             changes.append('Strong verb added')
 
-    # 5. Inject metric if none present
-    new = _inject_metric_if_missing(result, role_key)
-    if new != result:
-        result = new
-        changes.append('Metric injected')
+    # 5. Inject metric ONLY when the bullet is long enough, truly metric-free,
+    #    and the context isn't a compliance/policy line (those don't need numbers).
+    if (len(words) >= 8
+            and _count_metrics(result) == 0
+            and not re.search(
+                r'\b(compliance|policy|standards?|protocol|procedure|'
+                r'documentation|maintained|ensured|adhered|followed)\b',
+                result, re.IGNORECASE)):
+        new = _inject_metric_if_missing(result, role_key)
+        if new != result:
+            result = new
+            changes.append('Metric injected')
 
     # 6. Ensure proper capitalization and ending period
     if result:
@@ -1709,100 +1697,152 @@ SUMMARY_TEMPLATES = {
 
 def generate_role_summary(role_key: str, resume_skills: set, sections: dict, contact: dict) -> str:
     """
-    Generate a human-sounding, role-specific professional summary using:
-    1. TF-IDF to extract most relevant phrases from the resume
-    2. Skill filtering to role-relevant terms
-    3. Template fusion with trait + achievement injection
+    Enhance the existing professional summary — PRESERVE the candidate's own words
+    as the primary source. Only clean, strengthen and add a closing where missing.
+
+    PRESERVE-FIRST STRATEGY:
+    1. If existing summary is >= 15 words → POLISH IT (keep the candidate's voice):
+       - Remove hollow filler phrases (team player, quick learner …)
+       - Strengthen weak verb openers (responsible for → leading)
+       - Remove first-person "I" references
+       - Append a concise role-targeted closing only if the role is not already mentioned
+       ─ NEVER replace with a template; the candidate's words stay intact
+    2. If existing summary is 5–14 words → keep it + append 1 expansion sentence
+       using ONLY skills actually in the resume
+    3. If no summary at all → write a minimal one from the candidate's actual skills
+       (no fabrication, no template language)
     """
     taxonomy = ROLE_TAXONOMY.get(role_key, ROLE_TAXONOMY['DEFAULT'])
-
-    # Select top skills relevant to this role
-    role_required_lower = {s.lower() for s in taxonomy['required_skills']}
-    role_preferred_lower = {s.lower() for s in taxonomy['preferred_skills']}
-    all_role_skills = role_required_lower | role_preferred_lower
-
-    matched = [s for s in resume_skills if s.lower() in all_role_skills]
-    # Also add skills that are substrings of role skills
-    for rs in resume_skills:
-        for rsk in all_role_skills:
-            if rs.lower() in rsk or rsk in rs.lower():
-                if rs not in matched:
-                    matched.append(rs)
-
-    # Use proper capitalization from taxonomy
-    skill_display = []
-    for s in matched[:5]:
-        # Find the properly capitalized version from taxonomy
-        for ts in taxonomy['required_skills'] + taxonomy['preferred_skills']:
-            if s.lower() == ts.lower():
-                skill_display.append(ts)
-                break
-        else:
-            skill_display.append(s.title() if len(s) <= 4 else s.capitalize())
-
-    # Fallback: if no matched skills, use top required skills
-    if not skill_display:
-        skill_display = taxonomy['required_skills'][:4]
-
-    skills_str = ', '.join(skill_display[:4])
-
-    # Pick a random trait that fits the role
-    trait = random.choice(taxonomy['summary_traits']).capitalize()
-
-    # Pick an achievement pattern and fill with plausible numbers
-    pattern = random.choice(taxonomy['achievement_patterns'])
-    # Replace {n} tokens with plausible numbers
-    achievement = re.sub(
-        r'\{n\}',
-        lambda m: str(random.choice([10, 15, 20, 25, 30, 35, 40, 50])),
-        pattern
-    )
-
-    template = SUMMARY_TEMPLATES.get(role_key, SUMMARY_TEMPLATES['DEFAULT'])
-    summary = template.format(
-        trait=trait,
-        skills=skills_str,
-        achievement=achievement
-    )
-
-    # Check if resume has an existing summary with good fragments to incorporate
     existing = sections.get('summary', '').strip()
-    if existing and len(existing) > 30:
-        # TF-IDF: extract the most relevant sentence from existing summary
-        try:
-            sents = re.split(r'(?<=[.!?])\s+', existing)
-            if len(sents) >= 2:
-                ref = [taxonomy['title']] + taxonomy['ats_keywords'][:5]
-                vect = TfidfVectorizer(stop_words='english', ngram_range=(1, 2))
-                corpus = sents + ref
-                tfidf  = vect.fit_transform(corpus)
-                ref_vec = tfidf[-len(ref):]
-                sent_vecs = tfidf[:len(sents)]
-                sims = cosine_similarity(sent_vecs, ref_vec).mean(axis=1)
-                best_sent = sents[int(np.argmax(sims))].strip()
-                if len(best_sent) > 20 and best_sent.lower() not in summary.lower():
-                    summary = summary + ' ' + best_sent
-        except Exception:
-            pass
 
-    # Break into ATS-safe line lengths (no line > 35 words)
-    sentences = re.split(r'(?<=[.!?])\s+', summary.strip())
-    output_lines = []
-    current_line = []
-    current_count = 0
-    for sent in sentences:
-        wc = len(sent.split())
-        if current_count + wc > 35 and current_line:
-            output_lines.append(' '.join(current_line))
-            current_line = [sent]
-            current_count = wc
+    # ── Filler patterns to strip ───────────────────────────────────────────────
+    FILLER_PHRASES = [
+        r'\b(hardworking|hard.working)\b',
+        r'\bteam player\b', r'\bgo.getter\b',
+        r'\bpassionate (about|learner)\b', r'\bquick learner\b',
+        r'\bfast learner\b', r'\bself.motivated\b',
+        r'\bdetail.oriented\b', r'\bresults.oriented\b',
+        r'\bdynamic\s+(professional|individual)\b',
+        r'\bhighly motivated\b', r'\bseasoned professional\b',
+        r'\bexcellent communication skills?\b',
+        r'\bstrong communication\b',
+    ]
+    SUMMARY_WEAK_VERBS = [
+        (r'\bresponsible for\b', 'leading'),
+        (r'\bhelped (with|to)\b', 'supported'),
+        (r'\bworked (on|with)\b', 'collaborated on'),
+        (r'\bwas involved in\b', 'contributed to'),
+        (r'\bwas part of\b', 'contributed to'),
+    ]
+
+    def _polish_sentence(s: str) -> str:
+        """Remove filler + strengthen verbs in a single sentence."""
+        for pat in FILLER_PHRASES:
+            s = re.sub(pat, '', s, flags=re.IGNORECASE)
+        for pat, repl in SUMMARY_WEAK_VERBS:
+            s = re.sub(pat, repl, s, flags=re.IGNORECASE)
+        s = re.sub(r'\bI am\b', 'A', s)
+        s = re.sub(r'\bI have\b', 'With', s)
+        s = re.sub(r'\bI\b', '', s)
+        s = re.sub(r'  +', ' ', s).strip()
+        if s and s[0].islower():
+            s = s[0].upper() + s[1:]
+        return s
+
+    def _break_lines(text: str, max_words: int = 32) -> str:
+        sentences = re.split(r'(?<=[.!?])\s+', text.strip())
+        lines, current, count = [], [], 0
+        for sent in sentences:
+            wc = len(sent.split())
+            if count + wc > max_words and current:
+                lines.append(' '.join(current))
+                current, count = [sent], wc
+            else:
+                current.append(sent)
+                count += wc
+        if current:
+            lines.append(' '.join(current))
+        return '\n'.join(lines)
+
+    # ── Build matched skills list from ACTUAL resume skills only ──────────────
+    role_required_lower  = {s.lower(): s for s in taxonomy['required_skills']}
+    role_preferred_lower = {s.lower(): s for s in taxonomy['preferred_skills']}
+    all_role_skill_map   = {**role_required_lower, **role_preferred_lower}
+
+    matched_skills = []
+    seen_s = set()
+    for rs in resume_skills:
+        rs_l = rs.lower()
+        if rs_l in all_role_skill_map and rs_l not in seen_s:
+            matched_skills.append(all_role_skill_map[rs_l])
+            seen_s.add(rs_l)
         else:
-            current_line.append(sent)
-            current_count += wc
-    if current_line:
-        output_lines.append(' '.join(current_line))
+            for rsk_l, rsk_display in all_role_skill_map.items():
+                if (rs_l in rsk_l or rsk_l in rs_l) and rsk_l not in seen_s:
+                    matched_skills.append(rsk_display)
+                    seen_s.add(rsk_l)
+                    break
 
-    return '\n'.join(output_lines)
+    skills_str = ', '.join(matched_skills[:4]) if matched_skills else ''
+    # Fallback: use any actual resume skills (even if not role-specific)
+    if not skills_str and resume_skills:
+        skills_str = ', '.join(list(resume_skills)[:4])
+
+    # ── Case 1: Existing summary has content — POLISH IT, never replace ───────
+    if existing and len(existing.split()) >= 15:
+        sents    = re.split(r'(?<=[.!?])\s+', existing)
+        polished = []
+        for s in sents:
+            p = _polish_sentence(s.strip())
+            if len(p.split()) >= 4:
+                polished.append(p)
+
+        summary = ' '.join(polished) if polished else existing
+
+        # Append role-targeting closing ONLY if role is not already mentioned
+        role_title  = taxonomy['title']
+        role_words  = [w for w in role_title.lower().split() if len(w) > 3]
+        if role_key != 'DEFAULT' and not any(w in summary.lower() for w in role_words):
+            if skills_str:
+                closing = (f"Targeting a {role_title} role to leverage expertise "
+                           f"in {skills_str}.")
+            else:
+                closing = f"Seeking a {role_title} position."
+            summary = summary.rstrip('.') + '. ' + closing
+
+        return _break_lines(summary)
+
+    # ── Case 2: Existing summary is very short — keep it and add one sentence ─
+    if existing and len(existing.split()) >= 5:
+        polished_existing = _polish_sentence(existing)
+        if skills_str:
+            expansion = (
+                f"Brings hands-on experience in {skills_str}, "
+                f"with a strong focus on delivering quality results in a "
+                f"{taxonomy['title']} capacity."
+            )
+        else:
+            expansion = (
+                f"Focused on applying professional expertise to deliver high-quality "
+                f"results in a {taxonomy['title']} capacity."
+            )
+        summary = polished_existing.rstrip('.') + '. ' + expansion
+        return _break_lines(summary)
+
+    # ── Case 3: No summary — build minimal one from candidate's actual skills ─
+    if skills_str:
+        summary = (
+            f"Experienced professional with expertise in {skills_str}. "
+            f"Committed to delivering high-quality work and contributing meaningfully "
+            f"in a {taxonomy['title']} role."
+        )
+    else:
+        summary = (
+            f"Experienced {taxonomy['title']} seeking to leverage professional skills "
+            f"and domain knowledge to drive measurable results."
+        )
+
+    return _break_lines(summary)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -1856,68 +1896,105 @@ def rewrite_experience_section(exp_text: str, role_key: str) -> tuple:
 def build_skills_section(role_key: str, resume_skills: set, existing_skills_text: str) -> str:
     """
     Build a structured, role-targeted skills section.
-    Categorizes skills into: Core Technical | Tools & Platforms | Soft Skills
-    Only lists skills present in the resume + must-have role skills if absent.
+
+    PRESERVE-FIRST RULES:
+    ✅ Every skill from the original resume is kept — NOTHING is dropped
+    ✅ Nothing is invented — ONLY skills already in the resume appear here
+    ✅ Role-relevant skills are moved to the FRONT so ATS parsers see them first
+    ✅ Grouped format: Core Skills → Tools & Platforms → Soft Skills → Additional
+
+    Strategy:
+    1. Parse existing_skills_text first (preserves candidate's original phrasing)
+    2. Supplement with resume_skills (auto-detected from full resume text)
+    3. Sort: role-required → role-preferred → tools/platforms → soft → other
+    4. Include ALL — no arbitrary caps that would silently drop original skills
     """
     taxonomy = ROLE_TAXONOMY.get(role_key, ROLE_TAXONOMY['DEFAULT'])
 
     required_lower  = {s.lower(): s for s in taxonomy['required_skills']}
     preferred_lower = {s.lower(): s for s in taxonomy['preferred_skills']}
 
-    core_tech   = []
-    tools_plat  = []
-    soft_skills = []
-    seen = set()
+    soft_kw = {
+        'communication', 'teamwork', 'leadership', 'problem solving', 'critical thinking',
+        'time management', 'negotiation', 'presentation', 'collaboration', 'adaptability',
+        'attention to detail', 'organizational skills', 'planning', 'reporting', 'creativity',
+        'empathy', 'conflict resolution', 'customer service', 'team leadership',
+    }
+    tool_kw = {
+        'excel', 'powerpoint', 'microsoft office', 'word', 'outlook', 'jira', 'confluence',
+        'trello', 'slack', 'salesforce', 'sap', 'erp', 'hris', 'tableau', 'power bi',
+        'google analytics', 'hubspot', 'wordpress', 'figma', 'sketch', 'adobe',
+        'quickbooks', 'tally', 'autocad', 'solidworks',
+    }
 
-    soft_kw = {'communication','teamwork','leadership','problem solving','critical thinking',
-               'time management','negotiation','presentation','collaboration','adaptability',
-               'attention to detail','organizational skills','planning','reporting','creativity',
-               'empathy','conflict resolution','customer service'}
+    # ── Step 1: Collect canonical skills preserving original phrasing ──────────
+    # First: parse the explicit skills section (highest-fidelity phrasing)
+    canonical = []
+    seen      = set()
 
-    tool_kw = {'excel','powerpoint','microsoft office','word','outlook','jira','confluence',
-               'trello','slack','salesforce','sap','erp','hris','tableau','power bi',
-               'google analytics','hubspot','wordpress','figma','sketch','adobe'}
+    if existing_skills_text and existing_skills_text.strip():
+        for token in re.split(r'[,\n\r|•\-–/]', existing_skills_text):
+            token = token.strip().strip('•-– ')
+            if token and 1 < len(token) < 60:
+                low = token.lower()
+                if low not in seen:
+                    seen.add(low)
+                    canonical.append(token)
 
-    # 1. Skills from resume matched to role
+    # Second: supplement with auto-detected skills not already captured
     for skill in resume_skills:
         s_lower = skill.lower()
-        if s_lower in seen:
-            continue
-
-        # Get display form
-        if s_lower in required_lower:
-            display = required_lower[s_lower]
-        elif s_lower in preferred_lower:
-            display = preferred_lower[s_lower]
-        else:
-            display = skill.title() if len(skill) <= 4 else skill.capitalize()
-
-        if s_lower in soft_kw:
-            soft_skills.append(display)
-        elif any(t in s_lower for t in tool_kw):
-            tools_plat.append(display)
-        elif s_lower in required_lower or s_lower in preferred_lower:
-            core_tech.append(display)
-        seen.add(s_lower)
-
-    # 2. Ensure all required skills appear (pad with role requirements if missing)
-    for s_lower, display in required_lower.items():
-        if s_lower not in seen and len(core_tech) < 10:
-            core_tech.append(display)
+        if s_lower not in seen:
             seen.add(s_lower)
+            canonical.append(skill)
 
-    # Build output
+    if not canonical:
+        # Rare: no detectable skills — leave a clear placeholder
+        return 'See experience section for demonstrated skills.'
+
+    # ── Step 2: Bucket each skill (ALL kept, none dropped) ────────────────────
+    core_tech   = []   # role-required skills the candidate has
+    preferred_s = []   # role-preferred skills the candidate has
+    tools_plat  = []   # tool/platform skills
+    soft_skills = []   # soft skills
+    other_s     = []   # everything else
+
+    for skill in canonical:
+        s_lower  = skill.lower()
+        # Use taxonomy capitalisation for role-known skills where possible
+        display = required_lower.get(s_lower) or preferred_lower.get(s_lower) or skill
+
+        is_required  = (s_lower in required_lower or
+                        any(s_lower in rk or rk in s_lower for rk in required_lower))
+        is_preferred = (not is_required and (
+                        s_lower in preferred_lower or
+                        any(s_lower in rk or rk in s_lower for rk in preferred_lower)))
+        is_soft      = s_lower in soft_kw
+        is_tool      = any(t in s_lower for t in tool_kw)
+
+        if is_required:
+            core_tech.append(display)
+        elif is_preferred:
+            preferred_s.append(display)
+        elif is_soft:
+            soft_skills.append(skill.title() if len(skill) <= 5 else skill.capitalize())
+        elif is_tool:
+            tools_plat.append(skill.title() if len(skill) <= 5 else skill.capitalize())
+        else:
+            other_s.append(skill.title() if len(skill) <= 5 else skill.capitalize())
+
+    # ── Step 3: Assemble — ALL skills included, role-relevant first ───────────
     parts = []
-    if core_tech:
-        parts.append(f"Core: {', '.join(core_tech[:8])}")
-    if tools_plat:
-        parts.append(f"Tools: {', '.join(tools_plat[:6])}")
-    if soft_skills:
-        parts.append(f"Soft Skills: {', '.join(soft_skills[:5])}")
+    core_combined = core_tech + preferred_s   # required first, then preferred
 
-    if not parts:
-        # Minimal fallback
-        parts = [', '.join([s for s in taxonomy['required_skills'][:8]])]
+    if core_combined:
+        parts.append(f"Core Skills: {', '.join(core_combined)}")
+    if tools_plat:
+        parts.append(f"Tools & Platforms: {', '.join(tools_plat)}")
+    if other_s:
+        parts.append(f"Additional: {', '.join(other_s)}")
+    if soft_skills:
+        parts.append(f"Soft Skills: {', '.join(soft_skills)}")
 
     return '\n'.join(parts)
 
@@ -2288,78 +2365,7 @@ def enhance_resume_for_role(resume_text: str, target_role: str) -> dict:
         contact, role_key, new_summary, new_skills, new_exp, sections
     )
 
-    # 9. Guarantee quantified achievements — inject into experience section
-    metric_hits = len([n for n in re.findall(r'\b\d+[\%\+]?\b', enhanced_text)
-                       if n not in ['0','1','2']])
-    if metric_hits < 5:
-        taxonomy    = ROLE_TAXONOMY.get(role_key, ROLE_TAXONOMY['DEFAULT'])
-        extra_lines = []
-        for pat in taxonomy['achievement_patterns'][:3]:
-            filled = re.sub(r'\{n\}',
-                            lambda m: str(random.choice([15,20,25,30,35,40])), pat)
-            extra_lines.append(f'- {filled.capitalize()}.')
-        achievement_bullets = '\n'.join(extra_lines)
-        if 'PROFESSIONAL EXPERIENCE' in enhanced_text:
-            enhanced_text = enhanced_text.replace(
-                'PROFESSIONAL EXPERIENCE\n' + SECTION_DIVIDER,
-                'PROFESSIONAL EXPERIENCE\n' + SECTION_DIVIDER + '\n' + achievement_bullets,
-                1
-            )
-        elif 'EDUCATION' in enhanced_text:
-            enhanced_text = enhanced_text.replace(
-                '\nEDUCATION\n',
-                '\n' + achievement_bullets + '\n\nEDUCATION\n',
-                1
-            )
-
-    # 10. Guarantee 10+ action verbs (needed for ATS verb score = 10/10)
-    REQUIRED_VERBS = ['developed','managed','led','created','implemented',
-                      'designed','analyzed','improved','delivered','achieved',
-                      'optimized','built','launched','coordinated','executed']
-    text_lower_check = enhanced_text.lower()
-    found_v  = [v for v in REQUIRED_VERBS if v in text_lower_check]
-    missing_v = [v for v in REQUIRED_VERBS if v not in text_lower_check]
-    if len(found_v) < 10 and missing_v:
-        # Inject missing verbs as bullets into the PROFESSIONAL EXPERIENCE section
-        # Never create a fake section — keep resume natural
-        VERB_SENTENCES = {
-            'developed'   : 'Developed scalable solutions that improved team efficiency by 25%.',
-            'managed'     : 'Managed cross-functional teams to deliver 10+ projects on schedule.',
-            'led'         : 'Led strategic initiatives resulting in measurable business impact.',
-            'created'     : 'Created frameworks and processes adopted across multiple departments.',
-            'implemented' : 'Implemented improvements that reduced operational costs by 20%.',
-            'designed'    : 'Designed workflows and systems improving productivity by 30%.',
-            'analyzed'    : 'Analyzed data and presented actionable insights to key stakeholders.',
-            'improved'    : 'Improved key performance metrics through targeted process optimization.',
-            'delivered'   : 'Delivered 12+ high-priority projects within scope and on schedule.',
-            'achieved'    : 'Achieved 95%+ satisfaction rate across all assigned deliverables.',
-            'optimized'   : 'Optimized existing processes saving 8+ hours per week per team.',
-            'built'       : 'Built robust solutions handling high-volume operational demands.',
-            'launched'    : 'Launched 3 initiatives generating measurable ROI within 6 months.',
-            'coordinated' : 'Coordinated with 6+ stakeholders to align goals and drive outcomes.',
-            'executed'    : 'Executed strategic plans resulting in 15% cost reduction.',
-        }
-        verb_bullets = '\n'.join(
-            f'- {VERB_SENTENCES.get(v, f"{v.capitalize()} key initiatives delivering measurable results.")}'
-            for v in missing_v[:max(0, 10 - len(found_v))]
-        )
-        # Append bullets to PROFESSIONAL EXPERIENCE section, not a new section
-        if 'PROFESSIONAL EXPERIENCE' in enhanced_text:
-            enhanced_text = enhanced_text.replace(
-                '\nSKILLS\n',
-                f'\n{verb_bullets}\n\nSKILLS\n',
-                1
-            )
-        elif 'EDUCATION' in enhanced_text:
-            enhanced_text = enhanced_text.replace(
-                '\nEDUCATION\n',
-                f'\n{verb_bullets}\n\nEDUCATION\n',
-                1
-            )
-        else:
-            enhanced_text += '\n' + verb_bullets
-
-    # 11. ATS check on enhanced resume
+    # 9. ATS compliance check on enhanced resume
     ats_result = run_ats_check(enhanced_text, role_key, resume_skills)
 
     # 10. Compute overall enhancement stats

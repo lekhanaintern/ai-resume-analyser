@@ -691,6 +691,10 @@ def _analyze_pdf_structure(filepath: str) -> dict:
     Analyzes raw PDF structure for drawing objects, images, and charts.
     Returns penalty signals that text-extraction cannot detect.
     Only called when filepath is available (not for extracted text analysis).
+
+    NOTE: Standard PDF generators (ReportLab, Word, LibreOffice) produce a small
+    number of lines/rects for page borders and section dividers. We only penalise
+    when counts are clearly above what a clean single-column resume would produce.
     """
     result = {'drawing_objects': 0, 'has_chart': False, 'has_images': False, 'penalty': 0, 'reasons': []}
     try:
@@ -700,26 +704,32 @@ def _analyze_pdf_structure(filepath: str) -> dict:
             total_curves  = sum(len(p.curves)  for p in pdf.pages)
             total_lines   = sum(len(p.lines)   for p in pdf.pages)
             total_images  = sum(len(p.images)  for p in pdf.pages)
-            total_objects = total_rects + total_curves + total_lines
+            # Lines from section dividers & page borders are expected — subtract baseline
+            n_pages       = max(len(pdf.pages), 1)
+            baseline_lines = n_pages * 10   # ~10 lines/page is normal for a clean resume
+            total_objects = max(0, (total_rects + total_curves + total_lines) - baseline_lines)
 
         result['drawing_objects'] = total_objects
         result['has_images']      = total_images > 0
 
+        # Images always penalised — ATS cannot read them
         if total_images > 0:
             result['penalty'] += 25
             result['reasons'].append(f'{total_images} embedded image(s) detected — ATS cannot read images')
 
-        if total_objects > 150:
+        # Only penalise drawing objects well above the baseline
+        if total_objects > 120:
             result['penalty'] += 25
-            result['reasons'].append(f'{total_objects} drawing objects detected — charts, skill bars, or graphics present')
-        elif total_objects > 80:
+            result['reasons'].append(f'Heavy graphical elements ({total_objects} objects) — charts/skill bars/graphics present')
+        elif total_objects > 60:
             result['penalty'] += 15
-            result['reasons'].append(f'{total_objects} drawing objects — possible charts or decorative graphics')
-        elif total_objects > 40:
-            result['penalty'] += 8
-            result['reasons'].append(f'{total_objects} drawing objects — minor graphical elements')
+            result['reasons'].append(f'Moderate graphical elements ({total_objects} objects) — possible charts or decorative graphics')
+        elif total_objects > 25:
+            result['penalty'] += 5
+            result['reasons'].append(f'Minor graphical elements ({total_objects} objects)')
 
-        if total_curves > 50:
+        # Curves are a strong signal for charts (not produced by simple dividers)
+        if total_curves > 40:
             result['has_chart'] = True
             result['penalty'] += 10
             result['reasons'].append('Chart/graph curves detected — ATS cannot parse graphical data')
@@ -939,13 +949,14 @@ def check_ats_friendliness(text: str, is_enhanced: bool = False, filepath: str =
     has_email    = bool(re.search(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', text))
     has_phone    = bool(re.search(r'(\+\d{1,3}[-.\s]?)?(\(?\d{3}\)?[-.\s]?)?\d{3}[-.\s]?\d{4}', text))
     has_linkedin = bool(re.search(r'linkedin\.com|linkedin', text_lower))
-    contact_score = (5 if has_email else 0) + (4 if has_phone else 0) + (1 if has_linkedin else 0)
+    # Email and phone together give full 10 pts — LinkedIn is a bonus suggestion only
+    contact_score = (5 if has_email else 0) + (5 if has_phone else 0)
     if not has_email:
         issues.append('No email address detected — add your professional email')
     if not has_phone:
         issues.append('No phone number detected — add your contact number')
     if not has_linkedin:
-        suggestions.append('Add your LinkedIn profile URL')
+        suggestions.append('Add your LinkedIn profile URL (linkedin.com/in/yourname)')
     details['contact_info'] = 'Complete' if (has_email and has_phone) else 'Incomplete'
 
     # ── DIMENSION 3: Essential Sections (max 20) ────────────────────────────
@@ -975,19 +986,23 @@ def check_ats_friendliness(text: str, is_enhanced: bool = False, filepath: str =
                     'trained','negotiated','streamlined','generated','drove',
                     'architected','deployed','migrated','automated','scaled']
     verb_count = sum(1 for v in action_verbs if v in text_lower)
-    if verb_count >= 10:
+    if verb_count >= 15:
         verb_score = 10
         details['action_verbs'] = f'Excellent ({verb_count} found)'
-    elif verb_count >= 6:
+    elif verb_count >= 10:
         verb_score = 7
         details['action_verbs'] = f'Good ({verb_count} found)'
-    elif verb_count >= 3:
+    elif verb_count >= 5:
         verb_score = 4
-        suggestions.append('Add more action verbs: developed, managed, optimized, delivered')
+        suggestions.append('Add more action verbs: developed, managed, optimized, delivered, spearheaded')
         details['action_verbs'] = f'Fair ({verb_count} found)'
+    elif verb_count >= 2:
+        verb_score = 2
+        issues.append(f'Only {verb_count} action verb(s) — use strong verbs like Led, Built, Delivered')
+        details['action_verbs'] = f'Weak ({verb_count} found)'
     else:
         verb_score = 0
-        issues.append(f'Only {verb_count} action verb(s) — use strong verbs')
+        issues.append('No action verbs detected — every bullet must start with a strong verb')
         details['action_verbs'] = f'Poor ({verb_count} found)'
 
     # ── DIMENSION 5: Paragraph Format (max 18) ──────────────────────────────
@@ -1005,10 +1020,7 @@ def check_ats_friendliness(text: str, is_enhanced: bool = False, filepath: str =
     graphics_penalty = 0
     graphics_reasons = []
 
-    if is_enhanced:
-        details['images_graphics'] = 'N/A (enhanced resume)'
-        graphics_score = 15
-    else:
+    if True:  # always run graphics check — is_enhanced no longer bypasses this
         # Signal A: PDF structure analysis (most accurate)
         if filepath:
             pdf_result = _analyze_pdf_structure(filepath)
@@ -1069,27 +1081,48 @@ def check_ats_friendliness(text: str, is_enhanced: bool = False, filepath: str =
         issues.append(reason) if third_penalty >= 8 else suggestions.append(reason)
 
     # ── DIMENSION 8: Quantified Achievements (max 5) ────────────────────────
-    numbers = re.findall(r'\b\d+[\%\+]?\b', text)
-    # Exclude skill percentages (50-99%) as they are not achievements
-    skill_pct_vals = set(re.findall(r'\b[5-9]\d%', text))
-    real_metrics   = [n for n in numbers if n not in ['0','1','2'] and n not in skill_pct_vals]
-    if len(real_metrics) >= 8:
+    # Exclude: years (19xx/20xx), long phone fragments (7+ digits),
+    #          country code digits after '+', trivial small numbers, skill % bars
+    skill_pct_vals  = set(re.findall(r'\b[5-9]\d%', text))
+    phone_cc_digits = set(re.findall(r'(?<=\+)\d{1,3}(?=[-\s])', text))
+    real_metrics = []
+    for tok in re.findall(r'\b\d+[\%\+]?\b', text):
+        clean = tok.rstrip('%+')
+        if re.match(r'^(19|20)\d{2}$', clean):
+            continue  # years
+        if len(clean) >= 7 and clean.isdigit():
+            continue  # phone fragments
+        if clean in {'0', '1', '2', '3', '4'}:
+            continue  # trivial
+        if tok in skill_pct_vals:
+            continue  # skill bars
+        if clean in phone_cc_digits:
+            continue  # +91 prefix
+        real_metrics.append(tok)
+    if len(real_metrics) >= 10:
         quant_score = 5
         details['quantification'] = f'Excellent — {len(real_metrics)} metrics found'
-    elif len(real_metrics) >= 4:
+    elif len(real_metrics) >= 6:
         quant_score = 3
         details['quantification'] = f'Good — {len(real_metrics)} numbers found'
-    elif len(real_metrics) >= 1:
+    elif len(real_metrics) >= 3:
         quant_score = 1
-        suggestions.append("Add quantified achievements — e.g. 'Improved performance by 30%'")
+        suggestions.append("Add more quantified achievements — e.g. 'Improved performance by 30%', 'Managed team of 10'")
         details['quantification'] = f'Fair — {len(real_metrics)} numbers found'
+    elif len(real_metrics) >= 1:
+        quant_score = 0
+        issues.append("Very few quantified achievements — add concrete numbers for every role")
+        details['quantification'] = f'Weak — only {len(real_metrics)} metric(s) found'
     else:
         quant_score = 0
-        issues.append("No quantified achievements — add numbers like '30% increase'")
+        issues.append("No quantified achievements — add numbers like '30% increase', 'team of 8', '$2M revenue'")
         details['quantification'] = 'Poor — no real metrics found'
 
     # ── DIMENSION 9: Special Characters / Encoding (max 5) ──────────────────
-    special_ratio   = len(re.findall(r'[^\w\s.,;:!?()\/\-\'\n]', text)) / max(len(text), 1)
+    # Allow chars that are normal in ATS-friendly plain-text resumes:
+    # @ (email), + (phone), | (separator), & (section names), % (metrics), # (skills), "
+    # Only penalise box-drawing, emojis, and non-ASCII decorative characters.
+    special_ratio   = len(re.findall(r'[^\w\s.,;:!?()\\/\-\'\"@+|&%#\n]', text)) / max(len(text), 1)
     encoding_issues = len(re.findall(r'[\x80-\x9F]', text))
     if special_ratio > 0.05 or encoding_issues > 10:
         char_score = 0
@@ -1102,12 +1135,118 @@ def check_ats_friendliness(text: str, is_enhanced: bool = False, filepath: str =
         char_score = 5
         details['formatting'] = 'Clean (ATS-friendly)'
 
+    # ── DIMENSION 10: Keyword Density & Role Alignment (max 10) ─────────────
+    # Uses specific professional terms that distinguish quality resumes.
+    # Generic words like 'experience', 'skills', 'team' deliberately excluded —
+    # every resume has them and they provide zero signal of quality.
+    domain_keywords = [
+        # Metrics & business impact vocabulary
+        'revenue', 'efficiency', 'productivity', 'cost', 'budget', 'growth',
+        'roi', 'kpi', 'targets', 'objectives', 'stakeholders', 'deliverables',
+        # Strong professional verbs (more specific)
+        'spearheaded', 'orchestrated', 'negotiated', 'streamlined', 'optimized',
+        'launched', 'automated', 'mentored', 'deployed', 'architected',
+        'onboarded', 'reduced', 'increased', 'generated', 'drove',
+        # Scope / collaboration indicators
+        'cross-functional', 'enterprise', 'end-to-end', 'scalable',
+        'roadmap', 'milestone', 'pipeline', 'compliance', 'governance',
+    ]
+    domain_hits = sum(1 for k in domain_keywords if k in text_lower)
+    if domain_hits >= 18:
+        keyword_density_score = 10
+        details['keyword_density'] = f'Excellent ({domain_hits} professional terms)'
+    elif domain_hits >= 12:
+        keyword_density_score = 7
+        details['keyword_density'] = f'Good ({domain_hits} professional terms)'
+    elif domain_hits >= 6:
+        keyword_density_score = 4
+        suggestions.append('Use more industry-standard professional vocabulary: KPIs, ROI, stakeholders, optimized, spearheaded.')
+        details['keyword_density'] = f'Fair ({domain_hits} professional terms)'
+    elif domain_hits >= 2:
+        keyword_density_score = 2
+        issues.append('Low professional vocabulary — add impact-focused terms: revenue, efficiency, stakeholders, optimized.')
+        details['keyword_density'] = f'Weak ({domain_hits} professional terms)'
+    else:
+        keyword_density_score = 0
+        issues.append('Resume lacks professional impact vocabulary — add terms like KPIs, ROI, optimized, stakeholders.')
+        details['keyword_density'] = f'Poor ({domain_hits} professional terms)'
+
+    # ── DIMENSION 11: Consistency & Completeness Penalty ────────────────────
+    # Checks structural completeness — dates, bullets, company names, content depth,
+    # actual degree name, and minimum bullet count.
+    lines_with_content = [ln for ln in text.split('\n') if len(ln.strip()) > 20]
+    has_dates    = bool(re.search(r'\b(19|20)\d{2}\b', text))
+    has_bullets  = bool(re.search(r'^\s*[\-\•\*\–]', text, re.MULTILINE))
+    has_company  = bool(re.search(r'\b(pvt|ltd|inc|corp|llc|company|technologies|solutions|services|institute|university|college)\b', text_lower))
+    has_degree   = any(d in text_lower for d in ['bachelor', 'master', 'phd', 'b.sc', 'm.sc', 'b.e', 'b.tech', 'm.tech', 'mba', 'diploma', 'b.com', 'b.a', 'm.a'])
+    bullet_lines = [ln for ln in text.split('\n') if re.match(r'^\s*[\-\•\*\–\►]', ln)]
+
+    completeness_score = 0
+    if has_dates:
+        completeness_score += 2
+    else:
+        issues.append('No dates found — add employment and education dates (e.g. Jan 2022 – Present).')
+    if has_bullets:
+        completeness_score += 1
+    else:
+        suggestions.append('Use bullet points for experience and achievements.')
+    if len(bullet_lines) >= 8:
+        completeness_score += 2
+    elif len(bullet_lines) >= 4:
+        completeness_score += 1
+    else:
+        issues.append(f'Only {len(bullet_lines)} bullet point(s) found — add at least 8 bullets across experience and skills.')
+    if has_company:
+        completeness_score += 1
+    else:
+        suggestions.append('Mention company/institution names explicitly.')
+    if has_degree:
+        completeness_score += 1
+    else:
+        suggestions.append('Spell out your full degree name (e.g. Bachelor of Technology) — ATS may miss abbreviations.')
+    if len(lines_with_content) >= 25:
+        completeness_score += 2
+    elif len(lines_with_content) >= 15:
+        completeness_score += 1
+    else:
+        issues.append('Resume content is very thin — expand all sections with more detail.')
+
+    # Hard cap: if degree missing AND no company, cap completeness low
+    if not has_degree and not has_company:
+        completeness_score = min(completeness_score, 2)
+
+    details['completeness'] = f'{completeness_score}/9'
+
     # ── FINAL SCORE ──────────────────────────────────────────────────────────
-    raw_score = (length_score + contact_score + section_score + verb_score +
-                 para_score + graphics_score + third_score +
-                 quant_score + char_score)
+    # Rebalanced weights — max ~100 points across 11 dimensions
+    # Stricter thresholds: domain keywords harder, verbs harder, quant harder
+    length_score_adj   = int(length_score   * 0.8)   # max 8
+    contact_score_adj  = int(contact_score  * 0.8)   # max 8
+    section_score_adj  = int(section_score  * 0.8)   # max 16
+    para_score_adj     = int(para_score     * 0.78)  # max ~14
+    graphics_score_adj = int(graphics_score * 0.8)   # max 12
+    third_score_adj    = int(third_score    * 0.71)  # max ~5
+    quant_score_adj    = int(quant_score    * 1.2)   # max 6
+    # verb_score: max 10, char_score: max 5, keyword_density: max 10, completeness: max 9
+
+    raw_score = (length_score_adj + contact_score_adj + section_score_adj +
+                 verb_score + para_score_adj + graphics_score_adj +
+                 third_score_adj + quant_score_adj + char_score +
+                 keyword_density_score + completeness_score)
 
     score = min(100, int(raw_score))
+
+    # ── Hard penalties for critical quality signals ───────────────────────
+    if quant_score == 0:
+        score = max(0, score - 12)   # no metrics = heavy penalty
+    elif quant_score <= 1:
+        score = max(0, score - 5)    # very few metrics
+    if not has_dates:
+        score = max(0, score - 7)
+    if keyword_density_score <= 2:
+        score = max(0, score - 5)    # resume reads as generic/vague
+    if verb_count < 5:
+        score = max(0, score - 5)    # not enough action verbs
 
     # Hard caps for critical failures
     critical_failures = []
@@ -1117,26 +1256,26 @@ def check_ats_friendliness(text: str, is_enhanced: bool = False, filepath: str =
         critical_failures.append('wall-of-text paragraphs')
     if section_score <= 5:
         critical_failures.append('missing essential sections')
-    if contact_score <= 4:
+    if contact_score < 5:
         critical_failures.append('missing contact info')
     if third_penalty >= 8:
         critical_failures.append('third-person writing style')
 
     if critical_failures:
-        score = min(score, 62)
+        score = min(score, 65)
 
-    is_ats_friendly = score >= 75 and len(critical_failures) == 0
+    is_ats_friendly = score >= 80 and len(critical_failures) == 0
 
-    if score >= 88:
-        overall = 'Excellent — Highly ATS-friendly'
-    elif score >= 75:
-        overall = 'Good — ATS-friendly with minor improvements'
-    elif score >= 58:
-        overall = 'Fair — Needs improvement before submitting'
-    elif score >= 40:
-        overall = 'Poor — Major issues detected'
+    if score >= 90:
+        overall = 'Excellent — Highly ATS-friendly. Role prediction unlocked.'
+    elif score >= 80:
+        overall = 'Good — ATS-friendly. Role prediction unlocked.'
+    elif score >= 65:
+        overall = 'Fair — Needs improvement. Reach 80 to unlock role prediction.'
+    elif score >= 45:
+        overall = 'Poor — Major issues detected. Fix these to reach 80+.'
     else:
-        overall = 'Very Poor — Resume will likely be rejected by ATS'
+        overall = 'Very Poor — Resume will likely be rejected by ATS. Significant rework needed.'
 
     if critical_failures:
         overall += f' (Critical: {", ".join(critical_failures)})'
@@ -1149,14 +1288,16 @@ def check_ats_friendliness(text: str, is_enhanced: bool = False, filepath: str =
         'suggestions':     suggestions,
         'details':         details,
         'score_breakdown': {
-            'content_length':   length_score,
-            'contact_info':     contact_score,
-            'sections':         section_score,
-            'action_verbs':     verb_score,
-            'paragraph_format': para_score,
-            'graphics_charts':  graphics_score,
-            'writing_style':    third_score,
-            'quantification':   quant_score,
-            'special_chars':    char_score,
+            'content_length':    length_score_adj,
+            'contact_info':      contact_score_adj,
+            'sections':          section_score_adj,
+            'action_verbs':      verb_score,
+            'paragraph_format':  para_score_adj,
+            'graphics_charts':   graphics_score_adj,
+            'writing_style':     third_score_adj,
+            'quantification':    quant_score_adj,
+            'special_chars':     char_score,
+            'keyword_density':   keyword_density_score,
+            'completeness':      completeness_score,
         }
     }

@@ -5,6 +5,19 @@ from flask import Blueprint, request, jsonify, session, make_response
 from services.resume_analyzer import (
     check_ats_friendliness, generate_smart_suggestions, normalize_role, get_role_key
 )
+try:
+    from services.resume_analyzer import extract_actual_skills
+except ImportError:
+    def extract_actual_skills(text: str) -> list:  # type: ignore[misc]
+        """Fallback: pull capitalised/known skill tokens from resume text."""
+        import re as _re
+        tokens = _re.findall(r'\b[A-Z][a-zA-Z+#.]{1,20}\b', text)
+        seen, skills = set(), []
+        for t in tokens:
+            if t.lower() not in seen:
+                seen.add(t.lower())
+                skills.append(t)
+        return skills[:30]
 from services.resume_rewriter import rewrite_resume_nlp, rewrite_resume_for_role
 from utils.file_parser import extract_text_from_pdf, extract_text_from_docx, paragraphs_to_bullets
 from utils.subscription import check_limit, increment_usage
@@ -166,12 +179,17 @@ def upload_resume():
             session['prediction_confidence'] = prediction['confidence']
 
             questions = interview_questions.get(raw_role, interview_questions['DEFAULT'])
+            extracted_skills = extract_actual_skills(resume_text)
+            session['resume_text'] = resume_text
+            session['resume_skills'] = extracted_skills
             response['analysis'] = {
-                'predicted_role':  raw_role,
-                'normalized_role': normalized_role,
-                'confidence':      prediction['confidence'],
-                'top_3_roles':     prediction['top_3_roles'],
-                'interview_questions': questions
+                'predicted_role':   raw_role,
+                'normalized_role':  normalized_role,
+                'confidence':       prediction['confidence'],
+                'top_3_roles':      prediction['top_3_roles'],
+                'interview_questions': questions,
+                'skills':           extracted_skills[:15],
+                'experience_years': 2,
             }
         else:
             # Score below 80 — no role prediction, prompt user to fix resume first
@@ -260,9 +278,9 @@ def analyze_resume():
 def generate_role_resume():
     """
     NLP-powered resume tailoring engine.
-    - Rewrites bullets with strong verbs + injected metrics
-    - Generates human-sounding role-specific summary
-    - Builds categorized skills section (Core / Tools / Soft)
+    - Rewrites bullets with strong verbs (no fabricated metrics)
+    - Generates role-specific summary preserving candidate's own words
+    - Builds categorized skills section (Core / Tools / Soft) from existing skills only
     - Returns skill gap analysis, section scores, ATS compliance
     """
     try:
@@ -383,19 +401,24 @@ def enhance_resume():
 
 @resume_bp.route('/api/download-pdf', methods=['POST'])
 def download_pdf():
+    """
+    Professional ATS-optimised PDF — clean single-column template.
+    Sections: name (centred, navy, 20pt) → contact bar → ruled section headers →
+    job-title/date rows → disc-bullet experience → labelled skills blocks → education.
+    Zero images, zero charts, zero skill bars — pure text for maximum ATS readability.
+    """
     try:
         import io
         from reportlab.lib.pagesizes import A4
         from reportlab.lib.units     import cm
         from reportlab.lib           import colors
-        from reportlab.lib.enums     import TA_LEFT, TA_CENTER, TA_RIGHT
-        from reportlab.lib.styles    import ParagraphStyle
-        from reportlab.platypus      import (
-            SimpleDocTemplate, Paragraph, Spacer,
-            HRFlowable, Table, TableStyle, KeepTogether,
+        from reportlab.lib.enums     import TA_LEFT, TA_CENTER
+        from reportlab.lib.styles   import ParagraphStyle
+        from reportlab.platypus     import (
+            SimpleDocTemplate, Paragraph, Spacer, HRFlowable,
         )
 
-        # ── Input ──────────────────────────────────────────────
+        # ── Input ─────────────────────────────────────────────────────────────
         body        = request.get_json(force=True)
         resume_text = (body.get('resume_text') or '').strip()
         filename    = (body.get('filename')    or 'resume').strip()
@@ -404,248 +427,270 @@ def download_pdf():
         if not resume_text:
             return jsonify({'error': 'resume_text is required'}), 400
 
-        # ── Colours ────────────────────────────────────────────
-        C_BLACK  = colors.HexColor('#0A0A0A')
-        C_ACCENT = colors.HexColor('#1B3A6B')   # navy — name & section headers
-        C_MGREY  = colors.HexColor('#4A4A4A')
-        C_LGREY  = colors.HexColor('#888888')
+        # ── Colour palette ────────────────────────────────────────────────────
+        NAVY   = colors.HexColor('#1C3557')   # name + section headers + bullets
+        DARK   = colors.HexColor('#1A1A1A')   # body text
+        MED    = colors.HexColor('#333333')   # job title
+        GREY   = colors.HexColor('#555555')   # company / date
+        LGREY  = colors.HexColor('#777777')   # contact bar
+        RULE   = colors.HexColor('#B8C8DC')   # section divider line
 
-        L_MARGIN = 2.0 * cm
-        R_MARGIN = 2.0 * cm
-        T_MARGIN = 1.6 * cm
-        B_MARGIN = 1.6 * cm
-        PAGE_W   = A4[0] - L_MARGIN - R_MARGIN
-
-        # ── Footer: "Name  ·  Page N" ──────────────────────────
-        _candidate_name = ['']
-
-        def _draw_footer(canvas, doc):
-            canvas.saveState()
-            canvas.setFont('Helvetica', 7.5)
-            canvas.setFillColor(C_LGREY)
-            name_part = _candidate_name[0] + '  \u00b7  ' if _candidate_name[0] else ''
-            canvas.drawString(L_MARGIN, B_MARGIN - 10,
-                              f'{name_part}Page {doc.page}')
-            canvas.restoreState()
+        # ── Page geometry ─────────────────────────────────────────────────────
+        PW, _  = A4
+        LM = RM = 1.85 * cm
 
         buffer = io.BytesIO()
-        doc    = SimpleDocTemplate(
-            buffer,
-            pagesize     = A4,
-            leftMargin   = L_MARGIN,
-            rightMargin  = R_MARGIN,
-            topMargin    = T_MARGIN,
-            bottomMargin = B_MARGIN,
-            title        = filename.replace('.pdf', ''),
-            subject      = 'ATS-Optimised Resume',
+        doc = SimpleDocTemplate(
+            buffer, pagesize=A4,
+            leftMargin=LM, rightMargin=RM,
+            topMargin=1.3 * cm, bottomMargin=1.4 * cm,
+            title=filename.replace('.pdf', ''),
+            subject='ATS-Optimised Resume',
+            creator='Resume Analyzer Pro',
         )
 
-        # ── Styles ─────────────────────────────────────────────
-        S_NAME = ParagraphStyle('S_NAME',
+        # ── Typography ────────────────────────────────────────────────────────
+        def PS(name, **kw):
+            return ParagraphStyle(name, **kw)
+
+        S_NAME = PS('name',
             fontName='Helvetica-Bold', fontSize=20, leading=24,
-            alignment=TA_CENTER, textColor=C_ACCENT,
-            spaceAfter=4, spaceBefore=2)
+            alignment=TA_CENTER, textColor=NAVY,
+            spaceBefore=2, spaceAfter=2)
 
-        S_CONTACT = ParagraphStyle('S_CONTACT',
-            fontName='Helvetica', fontSize=9, leading=12,
-            alignment=TA_CENTER, textColor=C_MGREY, spaceAfter=3)
+        S_CONTACT = PS('contact',
+            fontName='Helvetica', fontSize=8.5, leading=12,
+            alignment=TA_CENTER, textColor=LGREY, spaceAfter=5)
 
-        S_SECTION = ParagraphStyle('S_SECTION',
-            fontName='Helvetica-Bold', fontSize=10.5, leading=14,
-            alignment=TA_LEFT, textColor=C_ACCENT,
-            spaceBefore=14, spaceAfter=2,
-            borderPadding=(0, 0, 2, 0))
-
-        S_JOBTITLE = ParagraphStyle('S_JOBTITLE',
+        S_SEC = PS('section',
             fontName='Helvetica-Bold', fontSize=9.5, leading=13,
-            alignment=TA_LEFT, textColor=C_BLACK, spaceAfter=1)
+            alignment=TA_LEFT, textColor=NAVY,
+            spaceBefore=10, spaceAfter=1, tracking=80)
 
-        S_DATE = ParagraphStyle('S_DATE',
-            fontName='Helvetica-Oblique', fontSize=9, leading=13,
-            alignment=TA_RIGHT, textColor=C_MGREY)
+        S_JOBT = PS('jobtitle',
+            fontName='Helvetica-Bold', fontSize=9.5, leading=13,
+            alignment=TA_LEFT, textColor=MED,
+            spaceBefore=5, spaceAfter=0)
 
-        S_BODY = ParagraphStyle('S_BODY',
-            fontName='Helvetica', fontSize=9.5, leading=13.5,
-            alignment=TA_LEFT, textColor=C_BLACK, spaceAfter=2)
+        S_CO = PS('company',
+            fontName='Helvetica', fontSize=9, leading=12,
+            alignment=TA_LEFT, textColor=GREY, spaceAfter=2)
 
-        S_BULLET = ParagraphStyle('S_BULLET',
+        S_BODY = PS('body',
             fontName='Helvetica', fontSize=9.5, leading=14,
-            alignment=TA_LEFT, textColor=C_BLACK,
-            leftIndent=18, firstLineIndent=-18, spaceAfter=3)
+            alignment=TA_LEFT, textColor=DARK, spaceAfter=2)
 
-        S_SKILLS = ParagraphStyle('S_SKILLS',
+        S_BULLET = PS('bullet',
+            fontName='Helvetica', fontSize=9.5, leading=14,
+            alignment=TA_LEFT, textColor=DARK,
+            leftIndent=13, firstLineIndent=-9, spaceAfter=2)
+
+        S_SKILL_LBL = PS('skill_lbl',
+            fontName='Helvetica-Bold', fontSize=8.5, leading=12,
+            textColor=NAVY, spaceAfter=0)
+
+        S_SKILL_VAL = PS('skill_val',
             fontName='Helvetica', fontSize=9, leading=13,
-            alignment=TA_LEFT, textColor=C_BLACK, spaceAfter=3)
+            textColor=DARK, spaceAfter=4)
 
-        # ── Regex helpers ───────────────────────────────────────
-        SEP_RE    = re.compile(r'^[-─=]{3,}$')
-        BULLET_RE = re.compile(r'^[-*\u2022\u25cf]\s+')
-        DATE_RE   = re.compile(
-            r'(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|'
-            r'\d{4}|Present|Current|Till date)', re.I)
-        SKILLS_RE = re.compile(
-            r'^(skills?|technical skills?|key skills?|'
-            r'core competencies|competencies)\s*[:\-]?\s*', re.I)
-        PIPE_SEP  = re.compile(r'\s*\|\s*')
-
+        # ── Helpers ───────────────────────────────────────────────────────────
         def sx(t):
-            return (t.replace('&', '&amp;')
-                     .replace('<', '&lt;')
-                     .replace('>', '&gt;')
-                     .replace('"', '&quot;'))
+            return (str(t).replace('&','&amp;').replace('<','&lt;')
+                          .replace('>','&gt;').replace('"','&quot;'))
 
-        def section_block(title):
-            return KeepTogether([
-                Paragraph(title.upper(), S_SECTION),
-                HRFlowable(width='100%', thickness=0.75,
-                           color=C_ACCENT, spaceAfter=4),
-            ])
+        def section_hdr(title):
+            return [
+                Paragraph(sx(title.upper()), S_SEC),
+                HRFlowable(width='100%', thickness=0.6, color=RULE,
+                           spaceBefore=1, spaceAfter=4, lineCap='square'),
+            ]
 
-        def job_title_row(title_text, date_text=''):
-            if not date_text:
-                return Paragraph(sx(title_text), S_JOBTITLE)
-            t = Table(
-                [[Paragraph(sx(title_text), S_JOBTITLE),
-                  Paragraph(sx(date_text),  S_DATE)]],
-                colWidths=[PAGE_W * 0.70, PAGE_W * 0.30],
-                hAlign='LEFT',
-            )
-            t.setStyle(TableStyle([
-                ('VALIGN',       (0, 0), (-1, -1), 'TOP'),
-                ('LEFTPADDING',  (0, 0), (-1, -1), 0),
-                ('RIGHTPADDING', (0, 0), (-1, -1), 0),
-                ('TOPPADDING',   (0, 0), (-1, -1), 0),
-                ('BOTTOMPADDING',(0, 0), (-1, -1), 2),
-            ]))
-            return t
+        def title_date_row(title, date='', company=''):
+            """
+            Bold title left, grey date right — rendered as a single Paragraph
+            with a tab-like spacer using right-aligned date in a nested table-free
+            approach. Uses a plain two-cell table with NO borders/lines so
+            pdfplumber sees zero extra drawing objects.
+            """
+            elems = []
+            if title or date:
+                # Render as a single paragraph: bold title + spaced date
+                # Use right-aligned invisible separator so ATS text extraction
+                # reads: "Job Title  Company  Date" on one line — clean, parseable
+                if date:
+                    combined = (
+                        f'<b>{sx(title)}</b>'
+                        f'<font color="#777777" size="8.5">'
+                        f'&nbsp;&nbsp;&nbsp;&nbsp;{sx(date)}'
+                        f'</font>'
+                    )
+                else:
+                    combined = f'<b>{sx(title)}</b>'
+                elems.append(Paragraph(combined, S_JOBT))
+            if company:
+                elems.append(Paragraph(sx(company), S_CO))
+            return elems
 
-        # ── Known section headers ───────────────────────────────
-        SECTION_HEADERS = {
-            'PROFESSIONAL SUMMARY', 'SUMMARY', 'OBJECTIVE',
-            'CAREER OBJECTIVE', 'PROFILE', 'ABOUT ME',
-            'SKILLS', 'TECHNICAL SKILLS', 'KEY SKILLS',
-            'CORE COMPETENCIES', 'COMPETENCIES', 'TOOLS & TECHNOLOGIES',
-            'PROFESSIONAL EXPERIENCE', 'WORK EXPERIENCE', 'EXPERIENCE',
-            'EMPLOYMENT HISTORY', 'WORK HISTORY',
-            'EDUCATION', 'ACADEMIC BACKGROUND', 'ACADEMIC QUALIFICATIONS',
-            'CERTIFICATIONS', 'CERTIFICATES', 'LICENSES & CERTIFICATIONS',
-            'PROJECTS', 'KEY PROJECTS', 'PERSONAL PROJECTS',
-            'ACHIEVEMENTS', 'ACCOMPLISHMENTS', 'AWARDS', 'HONORS',
-            'LANGUAGES', 'ADDITIONAL INFORMATION', 'INTERESTS',
-            'VOLUNTEER', 'VOLUNTEER EXPERIENCE', 'PUBLICATIONS',
-            'KEY CONTRIBUTIONS', 'KEY STRENGTHS', 'STRENGTHS', 'ADDITIONAL STRENGTHS',
+        def bullet(text):
+            return Paragraph(
+                f'<font color="#1C3557">\u2022</font>\u00a0\u00a0{sx(text)}',
+                S_BULLET)
+
+        # ── Regex helpers ─────────────────────────────────────────────────────
+        SEP_RE       = re.compile(r'^[-─=\u2500]{3,}$')
+        BULLET_RE    = re.compile(r'^[-*\u2022\u25cf\u2013\u2014>]\s*')
+        DATE_RE      = re.compile(
+            r'(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|'
+            r'\d{4}|Present|Current|Till\s*[Dd]ate)', re.I)
+        DATE_RANGE   = re.compile(
+            r'(\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)?'
+            r'\s*\d{4}\s*[-\u2013\u2014to]+\s*'
+            r'(?:\d{4}|Present|Current|Till\s*[Dd]ate)\b)', re.I)
+        SKILL_LBL_RE = re.compile(
+            r'^(Core Skills?|Technical Skills?|Key Skills?'
+            r'|Tools?\s*[&]\s*Platforms?|Additional|Soft Skills?'
+            r'|Competencies|Languages?)\s*:\s*', re.I)
+        SKILL_CSV_RE = re.compile(r'^[A-Za-z0-9].{8,}(?:,\s*[A-Za-z0-9].+){2,}$')
+
+        SECTION_HDRS = {
+            'PROFESSIONAL SUMMARY','SUMMARY','OBJECTIVE','CAREER OBJECTIVE',
+            'PROFILE','ABOUT ME',
+            'SKILLS','TECHNICAL SKILLS','KEY SKILLS','CORE COMPETENCIES',
+            'COMPETENCIES','EXPERTISE','TOOLS & TECHNOLOGIES','TOOLS & PLATFORMS',
+            'PROFESSIONAL EXPERIENCE','WORK EXPERIENCE','EXPERIENCE',
+            'EMPLOYMENT HISTORY','WORK HISTORY','EMPLOYMENT',
+            'EDUCATION','ACADEMIC BACKGROUND','ACADEMIC QUALIFICATIONS',
+            'EDUCATIONAL BACKGROUND','QUALIFICATIONS',
+            'CERTIFICATIONS','CERTIFICATES','CREDENTIALS',
+            'LICENSES & CERTIFICATIONS','CERTIFICATION','CERTIFICATE',
+            'PROJECTS','KEY PROJECTS','PERSONAL PROJECTS','PORTFOLIO',
+            'ACHIEVEMENTS','ACCOMPLISHMENTS','AWARDS','HONORS',
+            'LANGUAGES','ADDITIONAL INFORMATION','INTERESTS',
+            'VOLUNTEER','VOLUNTEER EXPERIENCE','PUBLICATIONS',
+            'KEY CONTRIBUTIONS','KEY STRENGTHS','STRENGTHS',
         }
 
-        # ── Parse ───────────────────────────────────────────────
+        # ── Parse lines → elements ────────────────────────────────────────────
         elements    = []
         lines       = resume_text.split('\n')
         i           = 0
-        header_done = False
+        hdr_done    = False
+        in_skills   = False
 
         while i < len(lines):
             raw      = lines[i]
+            i += 1
             stripped = raw.strip()
-            i       += 1
 
             if SEP_RE.match(stripped):
                 continue
             if not stripped:
-                if elements:
-                    elements.append(Spacer(1, 3))
+                elements.append(Spacer(1, 2))
                 continue
 
             upper = stripped.upper()
 
-            # ── Header block ─────────────────────────────────
-            if not header_done:
-                _candidate_name[0] = stripped
+            # ── A. Name + contact header ──────────────────────────────────
+            if not hdr_done:
+                elements.append(Spacer(1, 4))
                 elements.append(Paragraph(sx(stripped), S_NAME))
-                elements.append(
-                    HRFlowable(width='50%', thickness=2.0,
-                               color=C_ACCENT, spaceAfter=6, hAlign='CENTER')
-                )
-                # Collect contact / role-tag lines
-                contact_lines = []
+
+                contact_parts = []
                 while i < len(lines):
                     nxt = lines[i].strip()
-                    i  += 1
+                    i += 1
                     if not nxt or SEP_RE.match(nxt):
                         continue
-                    if nxt.upper() in SECTION_HEADERS:
+                    if nxt.upper() in SECTION_HDRS:
                         i -= 1
                         break
-                    contact_lines.append(nxt)
-                    if len(contact_lines) >= 4:
+                    if nxt.lower().startswith(('tailored for','targeted for')):
+                        continue
+                    contact_parts.append(nxt)
+                    if len(contact_parts) >= 3:
                         break
 
-                for cl in contact_lines:
-                    # Skip any "Tailored for" or "Targeted for" lines
-                    if cl.lower().startswith(('tailored for', 'targeted for')):
-                        continue
-                    clean = PIPE_SEP.sub('  \u00b7  ', cl)
-                    elements.append(Paragraph(sx(clean), S_CONTACT))
+                if contact_parts:
+                    joined = '  \u007c  '.join(contact_parts)
+                    elements.append(Paragraph(sx(joined), S_CONTACT))
 
-                elements.append(Spacer(1, 8))
-                header_done = True
+                elements.append(Spacer(1, 2))
+                elements.append(HRFlowable(
+                    width='100%', thickness=1.5, color=NAVY,
+                    spaceBefore=0, spaceAfter=6, lineCap='square'))
+                hdr_done  = True
+                in_skills = False
                 continue
 
-            # ── Section heading ──────────────────────────────
-            if upper in SECTION_HEADERS:
-                elements.append(section_block(stripped))
+            # ── B. Section heading ────────────────────────────────────────
+            if upper in SECTION_HDRS:
+                in_skills = upper in {
+                    'SKILLS','TECHNICAL SKILLS','KEY SKILLS',
+                    'CORE COMPETENCIES','COMPETENCIES','EXPERTISE',
+                    'TOOLS & TECHNOLOGIES','TOOLS & PLATFORMS',
+                }
+                for el in section_hdr(stripped):
+                    elements.append(el)
                 continue
 
-            # ── Bullet point ─────────────────────────────────
+            # ── C. Bullet line ────────────────────────────────────────────
             if BULLET_RE.match(stripped):
                 content = BULLET_RE.sub('', stripped).strip()
-                elements.append(Paragraph('\u2013 ' + sx(content), S_BULLET))
+                if content:
+                    elements.append(bullet(content))
+                in_skills = False
                 continue
 
-            # ── Skills line ──────────────────────────────────
-            if SKILLS_RE.match(stripped) or (
-                    ',' in stripped and len(stripped.split(',')) >= 3):
-                clean_skills = SKILLS_RE.sub('', stripped).strip().strip(':').strip()
-                if clean_skills:
-                    clean_skills = re.sub(r'\s*[|/]\s*', ', ', clean_skills)
-                    elements.append(Paragraph(sx(clean_skills), S_SKILLS))
-                    continue
-
-            # ── Job title / company with date ────────────────
-            if ('|' in stripped or '\u2014' in stripped or '\u2013' in stripped) \
-                    and DATE_RE.search(stripped):
-                date_match = re.search(
-                    r'(\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)?\s*'
-                    r'\d{4}\s*[-\u2013]\s*(?:\d{4}|Present|Current|Till date))',
-                    stripped, re.I)
-                if date_match:
-                    title_part = stripped[:date_match.start()].strip().strip('|-').strip()
-                    date_part  = date_match.group(0).strip()
-                    elements.append(job_title_row(title_part, date_part))
+            # ── D. Skills: "Label: val1, val2…" or plain CSV ─────────────
+            m = SKILL_LBL_RE.match(stripped)
+            if m or (in_skills and SKILL_CSV_RE.match(stripped)):
+                if m:
+                    lbl  = m.group(1).strip()
+                    val  = stripped[m.end():].strip().strip(':').strip()
                 else:
-                    clean = stripped.replace('\u2014', '-').replace('\u2013', '-')
-                    elements.append(Paragraph(sx(clean), S_JOBTITLE))
+                    lbl, val = '', stripped
+                if lbl:
+                    elements.append(Paragraph(sx(lbl) + ':', S_SKILL_LBL))
+                if val:
+                    elements.append(Paragraph(sx(val), S_SKILL_VAL))
                 continue
 
-            # ── Education / cert line with year ─────────────
-            if DATE_RE.search(stripped) and len(stripped) < 120:
-                date_match = re.search(r'(\b\d{4}\b(?:\s*[-\u2013]\s*\d{4})?)', stripped)
-                if date_match:
-                    title_part = stripped[:date_match.start()].strip().rstrip('-|').strip()
-                    date_part  = date_match.group(0).strip()
-                    if title_part:
-                        elements.append(job_title_row(title_part, date_part))
+            # ── E. Job/education title row with date ─────────────────────
+            has_sep = '|' in stripped or '\u2014' in stripped or '\u2013' in stripped
+            if has_sep and DATE_RE.search(stripped):
+                dm       = DATE_RANGE.search(stripped)
+                date_str = dm.group(0).strip() if dm else ''
+                rest     = (stripped[:dm.start()] + stripped[dm.end():]).strip().strip('|-').strip() if dm else stripped
+                parts    = [p.strip() for p in rest.split('|') if p.strip()]
+                title_s  = parts[0] if parts else rest
+                co_s     = parts[1] if len(parts) > 1 else ''
+                for el in title_date_row(title_s, date_str, co_s):
+                    elements.append(el)
+                in_skills = False
+                continue
+
+            if DATE_RE.search(stripped) and len(stripped) < 130:
+                dm = DATE_RANGE.search(stripped) or re.search(r'\b\d{4}\b', stripped)
+                if dm:
+                    tp = stripped[:dm.start()].strip().rstrip('-|,').strip()
+                    dp = dm.group(0).strip()
+                    if tp:
+                        for el in title_date_row(tp, dp):
+                            elements.append(el)
+                        in_skills = False
                         continue
 
-            # ── Plain body ───────────────────────────────────
+            # ── F. Plain body ─────────────────────────────────────────────
             elements.append(Paragraph(sx(stripped), S_BODY))
 
-        # ── Build PDF ──────────────────────────────────────────
-        doc.build(elements, onFirstPage=_draw_footer, onLaterPages=_draw_footer)
+        # ── Build PDF ─────────────────────────────────────────────────────────
+        doc.build(elements)
         buffer.seek(0)
 
-        response = make_response(buffer.read())
-        response.headers['Content-Type']        = 'application/pdf'
-        response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
-        return response
+        resp = make_response(buffer.read())
+        resp.headers['Content-Type']        = 'application/pdf'
+        resp.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return resp
 
     except ImportError:
         return jsonify({'error': 'reportlab not installed. Run: pip install reportlab'}), 500
@@ -657,153 +702,334 @@ def download_pdf():
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  /api/claude-fix  — NLP rewriter using rewrite_resume_nlp()
+# ─────────────────────────────────────────────────────────────────────────────
+#  /api/claude-fix  — Apply All Fixes using structured resume_fixer pipeline
 # ─────────────────────────────────────────────────────────────────────────────
 @resume_bp.route('/api/claude-fix', methods=['POST'])
 def claude_fix():
     import traceback
     try:
-        data        = request.get_json(force=True) or {}
-        resume_text = data.get('resume_text', '').strip()
-        role        = data.get('predicted_role', '')
+        # Force JSON parse — return proper JSON even on content-type mismatch
+        data = request.get_json(force=True, silent=True)
+        if data is None:
+            raw = request.get_data(as_text=True)
+            print(f'[claude-fix] Could not parse JSON. Raw length: {len(raw)}')
+            return jsonify({'success': False, 'error': 'Invalid request body — could not parse JSON'}), 400
+
+        resume_text = (data.get('resume_text') or '').strip()
+        role        = (data.get('predicted_role') or '').strip()
 
         if not resume_text:
             return jsonify({'success': False, 'error': 'No resume text provided'}), 400
 
-        from services.resume_rewriter import rewrite_resume_nlp
+        try:
+            from services.resume_fixer import fix_resume
+        except ImportError as ie:
+            print(f'[claude-fix] Import error: {ie}')
+            return jsonify({'success': False, 'error': f'Fixer module not available: {ie}'}), 500
 
-        # Score original resume to find issues for rewriter
-        ats_check = check_ats_friendliness(resume_text, is_enhanced=False)
-        analysis  = {'predicted_role': role} if role else {}
+        # ── Run the full structured fixer ────────────────────────────────────
+        # fix_resume() rebuilds the entire resume from parsed sections, applies
+        # all ATS improvements, and returns before/after scores so the UI
+        # can show a genuine score delta.
+        fix_result   = fix_resume(resume_text, predicted_role=role)
+        fixed_resume = fix_result['fixed_text']
+        before_score = fix_result['before_score']
+        new_score    = fix_result['after_score']
+        score_delta  = fix_result['score_delta']
+        new_ats      = fix_result['after_result']
 
-        # Run the full NLP rewriter
-        fixed_resume = rewrite_resume_nlp(resume_text, ats_check, analysis)
-
-        # ── POST-PROCESS: fix what the NLP rewriter leaves behind ────────────
-        # 1. Remove separator lines (---- ) — scorer stitches them with content
+        # ── Post-process: remove leftover separator lines ────────────────────
         fixed_resume = re.sub(r'^-{5,}$', '', fixed_resume, flags=re.MULTILINE)
 
-        # 2. Convert every non-bullet prose line with 6+ words into bullet(s)
-        #    This prevents _detect_paragraph_walls from stitching consecutive prose lines
-        HEADER_RE  = re.compile(r'^[A-Z][A-Z\s/&\-]{2,}$')
-        CONTACT_RE = re.compile(r'[@|]|\+\d|\d{7,}|linkedin', re.I)
-        out_lines  = []
-        for line in fixed_resume.split('\n'):
-            s     = line.strip()
-            words = s.split()
-            is_bullet  = s.startswith(('-', '\u2022', '*', '>', '\u2013', '\u2014'))
-            is_header  = bool(HEADER_RE.match(s)) and len(words) <= 7
-            is_contact = bool(CONTACT_RE.search(s))
-            is_short   = len(words) < 6
-            if not s or is_bullet or is_header or is_contact or is_short:
-                out_lines.append(line)
-            elif len(words) >= 20:
-                sentences = re.split(r'(?<=[.!?])\s+(?=[A-Z])', s)
-                if len(sentences) > 1:
-                    for sent in sentences:
-                        out_lines.append('- ' + sent.strip())
-                else:
-                    mid = len(words) // 2
-                    out_lines.append('- ' + ' '.join(words[:mid]))
-                    out_lines.append('- ' + ' '.join(words[mid:]))
-            else:
-                out_lines.append('- ' + s)
-        fixed_resume = '\n'.join(out_lines)
-
-        # 3. Remove third-person pronouns (7/7 writing style)
-        third_pat = re.compile(
-            r'\b(he|she|they|his|her|their|him|them)\s+'
-            r'(is|was|has|had|does|did|developed|managed|led|worked|'
-            r'created|designed|built|achieved|delivered|implemented|'
-            r'analyzed|improved|coordinated|executed|launched|collaborated)\b',
-            re.IGNORECASE
-        )
-        fixed_resume = third_pat.sub(lambda m: m.group(2).capitalize(), fixed_resume)
-
-        # Action verbs are strengthened inline by the NLP rewriter above
-        # No fake sections injected
-
-        # 5. Guarantee word count 300-800 for 10/10
-        wc = len(fixed_resume.split())
-
-        if wc < 300:
-            # Pad — inject into experience section
-            padding = (
-                '- Demonstrated ability to manage multiple priorities and deliver results consistently.\n'
-                '- Proven track record of collaborating with cross-functional teams to achieve goals.\n'
-                '- Strong communicator with experience presenting findings to diverse stakeholders.\n'
-                '- Committed to continuous professional development and industry best practices.'
-            )
-            if 'PROFESSIONAL EXPERIENCE' in fixed_resume:
-                fixed_resume = fixed_resume.replace(
-                    'PROFESSIONAL EXPERIENCE\n',
-                    'PROFESSIONAL EXPERIENCE\n' + padding + '\n',
-                    1
-                )
-            else:
-                fixed_resume += '\n' + padding
-
-        # Always trim if over 800 — recalculate wc after any padding
-        wc = len(fixed_resume.split())
-        if wc > 800:
-            lines  = fixed_resume.split('\n')
-            trimmed, count = [], 0
-            HEADER_RE2 = re.compile(r'^[A-Z][A-Z\s/&\-]{2,}$')
-            for line in lines:
-                lw = len(line.split())
-                ls = line.strip()
-                # Always keep headers and short lines
-                if (HEADER_RE2.match(ls) and lw <= 7) or lw <= 3:
-                    trimmed.append(line)
-                    count += lw
-                elif count + lw <= 750:
-                    trimmed.append(line)
-                    count += lw
-                # Stop adding content lines once over 750
-            fixed_resume = '\n'.join(trimmed)
-            print(f"[TRIM] Trimmed from {wc} to {len(fixed_resume.split())} words")
-
-        # ── GUARANTEE ALL SCORING DIMENSIONS PASS ───────────────────────────
-        # Contact: ensure email and phone exist
+        # ── Recover contact info if stripped during fix ──────────────────────
         if '@' not in fixed_resume:
-            email_match = re.search(r'[\w.+-]+@[\w-]+\.[a-zA-Z]{2,}', resume_text)
-            if email_match:
-                fixed_resume = fixed_resume.split('\n')[0] + '\n' + email_match.group() + '\n' + '\n'.join(fixed_resume.split('\n')[1:])
-
-        if not re.search(r'\+?\d[\d\s\-(). ]{7,15}\d', fixed_resume):
-            phone_match = re.search(r'\+?\d[\d\s\-(). ]{7,15}\d', resume_text)
-            if phone_match:
+            em = re.search(r'[\w.+-]+@[\w-]+\.[a-zA-Z]{2,}', resume_text)
+            if em:
                 lines_tmp = fixed_resume.split('\n')
-                lines_tmp.insert(1, phone_match.group().strip())
+                lines_tmp.insert(1, em.group())
                 fixed_resume = '\n'.join(lines_tmp)
 
-        # Re-score the fixed resume to get the new score
-        new_ats = check_ats_friendliness(fixed_resume, is_enhanced=True)
-        print(f"[SCORE DEBUG] wc={len(fixed_resume.split())} score={new_ats['score']} breakdown={new_ats.get('score_breakdown',{})}")
+        if not re.search(r'\+?\d[\d\s\-(). ]{7,15}\d', fixed_resume):
+            ph = re.search(r'\+?\d[\d\s\-(). ]{7,15}\d', resume_text)
+            if ph:
+                lines_tmp = fixed_resume.split('\n')
+                lines_tmp.insert(1, ph.group().strip())
+                fixed_resume = '\n'.join(lines_tmp)
 
-        fixes = [
-            {'category': 'Structure',  'action': 'Normalised section headers',         'detail': 'All sections renamed to ATS-standard ALL CAPS format.'},
-            {'category': 'Contact',    'action': 'Verified contact information',        'detail': 'Email, phone and LinkedIn checked and completed.'},
-            {'category': 'Content',    'action': 'Rebuilt Professional Summary',        'detail': 'Role-specific summary rewritten with strong opening keywords.'},
-            {'category': 'Skills',     'action': 'Rebuilt Skills section',              'detail': 'Role-matched skills extracted and formatted for ATS.'},
-            {'category': 'Verbs',      'action': 'Strengthened action verbs',           'detail': 'Weak phrases replaced with strong ATS action verbs.'},
-            {'category': 'Structure',  'action': 'Converted paragraphs to bullets',     'detail': 'All experience lines reformatted as dash bullets.'},
-            {'category': 'Metrics',    'action': 'Added quantified achievements',       'detail': '8+ real numbers injected for full metrics score (5/5).'},
-            {'category': 'Formatting', 'action': 'Removed special characters',         'detail': 'Non-ASCII symbols stripped — clean formatting 5/5.'},
-            {'category': 'Formatting', 'action': 'Optimised word count to 300-800',    'detail': 'Resume padded or trimmed to stay in ATS sweet spot (10/10).'},
-            {'category': 'Content',    'action': 'Removed third-person writing',        'detail': 'Third-person pronouns removed — writing style 7/7.'},
-        ]
+        print(f"[claude-fix] before={before_score} after={new_score} delta={score_delta:+d}")
 
-        return jsonify({
-            'success'        : True,
-            'fixed_resume'   : fixed_resume,
-            'fixes'          : fixes,
-            'summary'        : f'NLP pipeline applied {len(fixes)} fixes. New ATS score: {new_ats["score"]}/100.',
-            'predicted_score': new_ats['score'],
-        })
+        # ── Build human-readable fix list from fixer's own log ───────────────
+        fix_log = fix_result.get('fixes_applied', [])
+        fixes = []
+        category_map = {
+            'section': 'Structure', 'header': 'Structure', 'normalise': 'Structure',
+            'summary': 'Content',   'skills': 'Skills',     'verb': 'Verbs',
+            'bullet': 'Structure',  'paragraph': 'Structure','contact': 'Contact',
+            'education': 'Content', 'word': 'Formatting',   'third': 'Formatting',
+            'warning': 'Advisory',  'advisory': 'Advisory', 'tip': 'Advisory',
+        }
+        for msg in fix_log[:10]:
+            cat = 'General'
+            for kw, label in category_map.items():
+                if kw.lower() in msg.lower():
+                    cat = label
+                    break
+            fixes.append({'category': cat, 'action': msg[:80], 'detail': msg})
+
+        if not fixes:
+            fixes = [
+                {'category': 'Structure', 'action': 'Normalised section headers', 'detail': 'All sections renamed to ATS-standard ALL CAPS format.'},
+                {'category': 'Content',   'action': 'Polished Professional Summary', 'detail': 'Filler removed, weak verbs strengthened.'},
+                {'category': 'Skills',    'action': 'Re-ordered Skills section', 'detail': 'Role-relevant skills moved to front.'},
+                {'category': 'Verbs',     'action': 'Strengthened action verbs', 'detail': 'Weak phrases replaced with strong ATS verbs.'},
+                {'category': 'Structure', 'action': 'Converted paragraphs to bullets', 'detail': 'Long prose reformatted as scannable dash bullets.'},
+            ]
+
+        # ── Role prediction — unlocked when fixed score >= 80 ────────────────
+        role_prediction = None
+        role_unlocked   = False
+
+        if new_score >= 80:
+            try:
+                prediction      = predictor.predict(fixed_resume)
+                raw_role        = prediction['predicted_role']
+                normalized_role = normalize_role(raw_role)
+                session['predicted_job_role']    = normalized_role
+                session['raw_predicted_role']    = raw_role
+                session['prediction_confidence'] = prediction['confidence']
+                questions = interview_questions.get(raw_role, interview_questions['DEFAULT'])
+                role_prediction = {
+                    'predicted_role':      raw_role,
+                    'normalized_role':     normalized_role,
+                    'confidence':          prediction['confidence'],
+                    'top_3_roles':         prediction['top_3_roles'],
+                    'interview_questions': questions,
+                }
+                role_unlocked = True
+                print(f"[claude-fix] Role unlocked: {raw_role} ({prediction['confidence']}% confidence)")
+            except Exception as pred_err:
+                print(f"[claude-fix] Prediction error: {pred_err}")
+
+        delta_str = f'+{score_delta}' if score_delta >= 0 else str(score_delta)
+        response = {
+            'success':         True,
+            'fixed_resume':    fixed_resume,
+            'fixes':           fixes,
+            'before_score':    before_score,
+            'predicted_score': new_score,
+            'score_delta':     score_delta,
+            'role_unlocked':   role_unlocked,
+            'summary': (
+                f'Resume fixed. Score: {before_score} → {new_score}/100 ({delta_str} points). '
+                + (f'Role prediction unlocked: {role_prediction["predicted_role"]}.'
+                   if role_unlocked
+                   else f'Reach 80+ to unlock role prediction. Currently {new_score}/100.')
+            ),
+        }
+
+        if role_unlocked:
+            response['role_prediction'] = role_prediction
+        else:
+            response['score_gate'] = {
+                'locked':           True,
+                'score':            new_score,
+                'threshold':        80,
+                'points_needed':    max(0, 80 - new_score),
+                'message': (
+                    f'Your ATS score is now {new_score}/100 (was {before_score}). '
+                    f'Role prediction unlocks at 80+. '
+                    + (f'You need {max(0, 80 - new_score)} more point(s). Fix the remaining issues below.'
+                       if new_score < 80 else 'Almost there — re-scan to unlock.')
+                ),
+                'remaining_issues': new_ats.get('issues', [])[:5],
+            }
+
+        return jsonify(response)
 
     except Exception as e:
         import traceback
         print(f'[claude-fix] Error: {e}')
         print(traceback.format_exc())
         return jsonify({'success': False, 'error': str(e)}), 500
+
+# ─────────────────────────────────────────────────────────────────────────────
+# /api/generate-questions — NLP-powered MCQ + Interview Question Generator
+# ─────────────────────────────────────────────────────────────────────────────
+@resume_bp.route('/api/generate-questions', methods=['POST'])
+def generate_questions():
+    """
+    Generate role-specific MCQ and mock interview questions using
+    FLAN-T5 NLP model (free, open-source). Falls back to curated
+    static question bank if model is unavailable.
+
+    Request body:
+        role             (str)  — normalized role key e.g. 'DATA-SCIENCE'
+        skills           (list) — skills extracted from resume
+        experience_years (int)  — years of experience (default 2)
+        mcq_count        (int)  — number of MCQ questions (default 10)
+        interview_count  (int)  — number of interview questions (default 10)
+
+    Returns:
+        { mcq: [...], interview: [...], role, model_used, skills_used }
+    """
+    try:
+        from services.question_generator import generate_questions_for_resume  # type: ignore[import]
+        from services.resume_analyzer import normalize_role, extract_actual_skills  # type: ignore[misc]
+
+        data = request.get_json(force=True, silent=True) or {}
+
+        # Get role — from request body, session, or default
+        role = data.get('role') or session.get('predicted_job_role', 'DEFAULT')
+        role = normalize_role(role)
+
+        # Get skills — from request body or session resume text
+        skills = data.get('skills', [])
+        if not skills:
+            resume_text = session.get('resume_text', '')
+            if resume_text:
+                skills = extract_actual_skills(resume_text)
+
+        experience_years = int(data.get('experience_years', 2))
+        mcq_count        = int(data.get('mcq_count', 10))
+        interview_count  = int(data.get('interview_count', 10))
+
+        result = generate_questions_for_resume(
+            role=role,
+            skills=skills,
+            experience_years=experience_years,
+            mcq_count=mcq_count,
+            interview_count=interview_count
+        )
+
+        return jsonify({'success': True, **result}), 200
+
+    except Exception as e:
+        import traceback
+        print(f'[generate-questions] Error: {e}')
+        print(traceback.format_exc())
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# /api/mock-interview — AI-powered conversational mock interview
+# ─────────────────────────────────────────────────────────────────────────────
+@resume_bp.route('/api/mock-interview', methods=['POST'])
+def mock_interview():
+    """
+    Conversational mock interview session.
+    Accepts user's answer, returns next question + feedback on previous answer.
+
+    Request body:
+        role             (str)  — normalized role key
+        question         (str)  — the question that was asked
+        user_answer      (str)  — candidate's answer
+        question_number  (int)  — current question index
+        skills           (list) — candidate's skills
+
+    Returns:
+        {
+            feedback:       str,   — feedback on the user's answer
+            score:          int,   — score for this answer (0-10)
+            next_question:  str,   — next interview question
+            is_complete:    bool,  — true if interview is done
+            total_score:    int    — running total (if complete)
+        }
+    """
+    try:
+        from services.question_generator import get_interview_questions  # type: ignore[import]
+        from services.resume_analyzer import normalize_role
+
+        data = request.get_json(force=True, silent=True) or {}
+
+        role            = normalize_role(data.get('role', session.get('predicted_job_role', 'DEFAULT')))
+        question        = data.get('question', '')
+        user_answer     = data.get('user_answer', '').strip()
+        question_number = int(data.get('question_number', 1))
+        skills          = data.get('skills', [])
+        MAX_QUESTIONS   = 5
+
+        # Generate basic feedback based on answer quality
+        feedback, score = _evaluate_mock_answer(user_answer, question, role)
+
+        # Get next question
+        all_questions = get_interview_questions(role, 2, skills, MAX_QUESTIONS + 2)
+        is_complete   = question_number >= MAX_QUESTIONS
+        next_question = None if is_complete else (
+            all_questions[question_number] if question_number < len(all_questions) else None
+        )
+
+        response = {
+            'success':       True,
+            'feedback':      feedback,
+            'score':         score,
+            'question_number': question_number,
+            'next_question': next_question,
+            'is_complete':   is_complete,
+        }
+        return jsonify(response), 200
+
+    except Exception as e:
+        print(f'[mock-interview] Error: {e}')
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+def _evaluate_mock_answer(answer: str, question: str, role: str) -> tuple:
+    """
+    Rule-based answer evaluator. Returns (feedback_str, score_0_to_10).
+    No LLM required — uses heuristics on answer quality signals.
+    """
+    import re
+    if not answer or len(answer.strip()) < 10:
+        return ("Your answer was too brief. Try to provide a detailed response with examples.", 1)
+
+    words      = answer.split()
+    word_count = len(words)
+    has_number = bool(re.search(r'\d+', answer))
+    has_example= any(w in answer.lower() for w in ['example', 'instance', 'when i', 'i worked', 'i led', 'i built', 'i developed', 'project', 'team'])
+    has_result = any(w in answer.lower() for w in ['result', 'outcome', 'achieved', 'improved', 'reduced', 'increased', '%', 'successfully'])
+
+    score = 5  # baseline
+
+    if word_count >= 80:
+        score += 2
+        length_fb = "Good detailed response."
+    elif word_count >= 40:
+        score += 1
+        length_fb = "Decent length — could be more detailed."
+    else:
+        score -= 1
+        length_fb = "Answer is quite short — aim for 50+ words with context."
+
+    if has_number:
+        score += 1
+
+    if has_example:
+        score += 1
+        example_fb = "Good use of a concrete example."
+    else:
+        score -= 1
+        example_fb = "Try adding a specific example from your experience."
+
+    if has_result:
+        score += 1
+        result_fb = "You mentioned outcomes — great!"
+    else:
+        result_fb = "Mention the result/outcome of your actions for stronger impact."
+
+    score = max(1, min(10, score))
+
+    tips = []
+    if not has_example:
+        tips.append("Use the STAR method: Situation, Task, Action, Result.")
+    if not has_number:
+        tips.append("Add quantified results (e.g. '30% improvement', '5-person team').")
+    if word_count < 40:
+        tips.append("Expand your answer with more context and detail.")
+
+    feedback_parts = [length_fb, example_fb, result_fb]
+    if tips:
+        feedback_parts.append("💡 Tip: " + " ".join(tips[:2]))
+
+    feedback = " ".join(feedback_parts)
+    return (feedback, score)

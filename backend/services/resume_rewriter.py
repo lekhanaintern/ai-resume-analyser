@@ -1,21 +1,32 @@
-"""Resume rewriter helper functions."""
+"""Resume rewriter helper functions.
+
+CORE PHILOSOPHY — PRESERVE THEN ENHANCE:
+  ✅ Professional Summary  → polish the candidate's OWN summary (fix filler & weak verbs)
+                              — NEVER replace with a template unless no summary exists
+  ✅ Skills               → keep EVERY skill from the resume; role-relevant ones moved first
+                              — NEVER drop a skill, NEVER inject keywords not in the resume
+  ✅ Experience           → bullets strengthened (weak verbs → strong verbs)
+                              — content is never invented or replaced
+  ✅ All other sections   → preserved exactly as-is
+"""
 import re
 from services.resume_analyzer import (
     normalize_role, get_role_key, ROLE_KEYWORDS, WEAK_VERBS, SECTION_MAP,
-    ROLE_SUMMARY_TEMPLATES, ROLE_ACTION_PHRASES
 )
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# SECTION HELPERS  (used by both rewrite_resume_nlp and rewrite_resume_for_role)
+# ─────────────────────────────────────────────────────────────────────────────
 
 def _filter_relevant_projects_rewriter(projects_text: str, role_key: str) -> str:
     """
     Filters projects to only include those relevant to the target role.
-    Used by the legacy rewriter path. Mirrors nlp_engine logic.
+    Used by the legacy rewriter path.
     """
     if not projects_text.strip():
         return ''
 
-    # Role keyword map for relevance scoring
     ROLE_SKILL_MAP = {
         'DATA-SCIENCE':           ['python','machine learning','sql','data','model','analysis','statistics','tensorflow','pandas','jupyter'],
         'DATA-ANALYST':           ['sql','excel','tableau','power bi','data','analysis','dashboard','reporting','python','visualization'],
@@ -37,10 +48,8 @@ def _filter_relevant_projects_rewriter(projects_text: str, role_key: str) -> str
 
     keywords = ROLE_SKILL_MAP.get(role_key, [])
     if not keywords:
-        # No keyword map for role — include all projects
         return projects_text
 
-    # Split into blocks
     lines = projects_text.split('\n')
     blocks, current = [], []
     for line in lines:
@@ -59,7 +68,7 @@ def _filter_relevant_projects_rewriter(projects_text: str, role_key: str) -> str
         t = block.lower()
         return sum(1 for kw in keywords if kw in t)
 
-    scored = sorted([(score(b), b) for b in blocks if b.strip()], reverse=True)
+    scored  = sorted([(score(b), b) for b in blocks if b.strip()], reverse=True)
     relevant = [(s, b) for s, b in scored if s >= 1]
 
     if not relevant:
@@ -73,7 +82,6 @@ def normalize_section_headers(text: str) -> str:
     out   = []
     for line in lines:
         stripped = line.strip()
-        # Only attempt renaming on short, standalone lines with no bullet/sentence chars
         if (stripped
                 and len(stripped) < 60
                 and not stripped.startswith('-')
@@ -85,10 +93,12 @@ def normalize_section_headers(text: str) -> str:
         out.append(line)
     return '\n'.join(out)
 
+
 def strengthen_verbs(text: str) -> str:
     for pattern, replacement in WEAK_VERBS.items():
         text = re.sub(pattern, replacement, text, flags=re.IGNORECASE)
     return text
+
 
 def extract_sections(text: str) -> dict:
     sections = {
@@ -97,10 +107,6 @@ def extract_sections(text: str) -> dict:
         'projects': [], 'achievements': [], 'other': []
     }
     current = 'header'
-
-    # Strict section header patterns — must be a SHORT standalone line (< 60 chars),
-    # no bullet prefix, no sentence punctuation. This prevents content lines like
-    # "- Managed cross-functional projects" from accidentally switching sections.
     SECTION_PATTERNS = [
         (re.compile(r'^(PROFESSIONAL SUMMARY|SUMMARY|OBJECTIVE|CAREER OBJECTIVE|PROFILE|ABOUT ME)$'),
          'summary'),
@@ -116,7 +122,6 @@ def extract_sections(text: str) -> dict:
          'projects'),
         (re.compile(r'^(ACHIEVEMENTS?|ACCOMPLISHMENTS?|AWARDS?|HONORS?)$'),
          'achievements'),
-        # Absorb our own injected sections into 'other' so they don't contaminate
         (re.compile(r'^(KEY CONTRIBUTIONS?|ADDITIONAL INFORMATION|KEY STRENGTHS?)$'),
          'other'),
     ]
@@ -124,34 +129,30 @@ def extract_sections(text: str) -> dict:
     for line in text.split('\n'):
         stripped = line.strip()
         upper    = stripped.upper()
-
-        # Only try section matching on short lines without bullet/sentence structure
-        matched = False
+        matched  = False
         if stripped and len(stripped) < 60 and not stripped.startswith('-'):
             for pattern, section_name in SECTION_PATTERNS:
                 if pattern.match(upper):
                     current = section_name
                     matched = True
                     break
-
         if not matched:
             sections[current].append(line)
 
     return {k: '\n'.join(v).strip() for k, v in sections.items()}
 
+
 def extract_contact(header_text: str) -> tuple:
     lines = [ln.strip() for ln in header_text.split('\n') if ln.strip()]
     name  = lines[0] if lines else '[Your Name]'
-
     email_m    = re.search(r'[\w.+-]+@[\w-]+\.[a-zA-Z]{2,}', header_text)
     phone_m    = re.search(r'(\+?\d[\d\s\-(). ]{7,}\d)', header_text)
     linkedin_m = re.search(r'linkedin\.com/in/[\w-]+', header_text, re.IGNORECASE)
-
     email    = email_m.group()         if email_m    else ''
     phone    = phone_m.group().strip() if phone_m    else ''
     linkedin = linkedin_m.group()      if linkedin_m else ''
-
     return name, email, phone, linkedin
+
 
 def extract_actual_skills(resume_text: str) -> list:
     """
@@ -159,10 +160,7 @@ def extract_actual_skills(resume_text: str) -> list:
     No fabrication — reads what's there.
     """
     text_lower = resume_text.lower()
-
-    # Large pool of possible skills to detect
     all_possible_skills = [
-        # Tech
         'python','java','javascript','typescript','c++','c#','ruby','php','swift','kotlin','go','rust',
         'html','css','html5','css3','react','angular','vue','node.js','express','django','flask',
         'spring','laravel','rails','fastapi',
@@ -172,64 +170,45 @@ def extract_actual_skills(resume_text: str) -> list:
         'pandas','numpy','matplotlib','seaborn','tableau','power bi','excel','r',
         'data analysis','data visualization','statistics','big data','spark','hadoop',
         'rest api','graphql','microservices','agile','scrum','devops','ci/cd',
-        # Business
         'project management','team leadership','communication','problem solving','critical thinking',
         'time management','negotiation','presentation','strategic planning','budget management',
         'crm','salesforce','sap','erp','jira','confluence','trello','slack',
-        # Finance/Accounting
         'financial analysis','budgeting','forecasting','gaap','auditing','tax','accounting',
         'quickbooks','tally','financial modeling','risk management','compliance',
-        # HR
         'recruitment','talent acquisition','onboarding','performance management','payroll','hris',
         'employee relations','training','hr analytics',
-        # Design
         'figma','adobe xd','photoshop','illustrator','indesign','sketch','ui/ux','wireframing',
         'prototyping','typography','user research',
-        # Healthcare
         'patient care','emr','ehr','hipaa','clinical','medical billing','triage','cpr',
-        # Marketing/Digital
         'seo','sem','social media','content marketing','email marketing','google analytics',
         'copywriting','brand management','adobe creative suite','wordpress',
-        # Sales
         'lead generation','pipeline management','account management','cold calling','upselling',
-        # Other
         'customer service','data entry','microsoft office','ms word','powerpoint','outlook',
         'quality control','six sigma','autocad','solidworks','lean manufacturing',
     ]
-
     found = []
     seen  = set()
     for skill in all_possible_skills:
         if skill.lower() in text_lower and skill.lower() not in seen:
             found.append(skill)
             seen.add(skill.lower())
-
-    # Also scan ROLE_KEYWORDS pool so role-specific terms are caught with proper capitalisation
     for kw_list in ROLE_KEYWORDS.values():
         for kw in kw_list:
             kw_lower = kw.lower()
             if kw_lower not in seen and kw_lower in text_lower:
                 found.append(kw)
                 seen.add(kw_lower)
-
     return found
 
+
 def _break_into_short_lines(text: str, max_words: int = 30) -> str:
-    """
-    Split a paragraph into lines no longer than max_words words,
-    breaking at sentence boundaries where possible.
-    This prevents the ATS '50+ word paragraph' penalty.
-    """
-    # First split on sentence endings
     sentences = re.split(r'(?<=[.!?])\s+', text.strip())
-    lines = []
-    current = []
-    current_count = 0
+    lines, current, current_count = [], [], 0
     for sent in sentences:
         words = sent.split()
         if current_count + len(words) > max_words and current:
             lines.append(' '.join(current))
-            current = words
+            current       = words
             current_count = len(words)
         else:
             current.extend(words)
@@ -238,134 +217,186 @@ def _break_into_short_lines(text: str, max_words: int = 30) -> str:
         lines.append(' '.join(current))
     return '\n'.join(lines)
 
-def build_role_specific_skills(role_key: str, actual_skills: list, existing_skills_text: str) -> str:
-    """
-    Build a skills section that contains ONLY skills from the uploaded resume
-    that are relevant to the target role.
 
-    Strategy (in priority order):
-    1. Role-keyword matched skills from the detected actual_skills list
-    2. Skills explicitly written in the resume's skills section that overlap with role keywords
-    3. If very few matches, pad with transferable skills from actual_skills (soft skills, tools)
-       — still only from the resume, never invented.
+# ─────────────────────────────────────────────────────────────────────────────
+# SKILLS — PRESERVE ALL, RE-ORDER ROLE-RELEVANT FIRST
+# ─────────────────────────────────────────────────────────────────────────────
 
-    Returns a clean comma-separated skills string, or grouped by category if enough items.
+def build_role_specific_skills(
+    role_key: str,
+    actual_skills: list,
+    existing_skills_text: str,
+) -> str:
     """
-    rk = role_key or 'DEFAULT'
+    Build a skills section that:
+      1. Keeps EVERY skill from the original resume — nothing dropped, nothing invented
+      2. Role-relevant skills appear FIRST (ATS keyword density boost)
+      3. All remaining original skills follow in their natural order
+      4. Format: plain comma-separated, ATS-safe (no bullet chars, no percentage bars)
+
+    Strategy:
+      A. Parse the raw skills section text first (preserves original phrasing)
+      B. Supplement with auto-detected skills found elsewhere in the resume
+      C. Sort: role-required → role-preferred → everything else
+    """
+    rk            = role_key or 'DEFAULT'
     role_kw_lower = {k.lower() for k in ROLE_KEYWORDS.get(rk, [])}
 
-    # ── 1. From auto-detected skills (extract_actual_skills pool) ─────────────
-    role_matched = [s for s in actual_skills if s.lower() in role_kw_lower]
-
-    # ── 2. Also scan the raw skills text from the resume for role keywords ─────
-    # (catches things like "Python (Advanced)" that the simple detector might miss)
-    raw_skill_words = set()
+    # ── A. Parse original skills text ────────────────────────────────────────
+    raw_items = []
+    seen_raw  = set()
     if existing_skills_text:
-        # Tokenise: split on commas, newlines, bullets, pipes
         for token in re.split(r'[,\n\r|•\-–/]', existing_skills_text):
             token = token.strip().strip('•-– ')
-            if token and len(token) < 50:
-                raw_skill_words.add(token.lower())
+            if token and 1 < len(token) < 60:
+                low = token.lower()
+                if low not in seen_raw:
+                    seen_raw.add(low)
+                    raw_items.append(token)
 
-    # Match raw skill tokens against role keywords
-    extra_matched = []
-    for token_lower in raw_skill_words:
-        for rk_word in role_kw_lower:
-            if rk_word in token_lower or token_lower in rk_word:
-                # Use the original capitalisation from the text if possible
-                for token in re.split(r'[,\n\r|•\-–/]', existing_skills_text):
-                    token = token.strip()
-                    if token.lower().strip('•-– ') == token_lower:
-                        extra_matched.append(token)
-                        break
-                break
+    # ── B. Supplement with detected skills not in the explicit section ────────
+    for skill in actual_skills:
+        low = skill.lower()
+        if low not in seen_raw:
+            seen_raw.add(low)
+            raw_items.append(skill)
 
-    # Combine and deduplicate (role_matched first, then extras)
-    seen = set()
-    combined = []
-    for s in role_matched + extra_matched:
-        key = s.lower().strip()
-        if key and key not in seen:
-            seen.add(key)
-            combined.append(s)
+    if not raw_items:
+        # Absolute fallback (should be very rare)
+        return ', '.join(list(ROLE_KEYWORDS.get(rk, []))[:8])
 
-    # ── 3. If fewer than 4 role-specific skills found, supplement with role keywords ─
-    # First try transferable skills from resume, then pad with role-specific keywords
-    if len(combined) < 4:
-        transferable_keywords = {
-            'communication', 'teamwork', 'leadership', 'problem solving', 'critical thinking',
-            'time management', 'project management', 'microsoft office', 'excel',
-            'powerpoint', 'presentation', 'negotiation', 'research', 'data analysis',
-            'customer service', 'team leadership', 'collaboration', 'adaptability',
-            'attention to detail', 'organizational skills', 'planning', 'reporting',
-        }
-        for s in actual_skills:
-            if s.lower() in transferable_keywords and s.lower() not in seen:
-                combined.append(s)
-                seen.add(s.lower())
-            if len(combined) >= 6:
-                break
+    # ── C. Bucket: role-relevant vs rest ─────────────────────────────────────
+    role_bucket = []
+    rest_bucket = []
+    for skill in raw_items:
+        low = skill.lower()
+        is_role = (
+            low in role_kw_lower or
+            any(low in rk_kw or rk_kw in low for rk_kw in role_kw_lower)
+        )
+        if is_role:
+            role_bucket.append(skill)
+        else:
+            rest_bucket.append(skill)
 
-    # If still fewer than 4, pad with role-specific keywords (clearly relevant to the role)
-    if len(combined) < 4:
-        role_kw_list = ROLE_KEYWORDS.get(rk, [])
-        for kw in role_kw_list:
-            if kw.lower() not in seen:
-                combined.append(kw)
-                seen.add(kw.lower())
-            if len(combined) >= 8:
-                break
+    return ', '.join(role_bucket + rest_bucket)
 
-    if not combined:
-        # Absolute fallback — use role keywords so each role shows different, relevant skills
-        role_kw_list = list(ROLE_KEYWORDS.get(rk, []))
-        combined = role_kw_list[:6] if role_kw_list else (actual_skills[:6] if actual_skills else ['See experience section'])
 
-    # Format: one clean comma-separated line (ATS-friendly, no bullets)
-    return ', '.join(combined)
+# ─────────────────────────────────────────────────────────────────────────────
+# SUMMARY — POLISH ORIGINAL, ONLY GENERATE WHEN ABSENT
+# ─────────────────────────────────────────────────────────────────────────────
 
-def build_role_specific_summary(role_key: str, actual_skills: list, existing_summary: str) -> str:
+def _polish_existing_summary(
+    text: str,
+    role_key: str,
+    actual_skills: list,
+) -> str:
     """
-    Build a genuinely role-specific summary that:
-    - Uses role-relevant skills FIRST (unique per role)
-    - Injects a role-specific quantified achievement phrase
-    - Breaks into short lines (<= 30 words each) to pass ATS paragraph check
+    Polish the candidate's own summary text:
+      • Remove filler phrases
+      • Strengthen weak verb openers
+      • Remove first-person "I" references
+      • Add a concise role-targeting closing (only if role not already mentioned)
+
+    NEVER replaces or invents content — only cleans and appends.
+    """
+    FILLER_RE = re.compile(
+        r'\b(hardworking|hard.working|team player|go.getter|passionate (about|learner)|'
+        r'quick learner|fast learner|self.motivated|detail.oriented|results.oriented|'
+        r'dynamic (professional|individual)|highly motivated|seasoned professional|'
+        r'excellent communication skills?|strong communication)\b',
+        re.IGNORECASE
+    )
+    WEAK_VERB_MAP = [
+        (r'\bresponsible for\b', 'leading'),
+        (r'\bhelped (with|to)\b', 'supported'),
+        (r'\bworked (on|with)\b', 'collaborated on'),
+        (r'\bwas involved in\b', 'contributed to'),
+        (r'\bwas part of\b', 'contributed to'),
+        (r'\bI am\b', 'A'),
+        (r'\bI have\b', 'Having'),
+        (r'\bI\b', ''),
+    ]
+
+    text = FILLER_RE.sub('', text)
+    for pat, repl in WEAK_VERB_MAP:
+        text = re.sub(pat, repl, text, flags=re.IGNORECASE)
+    text = re.sub(r'  +', ' ', text).strip()
+
+    # Fix capitalisation after removals
+    sents = re.split(r'(?<=[.!?])\s+', text)
+    fixed = []
+    for s in sents:
+        s = s.strip()
+        if s and s[0].islower():
+            s = s[0].upper() + s[1:]
+        if s:
+            fixed.append(s)
+    text = ' '.join(fixed)
+
+    # Role-targeting closing (only if not already present)
+    rk = role_key or 'DEFAULT'
+    role_display = rk.replace('-', ' ').title()
+    role_words   = [w for w in role_display.lower().split() if len(w) > 3]
+
+    if rk != 'DEFAULT' and not any(w in text.lower() for w in role_words):
+        role_kw_lower = {k.lower() for k in ROLE_KEYWORDS.get(rk, [])}
+        relevant      = [s for s in actual_skills if s.lower() in role_kw_lower]
+        skill_str     = ', '.join(relevant[:3]) if relevant else ', '.join(actual_skills[:3])
+        if skill_str:
+            closing = f" Seeking a {role_display} role to apply expertise in {skill_str}."
+        else:
+            closing = f" Targeting a {role_display} position."
+        text = text.rstrip('.') + '.' + closing
+
+    return _break_into_short_lines(text, max_words=30)
+
+
+def build_role_specific_summary(
+    role_key: str,
+    actual_skills: list,
+    existing_summary: str,
+) -> str:
+    """
+    Build a professional summary:
+      - If the existing summary has >= 15 words: polish it (preserve candidate's voice)
+      - If it's very short or absent: generate from actual skills only (no templates)
     """
     rk = role_key or 'DEFAULT'
 
-    role_kw_lower = [k.lower() for k in ROLE_KEYWORDS.get(rk, [])]
+    if existing_summary and len(existing_summary.split()) >= 15:
+        return _polish_existing_summary(existing_summary, rk, actual_skills)
+
+    # No / too-short summary — generate minimal one from actual skills only
+    role_kw_lower = {k.lower() for k in ROLE_KEYWORDS.get(rk, [])}
     relevant = [s for s in actual_skills if s.lower() in role_kw_lower]
     others   = [s for s in actual_skills if s.lower() not in role_kw_lower]
+    skill_str = ', '.join((relevant[:4] if relevant else others[:4])) or 'professional competencies'
+    role_display = rk.replace('-', ' ').title()
 
-    # Take the top relevant ones for THIS role
-    top_skills = relevant[:4] if relevant else others[:4]
-    skills_str = ', '.join(top_skills) if top_skills else 'core professional competencies'
+    summary = (
+        f"Experienced professional with expertise in {skill_str}. "
+        f"Committed to delivering high-quality results in a {role_display} capacity."
+    )
+    return _break_into_short_lines(summary, max_words=30)
 
-    template = ROLE_SUMMARY_TEMPLATES.get(rk, ROLE_SUMMARY_TEMPLATES['DEFAULT'])
-    base_summary = template.format(skills=skills_str)
 
-    # Add a role-specific quantified achievement line
-    phrases = ROLE_ACTION_PHRASES.get(rk, ROLE_ACTION_PHRASES['DEFAULT'])
-    achievement_line = phrases[0]  # always the strongest one
-
-    full_summary = base_summary.strip() + ' ' + achievement_line
-
-    # Break into short lines so no line exceeds 30 words (ATS paragraph safety)
-    return _break_into_short_lines(full_summary, max_words=30)
+# ─────────────────────────────────────────────────────────────────────────────
+# LEGACY REWRITER  (used by /api/generate-role-resume legacy fallback path)
+# ─────────────────────────────────────────────────────────────────────────────
 
 def rewrite_resume_for_role(resume_text: str, target_role: str) -> str:
     """
     Rewrites the resume for a specific target role.
-    - Rewrites summary/objective to target the role
+    - Polishes summary (preserves candidate's original wording)
     - Reframes experience bullets with stronger verbs
-    - Keeps ONLY skills already present in the resume (no fabrication)
+    - Keeps ALL skills already present in the resume (no fabrication)
     - Preserves all other sections intact
     """
     role_key = get_role_key(target_role) or normalize_role(target_role) or 'DEFAULT'
 
-    # 1. Clean to ASCII
-    clean = resume_text.encode('ascii', errors='ignore').decode('ascii')
-    clean = re.sub(r'[^\w\s.,;:!?()\-\'/\n@+]', ' ', clean)
+    # 1. Light cleaning (keep unicode — only strip truly problematic chars)
+    clean = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', resume_text)
     clean = re.sub(r' {2,}', ' ', clean)
 
     # 2. Normalize section headers
@@ -376,37 +407,34 @@ def rewrite_resume_for_role(resume_text: str, target_role: str) -> str:
 
     # 4. Contact info
     name, email, phone, linkedin = extract_contact(secs.get('header', ''))
-    contact_parts = [
-        email    if email    else '',
-        phone    if phone    else '',
-        linkedin if linkedin else '',
-    ]
+    contact_parts = list(filter(None, [email, phone, linkedin]))
 
     # 5. Extract ACTUAL skills from original resume (no fabrication)
     actual_skills = extract_actual_skills(resume_text)
 
-    # 6. Build role-specific summary using only actual skills (short lines, unique per role)
-    new_summary = build_role_specific_summary(role_key, actual_skills, secs.get('summary', ''))
+    # 6. Preserve & polish summary (role-targeted but never replaced)
+    new_summary = build_role_specific_summary(
+        role_key, actual_skills, secs.get('summary', '')
+    )
 
     # 7. Experience — only strengthen verbs, no fake content added
     exp = secs.get('experience', '').strip()
     exp = strengthen_verbs(exp) if exp else ''
 
-    # 8. Skills — filtered to ONLY skills from the resume relevant to this role
+    # 8. Skills — ALL original skills preserved, role-relevant reordered first
     existing_skills = secs.get('skills', '').strip()
-    skills_section = build_role_specific_skills(role_key, actual_skills, existing_skills)
+    skills_section  = build_role_specific_skills(role_key, actual_skills, existing_skills)
 
     # 9. Other sections preserved as-is
-    education    = secs.get('education', '').strip()
+    education      = secs.get('education', '').strip()
     certifications = secs.get('certifications', '').strip()
-    projects     = secs.get('projects', '').strip()
-    achievements = secs.get('achievements', '').strip()
+    projects       = secs.get('projects', '').strip()
+    achievements   = secs.get('achievements', '').strip()
 
     sep = '-' * 44
 
-
     out = []
-    out.append(name.upper() if name else 'YOUR NAME')
+    out.append(name.strip().upper() if name and name.strip() and name.strip() != '[Your Name]' else '')
     if contact_parts:
         out.append(' | '.join(contact_parts))
     out.append('')
@@ -447,135 +475,124 @@ def rewrite_resume_for_role(resume_text: str, target_role: str) -> str:
 
     return '\n'.join(out)
 
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PRIMARY NLP REWRITER  (used by /api/enhance-resume)
+# ─────────────────────────────────────────────────────────────────────────────
+
 def rewrite_resume_nlp(resume_text: str, ats_check: dict, analysis: dict) -> str:
     """
-    Advanced ATS-optimized rewriter that targets every scoring criterion:
-      - Word count 300-700 (expand thin sections)
-      - Contact info (email + phone)
-      - All 4 key sections present (Summary, Skills, Experience, Education)
-      - 6+ action verbs
-      - No special chars / symbols
-      - Short bullet points (no 50+ word paragraphs)
-      - 2+ quantified achievements
-      - Good alpha text ratio
-      - Single-column layout
+    ATS-optimised resume enhancer.
+
+    Core philosophy — PRESERVE then ENHANCE:
+      • Contact info    → kept exactly as-is from the original
+      • Summary         → polished (filler removed, weak verbs fixed, role-closing added)
+                          NOT replaced with a template
+      • Skills          → ALL candidate's skills kept; role-relevant reordered first
+                          No fabrication, no invented skills
+      • Experience      → bullets strengthened (weak verbs → strong verbs, paragraphs → bullets)
+                          Content never invented or replaced
+      • Education / Certs / Projects / Achievements → kept exactly as-is
     """
     predicted_role = (analysis or {}).get('predicted_role', '')
-    role_key       = get_role_key(predicted_role)
+    role_key       = get_role_key(predicted_role) or 'DEFAULT'
+    role_display   = (role_key or 'Professional').replace('-', ' ').title()
 
-    # ── 1. Strip to ASCII, remove problem characters ──────────────────────────
-    clean = resume_text.encode('ascii', errors='ignore').decode('ascii')
-    clean = re.sub(r'[^\w\s.,;:!?()\-\'/\n@+]', ' ', clean)
-    clean = re.sub(r' {2,}', ' ', clean)
+    # ── 1. Light cleaning ─────────────────────────────────────────────────────
+    clean = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', resume_text)
+    clean = re.sub(r' {3,}', '  ', clean)
     clean = normalize_section_headers(clean)
     secs  = extract_sections(clean)
 
-    # ── 2. Contact ─────────────────────────────────────────────────────────────
+    # ── 2. Contact — always keep exactly what the user has ────────────────────
     name, email, phone, linkedin = extract_contact(secs.get('header', ''))
-    # Only include contact fields that actually exist in the resume
     contact_parts = list(filter(None, [email, phone, linkedin]))
 
-    # ── 3. Detect actual skills ────────────────────────────────────────────────
+    # ── 3. Extract ALL actual skills from the original resume ─────────────────
     actual_skills = extract_actual_skills(resume_text)
 
-    # ── 4. Professional Summary (always write a rich one) ─────────────────────
-    summary = build_role_specific_summary(role_key, actual_skills, secs.get('summary', ''))
-    # Ensure summary is substantial (already broken into short lines by build_role_specific_summary)
-    if len(summary.replace('\n', ' ').split()) < 40:
-        role_display_full = (role_key or 'Professional').replace('-', ' ').title()
-        skill_str = ', '.join(actual_skills[:4]) if actual_skills else 'core competencies'
-        extra = (
-            f"Demonstrated ability to manage multiple priorities and deliver results within deadlines. "
-            f"Adept at leveraging {skill_str} to solve problems and improve processes. "
-            f"Seeking a challenging {role_display_full} role to drive measurable impact."
+    # ── 4. Skills — ALL original skills kept; role-relevant moved first ────────
+    existing_skills_text = secs.get('skills', '').strip()
+    skills_text = build_role_specific_skills(role_key, actual_skills, existing_skills_text)
+
+    # ── 5. Preserve & polish the existing summary ─────────────────────────────
+    existing_summary = secs.get('summary', '').strip()
+
+    if existing_summary and len(existing_summary.split()) >= 15:
+        summary = _polish_existing_summary(existing_summary, role_key, actual_skills)
+    else:
+        # Very thin or missing summary — build minimal one from actual skills only
+        skill_str  = ', '.join(actual_skills[:4]) if actual_skills else 'professional competencies'
+        summary    = (
+            f"Experienced professional with expertise in {skill_str}. "
+            f"Committed to delivering high-quality results in a {role_display} capacity."
         )
-        summary = summary + '\n' + _break_into_short_lines(extra, max_words=30)
+        summary = _break_into_short_lines(summary, max_words=32)
 
-    # ── 5. Skills section — filtered to role-relevant skills from the resume ────
-    existing_skills = secs.get('skills', '').strip()
-    skills_text = build_role_specific_skills(role_key, actual_skills, existing_skills)
-
-    # ── 6. Experience — fix verbs + break long paragraphs into bullets ────────
+    # ── 6. Experience — strengthen verbs + convert paragraphs to bullets ──────
+    #    Never invent bullets. Only reformat/strengthen what's already there.
     exp_raw = secs.get('experience', '').strip()
 
     def fix_experience_section(exp_text: str) -> str:
         if not exp_text:
             return ''
-        lines = exp_text.split('\n')
+        DATE_RE    = re.compile(
+            r'(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|19\d{2}|20\d{2}|Present|Current)',
+            re.I
+        )
+        JOB_SEP_RE = re.compile(r'[|\u2014\u2013]')
+        lines  = exp_text.split('\n')
         output = []
         for line in lines:
             stripped = line.strip()
             if not stripped:
                 output.append('')
                 continue
-            words = stripped.split()
-            # ATS flags lines with 50+ words; break anything over 35 to be safe
-            if len(words) > 35:
+            words    = stripped.split()
+            is_bullet    = stripped.startswith(('-', '•', '*', '–', '—', '►', '▸'))
+            is_header    = bool(re.match(r'^[A-Z][A-Z\s/&\-]{2,}$', stripped)) and len(words) <= 7
+            is_date_line = bool(DATE_RE.search(stripped)) and len(words) <= 6
+            is_job_title = bool(JOB_SEP_RE.search(stripped)) and bool(DATE_RE.search(stripped))
+            is_short     = len(words) < 6
+
+            if is_header or is_date_line or is_job_title or is_short or is_bullet:
+                output.append(strengthen_verbs(stripped) if is_bullet else stripped)
+            elif len(words) > 35:
                 mid = len(words) // 2
-                part1 = strengthen_verbs(' '.join(words[:mid]))
-                part2 = strengthen_verbs(' '.join(words[mid:]))
-                output.append('- ' + part1)
-                output.append('- ' + part2)
-            elif len(words) > 15 and not stripped.startswith('-'):
+                output.append('- ' + strengthen_verbs(' '.join(words[:mid])))
+                output.append('- ' + strengthen_verbs(' '.join(words[mid:])))
+            elif len(words) >= 10:
                 output.append('- ' + strengthen_verbs(stripped))
             else:
                 output.append(strengthen_verbs(stripped))
         return '\n'.join(output)
 
     exp = fix_experience_section(exp_raw)
+    if not exp:
+        exp = ''   # Omit section entirely — do not inject fake content
 
-    # Ensure experience has quantified achievements (add if none found)
-    numbers_in_exp = re.findall(r'\b\d+[\%\+]?\b', exp)
-    if len(numbers_in_exp) < 2 and exp:
-        exp += (
-            '\n- Achieved a 20% improvement in task completion efficiency through process optimization.'
-            '\n- Collaborated with a team of 5+ members to deliver projects on time and within budget.'
-        )
-    elif not exp:
-        # No experience section at all — create a placeholder with strong verbs & numbers
-        exp = (
-            '[Your Job Title] | [Company Name] | [Start Date] - [End Date]\n'
-            '- Developed and implemented solutions resulting in 25% improvement in operational efficiency.\n'
-            '- Managed a portfolio of 10+ projects, delivering all within scope and on schedule.\n'
-            '- Collaborated with cross-functional teams of 8+ members to achieve organizational goals.\n'
-            '- Analyzed data and presented insights to 15+ stakeholders, supporting strategic decisions.'
-        )
-
-    # ── 7. Education ──────────────────────────────────────────────────────────
-    education = secs.get('education', '').strip()
-    if not education:
-        education = '[Degree Name] | [University Name] | [Year of Graduation]'
-
-    # ── 8. Optional sections ──────────────────────────────────────────────────
+    # ── 7. All other sections — keep exactly as-is ────────────────────────────
+    education    = secs.get('education', '').strip()
     certs        = secs.get('certifications', '').strip()
-    projects     = _filter_relevant_projects_rewriter(
-                        secs.get('projects', '').strip(), role_key)
+    projects     = _filter_relevant_projects_rewriter(secs.get('projects', '').strip(), role_key)
     achievements = secs.get('achievements', '').strip()
 
-    # ── 9. Ensure quantified achievements exist globally ─────────────────────
-    all_text = summary + exp + skills_text
-    all_numbers = re.findall(r'\b\d+[\%\+]?\b', all_text)
-    if len(all_numbers) < 2:
-        if achievements:
-            achievements += '\n- Improved team productivity by 30% through streamlined workflows.'
-        else:
-            achievements = '- Improved team productivity by 30% through streamlined workflows.\n- Recognized for delivering 3 key projects ahead of schedule.'
-
-    # ── 10. Ensure adequate word count (target 350+ words total) ─────────────
+    # ── 8. Assemble ───────────────────────────────────────────────────────────
     sep = '-' * 44
-
     out = []
-    out.append(name.upper() if name and name != '[Your Name]' else 'YOUR NAME')
-    out.append(' | '.join(contact_parts))
+    out.append(name.strip().upper() if name and name.strip() and name.strip() != '[Your Name]' else '')
+    if contact_parts:
+        out.append(' | '.join(contact_parts))
     out.append('')
     out.append('PROFESSIONAL SUMMARY')
     out.append(sep)
     out.append(summary)
     out.append('')
-    out.append('SKILLS')
-    out.append(sep)
-    out.append(skills_text)
-    out.append('')
+    if skills_text:
+        out.append('SKILLS')
+        out.append(sep)
+        out.append(skills_text)
+        out.append('')
     out.append('PROFESSIONAL EXPERIENCE')
     out.append(sep)
     out.append(exp)
@@ -585,10 +602,11 @@ def rewrite_resume_nlp(resume_text: str, ats_check: dict, analysis: dict) -> str
         out.append(sep)
         out.append(projects)
         out.append('')
-    out.append('EDUCATION')
-    out.append(sep)
-    out.append(education)
-    out.append('')
+    if education:
+        out.append('EDUCATION')
+        out.append(sep)
+        out.append(education)
+        out.append('')
     if certs:
         out.append('CERTIFICATIONS')
         out.append(sep)
@@ -602,118 +620,24 @@ def rewrite_resume_nlp(resume_text: str, ats_check: dict, analysis: dict) -> str
 
     result = '\n'.join(out)
 
-    # ── 11. Verify 6+ action verbs — inject extra bullets only if budget allows ─
-    REQUIRED_VERBS = ['developed', 'managed', 'led', 'created', 'implemented',
-                      'designed', 'analyzed', 'improved', 'delivered', 'achieved']
-    result_lower = result.lower()
-    found_verbs  = [v for v in REQUIRED_VERBS if v in result_lower]
-    current_wc   = len(result.split())
-
-    if len(found_verbs) < 6 and current_wc < 850:
-        missing_verbs_bullets = (
-            '- Developed and implemented process improvements that increased team output by 25%.\n'
-            '- Managed cross-functional projects delivering all milestones on schedule.\n'
-            '- Analyzed performance data and presented insights to key stakeholders.\n'
-            '- Led a team of 5+ members, achieving a 20% improvement in productivity.\n'
-            '- Designed efficient workflows that reduced operational costs by 15%.\n'
-            '- Delivered consistent results across 10+ concurrent high-priority projects.'
-        )
-        if 'PROFESSIONAL EXPERIENCE' in result:
-            result = result.replace(
-                'PROFESSIONAL EXPERIENCE\n' + sep,
-                'PROFESSIONAL EXPERIENCE\n' + sep + '\n' + missing_verbs_bullets,
-                1
-            )
-        else:
-            result += '\n' + missing_verbs_bullets
-        current_wc = len(result.split())
-
-    # ── 12. Final word count check — pad only if still short AND won't exceed 950 ─
+    # ── 9. Word count advisory — never inject fabricated content ─────────────
+    current_wc = len(result.split())
     if current_wc < 300:
-        padding = (
-            '- Strong communicator with experience presenting to diverse audiences.\n'
-            '- Proven ability to work independently and as part of collaborative teams.\n'
-            '- Committed to continuous professional development and industry best practices.\n'
-            '- Successfully managed multiple concurrent projects with shifting priorities.\n'
-            '- Recognized for reliability, attention to detail, and consistent output.'
-        )
-        if 'PROFESSIONAL EXPERIENCE' in result:
-            result = result.replace(
-                'PROFESSIONAL EXPERIENCE\n' + sep,
-                'PROFESSIONAL EXPERIENCE\n' + sep + '\n' + padding,
-                1
-            )
-        else:
-            result += '\n' + padding
-        current_wc = len(result.split())
+        # Do NOT pad with generic bullets — they misrepresent the candidate.
+        # The ATS scorer will flag the word count and advise the candidate directly.
+        pass
 
-    # ── 13. Hard cap at 950 words to avoid the >1000 ATS penalty ─────────────
+    # ── 10. Hard cap at 950 words ─────────────────────────────────────────────
     if current_wc > 950:
-        lines = result.split('\n')
+        lines   = result.split('\n')
         trimmed = []
-        wc = 0
+        wc      = 0
         for line in lines:
-            line_wc = len(line.split())
-            if wc + line_wc > 950:
+            lw = len(line.split())
+            if wc + lw > 950:
                 break
             trimmed.append(line)
-            wc += line_wc
+            wc += lw
         result = '\n'.join(trimmed)
 
-    # ── Final ATS 100 guarantee pass ─────────────────────────────────────────
-    VERBS_100 = ['developed','managed','led','created','implemented',
-                 'designed','analyzed','improved','delivered','achieved',
-                 'optimized','built','launched','coordinated','executed']
-    result_lower = result.lower()
-    found_v   = [v for v in VERBS_100 if v in result_lower]
-    missing_v = [v for v in VERBS_100 if v not in result_lower]
-    if len(found_v) < 10 and missing_v and len(result.split()) < 850:
-        VERB_SENTENCES = {
-            'developed'   : 'Developed scalable solutions improving efficiency by 25%.',
-            'managed'     : 'Managed cross-functional teams delivering 10+ projects on schedule.',
-            'led'         : 'Led strategic initiatives resulting in measurable business impact.',
-            'created'     : 'Created frameworks adopted across multiple departments.',
-            'implemented' : 'Implemented improvements reducing operational costs by 20%.',
-            'designed'    : 'Designed workflows improving productivity by 30%.',
-            'analyzed'    : 'Analyzed data and presented insights to key stakeholders.',
-            'improved'    : 'Improved KPIs through targeted process optimization.',
-            'delivered'   : 'Delivered 12+ high-priority projects within scope and schedule.',
-            'achieved'    : 'Achieved 95%+ satisfaction rate across all deliverables.',
-            'optimized'   : 'Optimized processes saving 8+ hours per week.',
-            'built'       : 'Built robust solutions handling high-volume operational demands.',
-            'launched'    : 'Launched initiatives generating measurable ROI within 6 months.',
-            'coordinated' : 'Coordinated with 6+ stakeholders to align goals and outcomes.',
-            'executed'    : 'Executed strategic plans resulting in 15% cost reduction.',
-        }
-        verb_bullets = '\n'.join(
-            f'- {VERB_SENTENCES.get(v, f"{v.capitalize()} high-impact initiatives delivering results.")}'
-            for v in missing_v[:max(0, 10 - len(found_v))]
-        )
-        # Inject into PROFESSIONAL EXPERIENCE instead of fake section
-        if 'PROFESSIONAL EXPERIENCE' in result:
-            result = result.replace(
-                'PROFESSIONAL EXPERIENCE\n' + '-' * 44,
-                'PROFESSIONAL EXPERIENCE\n' + '-' * 44 + '\n' + verb_bullets,
-                1
-            )
-        else:
-            result += '\n' + verb_bullets
-    real_nums = [n for n in re.findall(r'\b\d+[\%\+]?\b', result)
-                 if n not in ['0','1','2']]
-    real_nums = [n for n in re.findall(r'\b\d+[\%\+]?\b', result)
-                 if n not in ['0','1','2']]
-    if len(real_nums) < 5 and len(result.split()) < 850:
-        quant_bullets = (
-            '- Achieved 35% improvement in efficiency through process optimization.\n'
-            '- Managed 10+ concurrent projects delivering all within scope and on schedule.\n'
-            '- Reduced costs by 20% via streamlined workflows and automation.'
-        )
-        if 'PROFESSIONAL EXPERIENCE' in result:
-            result = result.replace(
-                'PROFESSIONAL EXPERIENCE\n' + '-' * 44,
-                'PROFESSIONAL EXPERIENCE\n' + '-' * 44 + '\n' + quant_bullets,
-                1
-            )
-        else:
-            result += '\n' + quant_bullets
     return result
