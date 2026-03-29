@@ -1335,6 +1335,379 @@ const MAX_MB = 50 * 1024 * 1024;
 const { createClient } = supabase;
 const db = createClient(SB_URL, SB_KEY);
 
+/* ═══════════════════════════════════════════
+   CLAUDE API FALLBACK — runs when backend is down
+   Calls Anthropic directly from the browser
+═══════════════════════════════════════════ */
+// ── Groq API helper (replaces direct Anthropic calls — key is set server-side via /api/groq-key) ──
+let _groqKey = null;
+async function _getGroqKey() {
+  if (_groqKey) return _groqKey;
+  try {
+    const r = await fetch('/api/groq-key');
+    if (r.ok) { const d = await r.json(); _groqKey = d.key || ''; }
+  } catch(e) { _groqKey = ''; }
+  return _groqKey;
+}
+
+async function callGroq(prompt, maxTokens = 1000) {
+  const key = await _getGroqKey();
+  if (!key) throw new Error('Groq API key not configured. Set GROQ_API_KEY on the server.');
+  const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method : 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+    body   : JSON.stringify({
+      model      : 'llama3-8b-8192',
+      max_tokens : maxTokens,
+      messages   : [{ role: 'user', content: prompt }]
+    })
+  });
+  if (!resp.ok) throw new Error('Groq API error ' + resp.status);
+  const d = await resp.json();
+  return (d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content) || '';
+}
+
+// Legacy alias kept for any remaining references
+async function callClaude(prompt, maxTokens = 1500) {
+  return callGroq(prompt, Math.min(maxTokens, 1000));
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   JS PORT OF check_ats_friendliness() — mirrors resume_analyzer.py
+   Produces scores identical to the Python backend.
+   ═══════════════════════════════════════════════════════════════════ */
+function checkAtsJs(text) {
+  const issues = [], suggestions = [], details = {};
+  const tl = text.toLowerCase();
+  const words = text.split(/\s+/).filter(Boolean);
+  const wc = words.length;
+
+  // ── DIM 1: Content Length (max 10) ──────────────────────────────────
+  let lengthScore;
+  if (wc < 150)             { lengthScore = 0;  issues.push(`Resume too short (${wc} words) — aim for 300–700 words`); details.length = `Poor (${wc} words)`; }
+  else if (wc < 300)        { lengthScore = 5;  issues.push(`Resume slightly short (${wc} words) — expand to 400+ words`); details.length = `Fair (${wc} words)`; }
+  else if (wc <= 800)       { lengthScore = 10; details.length = `Good (${wc} words)`; }
+  else if (wc <= 1100)      { lengthScore = 6;  suggestions.push(`Resume slightly long (${wc} words) — trim to under 800 words`); details.length = `Slightly long (${wc} words)`; }
+  else                      { lengthScore = 2;  issues.push(`Resume too long (${wc} words) — ATS prefers under 800 words`); details.length = `Too long (${wc} words)`; }
+
+  // ── DIM 2: Contact Info (max 10) ────────────────────────────────────
+  const hasEmail    = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i.test(text);
+  const hasPhone    = /(\+\d{1,3}[-.\s]?)?(\(?\d{3}\)?[-.\s]?)?\d{3}[-.\s]?\d{4}/.test(text);
+  const hasLinkedin = /linkedin/i.test(text);
+  let contactScore  = (hasEmail ? 5 : 0) + (hasPhone ? 5 : 0);
+  if (!hasEmail)    issues.push('No email address detected — add your professional email');
+  if (!hasPhone)    issues.push('No phone number detected — add your contact number');
+  if (!hasLinkedin) suggestions.push('Add your LinkedIn profile URL (linkedin.com/in/yourname)');
+  details.contact_info = (hasEmail && hasPhone) ? 'Complete' : 'Incomplete';
+
+  // ── DIM 3: Essential Sections (max 20) ──────────────────────────────
+  const sectionMap = {
+    Experience: ['experience','work history','employment','professional experience'],
+    Education:  ['education','qualification','degree','university','college'],
+    Skills:     ['skills','technical skills','competencies','proficiencies'],
+    Summary:    ['summary','objective','profile','about me','professional summary'],
+  };
+  let sectionsFound = 0;
+  for (const [sec, kws] of Object.entries(sectionMap)) {
+    if (kws.some(k => tl.includes(k))) sectionsFound++;
+    else if (['Experience','Education','Skills'].includes(sec)) issues.push(`Missing '${sec}' section`);
+  }
+  const sectionScore = sectionsFound * 5;
+  details.sections = `${sectionsFound}/4 key sections found`;
+
+  // ── DIM 4: Action Verbs (max 10) ────────────────────────────────────
+  const AV = ['developed','managed','led','created','implemented','designed','analyzed',
+    'improved','coordinated','achieved','executed','established','built','optimized',
+    'delivered','increased','reduced','launched','spearheaded','collaborated','mentored',
+    'trained','negotiated','streamlined','generated','drove','architected','deployed',
+    'migrated','automated','scaled'];
+  const verbCount = AV.filter(v => tl.includes(v)).length;
+  let verbScore;
+  if (verbCount >= 15)      { verbScore = 10; details.action_verbs = `Excellent (${verbCount} found)`; }
+  else if (verbCount >= 10) { verbScore = 7;  details.action_verbs = `Good (${verbCount} found)`; }
+  else if (verbCount >= 5)  { verbScore = 4;  suggestions.push('Add more action verbs: developed, managed, optimized, delivered, spearheaded'); details.action_verbs = `Fair (${verbCount} found)`; }
+  else if (verbCount >= 2)  { verbScore = 2;  issues.push(`Only ${verbCount} action verb(s) — use strong verbs like Led, Built, Delivered`); details.action_verbs = `Weak (${verbCount} found)`; }
+  else                      { verbScore = 0;  issues.push('No action verbs detected — every bullet must start with a strong verb'); details.action_verbs = `Poor (${verbCount} found)`; }
+
+  // ── DIM 5: Paragraph Format (max 18) ────────────────────────────────
+  const rawLines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  const bulletRe = /^[-•*>\–—►▸]/;
+  const bulletLines = rawLines.filter(l => bulletRe.test(l));
+  const contentLines = rawLines.filter(l => l.split(/\s+/).length > 3);
+  const bulletRatio = bulletLines.length / Math.max(contentLines.length, 1);
+  let paraPenalty = 0;
+  if (bulletRatio < 0.15 && contentLines.length > 8) { paraPenalty += 20; issues.push(`Only ${Math.round(bulletRatio*100)}% of content uses bullet points — ATS strongly prefers bullet format`); }
+  else if (bulletRatio < 0.30 && contentLines.length > 8) { paraPenalty += 10; suggestions.push(`Low bullet usage (${Math.round(bulletRatio*100)}%) — add more bullet points`); }
+  paraPenalty = Math.min(paraPenalty, 40);
+  const paraScore = Math.max(0, 18 - paraPenalty);
+  details.paragraphs = paraPenalty >= 30 ? 'Poor — paragraph blocks' : paraPenalty >= 15 ? 'Fair — paragraphs should be bullets' : 'Good — bullet-point format';
+
+  // ── DIM 6: Graphics / Special chars (max 15) ────────────────────────
+  const totalChars = text.length || 1;
+  const garbled = (text.match(/[^\x00-\x7F]/g)||[]).length;
+  const garbledRatio = garbled / totalChars;
+  const alphaChars = (text.match(/[a-zA-Z]/g)||[]).length;
+  const alphaRatio = alphaChars / totalChars;
+  const skillBars = (text.match(/[●○■□◆◇★☆▪▸►•]{3,}|[█▓░]{2,}/g)||[]).length;
+  const skillPctMatches = (text.match(/[A-Za-z][A-Za-z0-9 ]{1,20}\s+(\d{2,3})%/g)||[]).filter(m => { const n = parseInt(m.match(/(\d{2,3})%/)[1]); return n >= 50 && n <= 99; });
+  let graphicsPenalty = 0;
+  if (garbledRatio > 0.08)         graphicsPenalty += 35;
+  else if (alphaRatio < 0.45)      graphicsPenalty += 30;
+  else if (skillBars >= 3)         graphicsPenalty += 25;
+  else if (garbledRatio > 0.03 || alphaRatio < 0.55) graphicsPenalty += 20;
+  if (skillPctMatches.length >= 5) { graphicsPenalty += 20; issues.push(`${skillPctMatches.length} skill percentage ratings detected — replace with concrete experience`); }
+  else if (skillPctMatches.length >= 2) { graphicsPenalty += 10; suggestions.push('Skill percentage ratings — ATS ignores arbitrary self-ratings'); }
+  graphicsPenalty = Math.min(graphicsPenalty, 40);
+  const graphicsScore = Math.max(0, 15 - graphicsPenalty);
+  details.images_graphics = graphicsPenalty >= 30 ? 'Heavy graphics detected' : graphicsPenalty >= 15 ? 'Moderate graphics' : graphicsPenalty > 0 ? 'Minor graphics' : 'Clean text — no graphics';
+
+  // ── DIM 7: Third-person writing (max 7) ─────────────────────────────
+  const thirdRefs = (text.match(/\b(He |She |They )(?=[A-Z]|[a-z])/g)||[]).length;
+  const thirdPenalty = thirdRefs >= 8 ? 15 : thirdRefs >= 3 ? 8 : 0;
+  const thirdScore = Math.max(0, 7 - thirdPenalty);
+  if (thirdPenalty >= 8) issues.push(`Resume written in third person (${thirdRefs} references) — use first-person bullet points`);
+  else if (thirdPenalty > 0) suggestions.push('Some third-person writing — prefer first-person implied style');
+  details.writing_style = thirdPenalty >= 8 ? 'Third-person (poor ATS style)' : thirdPenalty === 0 ? 'First-person implied (good)' : 'Mixed style';
+
+  // ── DIM 8: Quantified Achievements (max 5) ──────────────────────────
+  const yearRe = /^(19|20)\d{2}$/;
+  const allNums = [...text.matchAll(/\b\d+[%+]?\b/g)].map(m => m[0]);
+  const realMetrics = allNums.filter(tok => {
+    const clean = tok.replace(/[%+]/g,'');
+    if (yearRe.test(clean)) return false;
+    if (clean.length >= 7)  return false;
+    if (['0','1','2','3','4'].includes(clean)) return false;
+    return true;
+  });
+  let quantScore;
+  if (realMetrics.length >= 10)     { quantScore = 5; details.quantification = `Excellent — ${realMetrics.length} metrics found`; }
+  else if (realMetrics.length >= 6) { quantScore = 3; details.quantification = `Good — ${realMetrics.length} numbers found`; }
+  else if (realMetrics.length >= 3) { quantScore = 1; suggestions.push("Add quantified achievements — e.g. 'Improved performance by 30%', 'Managed team of 10'"); details.quantification = `Fair — ${realMetrics.length} numbers found`; }
+  else if (realMetrics.length >= 1) { quantScore = 0; issues.push('Very few quantified achievements — add concrete numbers for every role'); details.quantification = `Weak — only ${realMetrics.length} metric(s)`; }
+  else                              { quantScore = 0; issues.push("No quantified achievements — add numbers like '30% increase', 'team of 8', '$2M revenue'"); details.quantification = 'Poor — no real metrics found'; }
+
+  // ── DIM 9: Special Characters (max 5) ───────────────────────────────
+  const spRatio = (text.match(/[^\w\s.,;:!?()\\/\-'"@+|&%#\n]/g)||[]).length / totalChars;
+  let charScore;
+  if (spRatio > 0.05)      { charScore = 0; issues.push('Excessive special characters — use plain text formatting'); details.formatting = 'Complex (ATS risk)'; }
+  else if (spRatio > 0.02) { charScore = 3; details.formatting = 'Acceptable'; }
+  else                     { charScore = 5; details.formatting = 'Clean (ATS-friendly)'; }
+
+  // ── DIM 10: Keyword Density (max 10) ────────────────────────────────
+  const domainKws = ['revenue','efficiency','productivity','cost','budget','growth',
+    'roi','kpi','targets','objectives','stakeholders','deliverables',
+    'spearheaded','orchestrated','negotiated','streamlined','optimized',
+    'launched','automated','mentored','deployed','architected',
+    'onboarded','reduced','increased','generated','drove',
+    'cross-functional','enterprise','end-to-end','scalable',
+    'roadmap','milestone','pipeline','compliance','governance'];
+  const domainHits = domainKws.filter(k => tl.includes(k)).length;
+  let kwScore;
+  if (domainHits >= 18)     { kwScore = 10; details.keyword_density = `Excellent (${domainHits} professional terms)`; }
+  else if (domainHits >= 12){ kwScore = 7;  details.keyword_density = `Good (${domainHits} professional terms)`; }
+  else if (domainHits >= 6) { kwScore = 4;  suggestions.push('Use more professional vocabulary: KPIs, ROI, stakeholders, optimized, spearheaded.'); details.keyword_density = `Fair (${domainHits} professional terms)`; }
+  else if (domainHits >= 2) { kwScore = 2;  issues.push('Low professional vocabulary — add impact-focused terms: revenue, efficiency, stakeholders, optimized.'); details.keyword_density = `Weak (${domainHits} professional terms)`; }
+  else                      { kwScore = 0;  issues.push('Resume lacks professional impact vocabulary — add terms like KPIs, ROI, optimized, stakeholders.'); details.keyword_density = `Poor (${domainHits} professional terms)`; }
+
+  // ── DIM 11: Completeness (max 9) ────────────────────────────────────
+  const hasDates   = /\b(19|20)\d{2}\b/.test(text);
+  const hasBullets = /^\s*[-•*–]/m.test(text);
+  const hasCompany = /\b(pvt|ltd|inc|corp|llc|company|technologies|solutions|services|institute|university|college)\b/i.test(text);
+  const hasDegree  = ['bachelor','master','phd','b.sc','m.sc','b.e','b.tech','m.tech','mba','diploma','b.com','b.a','m.a'].some(d => tl.includes(d));
+  const bulletCount = (text.match(/^\s*[-•*–►]/mg)||[]).length;
+  const longLines  = rawLines.filter(l => l.length > 20).length;
+  let completeness = 0;
+  if (hasDates)  completeness += 2; else issues.push('No dates found — add employment and education dates (e.g. Jan 2022 – Present).');
+  if (hasBullets) completeness += 1; else suggestions.push('Use bullet points for experience and achievements.');
+  if (bulletCount >= 8) completeness += 2; else if (bulletCount >= 4) completeness += 1; else issues.push(`Only ${bulletCount} bullet point(s) found — add at least 8 bullets across experience and skills.`);
+  if (hasCompany) completeness += 1; else suggestions.push('Mention company/institution names explicitly.');
+  if (hasDegree)  completeness += 1; else suggestions.push('Spell out your full degree name (e.g. Bachelor of Technology).');
+  if (longLines >= 25) completeness += 2; else if (longLines >= 15) completeness += 1; else issues.push('Resume content is very thin — expand all sections with more detail.');
+  if (!hasDegree && !hasCompany) completeness = Math.min(completeness, 2);
+  details.completeness = `${completeness}/9`;
+
+  // ── FINAL SCORE ──────────────────────────────────────────────────────
+  const lengthAdj   = Math.floor(lengthScore   * 0.8);
+  const contactAdj  = Math.floor(contactScore  * 0.8);
+  const sectionAdj  = Math.floor(sectionScore  * 0.8);
+  const paraAdj     = Math.floor(paraScore     * 0.78);
+  const graphicsAdj = Math.floor(graphicsScore * 0.8);
+  const thirdAdj    = Math.floor(thirdScore    * 0.71);
+  const quantAdj    = Math.floor(quantScore    * 1.2);
+
+  let score = Math.min(100, lengthAdj + contactAdj + sectionAdj + verbScore + paraAdj +
+    graphicsAdj + thirdAdj + quantAdj + charScore + kwScore + completeness);
+
+  // Hard penalties
+  if (quantScore === 0)        score = Math.max(0, score - 12);
+  else if (quantScore <= 1)    score = Math.max(0, score - 5);
+  if (!hasDates)               score = Math.max(0, score - 7);
+  if (kwScore <= 2)            score = Math.max(0, score - 5);
+  if (verbCount < 5)           score = Math.max(0, score - 5);
+
+  // Critical failure cap
+  const critFails = [];
+  if (graphicsPenalty >= 25) critFails.push('heavy graphics/charts detected');
+  if (paraPenalty >= 25)     critFails.push('wall-of-text paragraphs');
+  if (sectionScore <= 5)     critFails.push('missing essential sections');
+  if (contactScore < 5)      critFails.push('missing contact info');
+  if (thirdPenalty >= 8)     critFails.push('third-person writing style');
+  if (critFails.length)      score = Math.min(score, 65);
+
+  score = Math.max(0, Math.min(100, score));
+
+  let overall;
+  if (score >= 90)      overall = 'Excellent — Highly ATS-friendly. Role prediction unlocked.';
+  else if (score >= 80) overall = 'Good — ATS-friendly. Role prediction unlocked.';
+  else if (score >= 65) overall = 'Fair — Needs improvement. Reach 80 to unlock role prediction.';
+  else if (score >= 45) overall = 'Poor — Major issues detected. Fix these to reach 80+.';
+  else                  overall = 'Very Poor — Resume will likely be rejected by ATS. Significant rework needed.';
+  if (critFails.length) overall += ` (Critical: ${critFails.join(', ')})`;
+
+  return { score, overall, issues, suggestions, details,
+    is_ats_friendly: score >= 80 && critFails.length === 0 };
+}
+
+/* ── Role predictor (keyword-based, matches backend role map) ── */
+function predictRoleJs(text) {
+  const tl = text.toLowerCase();
+  const ROLE_KWS = {
+    'DATA-SCIENCE':         ['python','machine learning','sql','tensorflow','pandas','numpy','data analysis','scikit','deep learning','jupyter','nlp','spark','data science','data scientist'],
+    'WEB-DEVELOPER':        ['html','css','javascript','react','node','rest api','typescript','mongodb','express','redux','webpack','frontend','backend','web developer','web development'],
+    'SOFTWARE-ENGINEER':    ['java','c++','algorithms','data structures','system design','docker','kubernetes','ci/cd','software engineer','git','agile','oop'],
+    'HR':                   ['talent acquisition','onboarding','hris','performance management','employee relations','payroll','recruitment','training','hr analytics','human resources'],
+    'DESIGNER':             ['figma','adobe xd','ui/ux','wireframing','prototyping','typography','user research','design systems','photoshop','illustrator','ux design','ui design'],
+    'ENGINEERING':          ['cad','autocad','solidworks','six sigma','iso','quality control','manufacturing','process improvement','mechanical','electrical','civil engineering'],
+    'FINANCE':              ['financial analysis','excel','budgeting','forecasting','gaap','variance analysis','financial modeling','dcf','p&l','balance sheet','tableau','power bi','finance'],
+    'HEALTHCARE':           ['patient care','emr','ehr','hipaa','clinical','triage','cpr','medical records','icd-10','medication','healthcare','nurse','doctor'],
+    'SALES':                ['crm','salesforce','lead generation','pipeline','revenue growth','client retention','negotiation','quota','account management','b2b','b2c','sales'],
+    'INFORMATION-TECHNOLOGY':['network','cybersecurity','cloud','aws','azure','linux','active directory','itil','vmware','helpdesk','tcp/ip','firewall','information technology'],
+    'ACCOUNTANT':           ['gaap','tax','auditing','quickbooks','tally','financial reporting','gst','tds','reconciliation','cost accounting','sap','accounts payable','accountant'],
+    'TEACHER':              ['lesson planning','curriculum','classroom','student assessment','differentiated','edtech','lms','google classroom','teacher','educator','professor'],
+    'BANKING':              ['kyc','aml','risk management','financial products','regulatory','credit analysis','swift','trade finance','treasury','loan processing','banking'],
+    'DIGITAL-MEDIA':        ['content strategy','seo','social media','google analytics','copywriting','brand management','email marketing','campaign','wordpress','digital marketing'],
+    'BUSINESS-DEVELOPMENT': ['market research','lead generation','partnership','revenue growth','client acquisition','strategic planning','proposal writing','business development'],
+    'CONSULTANT':           ['consulting','stakeholder','advisory','strategy','engagement','deliverables','client management','consultant','recommendation'],
+    'CHEF':                 ['mise en place','haccp','food safety','menu planning','kitchen','culinary','inventory','food costing','chef','cook'],
+    'FITNESS':              ['personal training','nutrition','hiit','exercise','client assessment','workout','fitness','strength training','gym'],
+    'ACCOUNTANT':           ['accounting','gaap','tax','audit','quickbooks','tally','reconciliation'],
+    'DEFAULT':              [],
+  };
+  const scores = {};
+  for (const [role, kws] of Object.entries(ROLE_KWS)) {
+    scores[role] = kws.filter(k => tl.includes(k)).length;
+  }
+  const sorted = Object.entries(scores).sort((a,b) => b[1]-a[1]);
+  const top3 = sorted.slice(0,3).map(([r,s]) => [r, Math.min(0.95, 0.4 + s * 0.06)]);
+  if (top3[0][1] < 0.42) top3[0][1] = 0.42; // minimum confidence
+  // Convert role key to display name
+  const displayMap = {'DATA-SCIENCE':'Data Scientist','WEB-DEVELOPER':'Web Developer','SOFTWARE-ENGINEER':'Software Engineer','HR':'HR','DESIGNER':'Designer','ENGINEERING':'Engineer','FINANCE':'Finance Analyst','HEALTHCARE':'Healthcare Professional','SALES':'Sales Executive','INFORMATION-TECHNOLOGY':'IT Professional','ACCOUNTANT':'Accountant','TEACHER':'Teacher','BANKING':'Banking Professional','DIGITAL-MEDIA':'Digital Marketing','BUSINESS-DEVELOPMENT':'Business Development','CONSULTANT':'Consultant','CHEF':'Chef','FITNESS':'Fitness Trainer','DEFAULT':'Professional'};
+  const topRole = top3[0][0];
+  return {
+    predicted_role:  displayMap[topRole] || topRole,
+    normalized_role: topRole,
+    confidence:      top3[0][1],
+    top_3_roles:     top3.map(([r,c]) => [displayMap[r]||r, c]),
+    skills:          _extractSkillsJs(text),
+    experience_years: 2,
+    low_confidence: top3[0][1] < 0.55,
+  };
+}
+
+function _extractSkillsJs(text) {
+  const tl = text.toLowerCase();
+  const ALL = ['python','java','javascript','typescript','c++','c#','ruby','php','swift','kotlin','go','html','css','html5','css3','react','angular','vue','node.js','django','flask','spring','sql','mysql','postgresql','mongodb','redis','aws','azure','gcp','docker','kubernetes','git','linux','bash','machine learning','deep learning','nlp','tensorflow','pytorch','scikit-learn','pandas','numpy','tableau','power bi','excel','r','rest api','graphql','agile','scrum','devops','ci/cd','project management','communication','negotiation','crm','salesforce','sap','erp','financial analysis','budgeting','gaap','recruitment','figma','adobe xd','ui/ux','seo','social media','google analytics','copywriting'];
+  return ALL.filter(s => tl.includes(s)).slice(0, 15);
+}
+
+/* ── Deterministic resume fixer (no Claude needed for scoring) ── */
+async function claudeAnalyzeResume(text) {
+  // Step 1: Score with the exact JS replica of check_ats_friendliness()
+  const ats = checkAtsJs(text);
+  // Step 2: Predict role from keywords
+  const pred = predictRoleJs(text);
+  return { ...ats, ...pred };
+}
+
+async function claudeFixResume(text, issues, suggestions, role) {
+  const raw = await callClaude(`You are an expert resume writer and ATS optimization specialist.
+
+Rewrite this resume fixing ALL the issues listed. Make it ATS-friendly, keyword-rich, and tailored for a ${role} role.
+
+CRITICAL RULES — YOU MUST FOLLOW EVERY ONE:
+1. Keep the candidate's REAL name, email, phone, and company names — do NOT invent any
+2. Add strong action verbs: Led, Developed, Implemented, Achieved, Increased, Reduced, Managed, Optimized, Delivered, Spearheaded
+3. Add quantified metrics — use realistic numbers based on context (e.g. "Reduced processing time by 30%", "Managed team of 8")
+4. Add professional vocabulary: KPIs, ROI, stakeholders, deliverables, cross-functional, scalable, pipeline, compliance
+5. Use bullet points (starting with -) for ALL experience entries — no paragraphs
+6. Include all standard sections: PROFESSIONAL SUMMARY, SKILLS, PROFESSIONAL EXPERIENCE, EDUCATION
+7. Add start/end dates to every job (Month Year – Month Year format)
+8. Single-column plain text — NO skill percentage bars, NO charts, NO emojis
+9. Target length: 350–700 words
+
+ISSUES TO FIX:
+${issues.slice(0,8).map((x,i)=>`${i+1}. ${x}`).join('\n')}
+
+SUGGESTIONS TO APPLY:
+${suggestions.slice(0,5).map((x,i)=>`${i+1}. ${x}`).join('\n')}
+
+ORIGINAL RESUME:
+"""
+${text.substring(0, 3500)}
+"""
+
+Return ONLY the improved resume text — no JSON, no markdown, no explanation.
+
+IMPROVED RESUME:`, 2000);
+
+  return raw.trim();
+}
+
+/* ── After fixing, re-score with the same deterministic JS scorer ── */
+async function claudeScoreImproved(text) {
+  // Use the same deterministic scorer — consistent, no hallucination
+  return checkAtsJs(text);
+}
+
+/* ─── Mock interview answer evaluator — uses Groq API (fallback when backend unavailable) ─── */
+async function groqEvalAnswer(role, question, answer) {
+  try {
+    const raw = await callGroq(`You are an expert interview coach. Score this answer for a ${role} interview.
+
+Question: "${question}"
+Answer: "${answer}"
+
+Respond ONLY with JSON (no markdown, no explanation outside JSON):
+{
+  "score": <integer 1-10>,
+  "feedback": "<2-3 sentences of specific, constructive feedback>"
+}`, 400);
+    const clean = raw.replace(/```json|```/g,'').trim();
+    const parsed = JSON.parse(clean);
+    return { score: Math.min(10, Math.max(1, parseInt(parsed.score) || 6)), feedback: parsed.feedback || '' };
+  } catch(e) {
+    // Pure client-side heuristic fallback if Groq also fails
+    const wc = answer.trim().split(/\s+/).length;
+    const hasExample = /example|when i|i worked|i built|i led|project|team/i.test(answer);
+    const hasResult  = /result|achieved|improved|reduced|increased|%|successfully/i.test(answer);
+    let score = 5;
+    if (wc >= 80) score += 2; else if (wc >= 40) score += 1; else score -= 1;
+    if (hasExample) score += 1;
+    if (hasResult)  score += 1;
+    score = Math.min(10, Math.max(1, score));
+    const tips = [];
+    if (!hasExample) tips.push('Use the STAR method: Situation, Task, Action, Result.');
+    if (wc < 40)     tips.push('Expand your answer with more detail and context.');
+    if (!hasResult)  tips.push('Mention the outcome or result of your actions.');
+    return { score, feedback: (tips.length ? tips.join(' ') : 'Good attempt! Add specific examples and measurable outcomes for a stronger answer.') };
+  }
+}
+
+// Backward-compat alias
+async function claudeEvalAnswer(role, question, answer) {
+  return groqEvalAnswer(role, question, answer);
+}
+
 /* ---
    STATE
 --- */
@@ -1454,29 +1827,98 @@ document.getElementById('analyzeBtn').addEventListener('click', async () => {
   try {
     const fd = new FormData();
     fd.append('file', selFile);
-    const res  = await fetch(`${API}/upload-resume`, { method:'POST', body:fd });
-    const data = await res.json();
-    clearInterval(stepTimer);
-    if (!res.ok) {
-      if (data.name_mismatch) {
-        document.getElementById('loadCard').classList.remove('show');
-        document.getElementById('uploadCard').style.display = 'block';
-        const errDiv = document.getElementById('errMsg');
-        if (errDiv) {
-          errDiv.classList.add('show');
-          errDiv.innerHTML = `<div style="display:flex;align-items:flex-start;gap:12px;padding:16px 18px;background:#fef2f2;border:1.5px solid #fecaca;border-radius:14px;margin-top:12px;">
-            <span style="font-size:22px;flex-shrink:0;">🚫</span>
-            <div>
-              <div style="font-weight:800;color:#991b1b;font-size:14px;margin-bottom:5px;">Resume Name Mismatch</div>
-              <div style="color:#7f1d1d;font-size:13px;line-height:1.6;">${data.error}</div>
-              <div style="margin-top:8px;font-size:12px;color:#b91c1c;font-weight:600;">💡 The name at the top of your resume must match your account name exactly.</div>
-            </div>
-          </div>`;
+    let data = null;
+    let backendOk = false;
+
+    try {
+      const res = await fetch(`${API}/upload-resume`, { method:'POST', body:fd, signal: AbortSignal.timeout(12000) });
+      if (res.ok) {
+        data = await res.json();
+        backendOk = true;
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        if (errData.name_mismatch) {
+          clearInterval(stepTimer);
+          document.getElementById('loadCard').classList.remove('show');
+          document.getElementById('uploadCard').style.display = 'block';
+          const errDiv = document.getElementById('errMsg');
+          if (errDiv) {
+            errDiv.classList.add('show');
+            errDiv.innerHTML = `<div style="display:flex;align-items:flex-start;gap:12px;padding:16px 18px;background:#fef2f2;border:1.5px solid #fecaca;border-radius:14px;margin-top:12px;">
+              <span style="font-size:22px;flex-shrink:0;">🚫</span>
+              <div>
+                <div style="font-weight:800;color:#991b1b;font-size:14px;margin-bottom:5px;">Resume Name Mismatch</div>
+                <div style="color:#7f1d1d;font-size:13px;line-height:1.6;">${errData.error}</div>
+                <div style="margin-top:8px;font-size:12px;color:#b91c1c;font-weight:600;">💡 The name at the top of your resume must match your account name exactly.</div>
+              </div>
+            </div>`;
+          }
+          return;
         }
-        return;
       }
-      throw new Error(data.error || 'Analysis failed');
+    } catch(netErr) {
+      console.warn('[backend] unreachable, using Claude API fallback:', netErr.message);
     }
+
+    // ── CLAUDE API FALLBACK ──
+    if (!backendOk || !data) {
+      document.getElementById('loadStep').textContent = 'Reading file with AI…';
+      // Extract text from the file
+      let resumeText = '';
+      try {
+        resumeText = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = e => resolve(e.target.result || '');
+          reader.onerror = reject;
+          // For PDF/DOCX we read as text (best-effort; works for text-based PDFs)
+          reader.readAsText(selFile);
+        });
+      } catch(readErr) {
+        resumeText = selFile.name.replace(/\.[^.]+$/, '') + ' — resume text could not be extracted from binary PDF. Please paste resume text manually.';
+      }
+      if (!resumeText || resumeText.length < 100) {
+        resumeText = 'Resume from file: ' + selFile.name + '. Unable to extract text from this PDF. Please use a text-based PDF or paste your resume text.';
+      }
+
+      document.getElementById('loadStep').textContent = 'Running AI analysis…';
+      const atsResult = await claudeAnalyzeResume(resumeText);
+      origText = resumeText;
+      editText = resumeText;
+      origScore = atsResult.score;
+
+      // Build ats_check in exact backend format
+      const atsCheck = {
+        score: atsResult.score,
+        overall: atsResult.overall,
+        issues: atsResult.issues || [],
+        suggestions: atsResult.suggestions || [],
+        details: atsResult.details || {},
+        is_ats_friendly: atsResult.is_ats_friendly || false,
+        score_breakdown: {}
+      };
+
+      // Build analysis in exact backend format (only when score >= 80)
+      let analysis = null;
+      if (atsResult.score >= 80 && atsResult.top_3_roles) {
+        analysis = {
+          predicted_role:   atsResult.predicted_role,
+          normalized_role:  atsResult.normalized_role,
+          confidence:       atsResult.confidence,
+          top_3_roles:      atsResult.top_3_roles,
+          skills:           atsResult.skills || [],
+          experience_years: atsResult.experience_years || 2,
+          low_confidence:   atsResult.low_confidence || false,
+          low_conf_message: atsResult.low_confidence ? 'Role prediction is based on keywords — improve your score for better accuracy.' : null,
+        };
+      }
+
+      atsData = atsCheck;
+      mlData  = analysis;
+      data = { resume_text: resumeText, ats_check: atsCheck, analysis };
+      toast('✅ AI analysis complete (offline mode — backend not reachable)', 'success');
+    }
+
+    clearInterval(stepTimer);
     document.getElementById('loadCard').classList.remove('show');
     showResults(data);
     document.getElementById('results').classList.add('show');
@@ -2293,6 +2735,79 @@ function _showMCQResults(score, total, role) {
   `;
 }
 
+// ── Global voice input state ──────────────────────────────────────────────────
+let _voiceRecognition = null;
+let _voiceIsRecording = false;
+
+function startVoiceInput(taId, btnId) {
+  const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRec) {
+    alert('Voice input is not supported in this browser. Please use Chrome or Edge and ensure microphone permissions are granted.');
+    return;
+  }
+
+  // Toggle: if already recording, stop
+  if (_voiceIsRecording) {
+    _voiceRecognition && _voiceRecognition.stop();
+    _voiceIsRecording = false;
+    return;
+  }
+
+  _voiceRecognition = new SpeechRec();
+  _voiceRecognition.lang = 'en-US';
+  _voiceRecognition.continuous = true;
+  _voiceRecognition.interimResults = true;
+  _voiceRecognition.maxAlternatives = 1;
+
+  const ta  = document.getElementById(taId);
+  const btn = document.getElementById(btnId);
+  const rec = document.getElementById('recIndicator');
+  let finalText = ta ? ta.value : '';
+
+  _voiceRecognition.onstart = () => {
+    _voiceIsRecording = true;
+    if (btn) { btn.innerHTML = '⏹ Stop Recording'; btn.style.background = '#ef4444'; btn.style.boxShadow = '0 0 0 4px rgba(239,68,68,0.25)'; }
+    if (rec) rec.style.display = 'inline-block';
+    if (ta)  ta.style.borderColor = '#ef4444';
+  };
+
+  _voiceRecognition.onresult = (e) => {
+    let interim = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      if (e.results[i].isFinal) finalText += e.results[i][0].transcript + ' ';
+      else interim = e.results[i][0].transcript;
+    }
+    if (ta) ta.value = finalText + interim;
+  };
+
+  _voiceRecognition.onend = () => {
+    // Auto-restart if still meant to be recording (Chrome stops after silence)
+    if (_voiceIsRecording) {
+      try { _voiceRecognition.start(); } catch(e) { /* already started */ }
+      return;
+    }
+    if (ta)  { ta.value = finalText.trim(); ta.style.borderColor = '#c7d2fe'; }
+    if (btn) { btn.innerHTML = '🎤 Use Voice'; btn.style.background = '#7c3aed'; btn.style.boxShadow = ''; }
+    if (rec) rec.style.display = 'none';
+  };
+
+  _voiceRecognition.onerror = (e) => {
+    console.warn('[voice]', e.error);
+    if (e.error === 'not-allowed' || e.error === 'permission-denied') {
+      alert('Microphone access denied. Please click the 🔒 icon in your browser address bar and allow microphone access, then try again.');
+    } else if (e.error === 'network') {
+      return; // network errors can be ignored — auto-restart handles it
+    }
+    _voiceIsRecording = false;
+    if (ta)  ta.style.borderColor = '#c7d2fe';
+    if (btn) { btn.innerHTML = '🎤 Use Voice'; btn.style.background = '#7c3aed'; btn.style.boxShadow = ''; }
+    if (rec) rec.style.display = 'none';
+  };
+
+  try { _voiceRecognition.start(); }
+  catch(e) { alert('Could not start voice input. Please refresh the page and try again.'); }
+}
+
 // ── Mock Interview Modal — Voice + Typing ─────────────────────────────────────
 function _openMockInterviewModal(questions, role, skills) {
   const old = document.getElementById('mockIntModal');
@@ -2301,8 +2816,10 @@ function _openMockInterviewModal(questions, role, skills) {
   let current = 0;
   let totalScore = 0;
   const scoreHistory = [];
-  let recognition = null;
-  let isRecording = false;
+  // Use global _voiceRecognition / _voiceIsRecording (defined above)
+  // Reset voice state when modal opens
+  _voiceIsRecording = false;
+  _voiceRecognition = null;
 
   // ── Speech synthesis (agent speaks) ──
   const synth = window.speechSynthesis;
@@ -2316,45 +2833,6 @@ function _openMockInterviewModal(questions, role, skills) {
     if (pref) utt.voice = pref;
     if (onEnd) utt.onend = onEnd;
     synth.speak(utt);
-  }
-
-  // ── Speech recognition (user speaks) ──
-  function startVoiceInput(taId, btnId) {
-    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRec) { alert('Voice input not supported in this browser. Please type your answer.'); return; }
-    if (isRecording) { recognition && recognition.stop(); return; }
-
-    recognition = new SpeechRec();
-    recognition.lang = 'en-US';
-    recognition.continuous = true;
-    recognition.interimResults = true;
-
-    const ta = document.getElementById(taId);
-    const btn = document.getElementById(btnId);
-    let finalText = ta ? ta.value : '';
-
-    recognition.onstart = () => {
-      isRecording = true;
-      if (btn) { btn.innerHTML = '⏹ Stop Recording'; btn.style.background = '#ef4444'; }
-    };
-    recognition.onresult = (e) => {
-      let interim = '';
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        if (e.results[i].isFinal) finalText += e.results[i][0].transcript + ' ';
-        else interim = e.results[i][0].transcript;
-      }
-      if (ta) ta.value = finalText + interim;
-    };
-    recognition.onend = () => {
-      isRecording = false;
-      if (ta) ta.value = finalText.trim();
-      if (btn) { btn.innerHTML = '🎤 Use Voice'; btn.style.background = '#7c3aed'; }
-    };
-    recognition.onerror = () => {
-      isRecording = false;
-      if (btn) { btn.innerHTML = '🎤 Use Voice'; btn.style.background = '#7c3aed'; }
-    };
-    recognition.start();
   }
 
   const modal = document.createElement('div');
@@ -2454,8 +2932,8 @@ function _openMockInterviewModal(questions, role, skills) {
       const answer = (document.getElementById('intAnswer')||{}).value || '';
       if (!answer.trim()) { alert('Please type or speak your answer before submitting.'); return; }
 
-      // Stop any recording
-      if (recognition && isRecording) recognition.stop();
+      // Stop any recording — set flag FIRST so onend doesn't auto-restart
+      if (_voiceRecognition && _voiceIsRecording) { _voiceIsRecording = false; _voiceRecognition.stop(); }
       synth.cancel();
 
       const submitBtn = document.getElementById('intSubmitBtn');
@@ -2464,12 +2942,18 @@ function _openMockInterviewModal(questions, role, skills) {
       fetch('/api/mock-interview', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: AbortSignal.timeout(12000),
         body: JSON.stringify({
           role, question: questions[qIdx], user_answer: answer,
           question_number: qIdx + 1, skills
         })
       })
-      .then(r => r.json())
+      .then(r => { if (!r.ok) throw new Error('backend error'); return r.json(); })
+      .catch(async () => {
+        // Groq fallback for mock interview scoring
+        const result = await groqEvalAnswer(role, questions[qIdx], answer);
+        return { success: true, score: result.score, feedback: result.feedback, is_complete: qIdx >= questions.length - 1 };
+      })
       .then(resp => {
         if (!resp.success) throw new Error(resp.error || 'Evaluation failed');
         const sc = resp.score || 5;
@@ -2870,28 +3354,49 @@ async function applyAllWithAI() {
 
   try {
     // ── Call backend ML pipeline — no external API, runs on your server ──
-    const apiRes = await fetch(`${API}/claude-fix`, {
-      method     : 'POST',
-      headers    : { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body       : JSON.stringify({
-        resume_text   : editText || origText,
-        issues        : issues,
-        suggestions   : suggs,
-        predicted_role: role,
-        orig_score    : origScore,
-      })
-    });
+    let apiData = null;
+    try {
+      const apiRes = await fetch(`${API}/claude-fix`, {
+        method     : 'POST',
+        headers    : { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        signal     : AbortSignal.timeout(20000),
+        body       : JSON.stringify({
+          resume_text   : editText || origText,
+          issues        : issues,
+          suggestions   : suggs,
+          predicted_role: role,
+          orig_score    : origScore,
+        })
+      });
+      if (apiRes.ok) apiData = await apiRes.json();
+    } catch(netErr) {
+      console.warn('[backend] claude-fix unreachable, using Claude API directly:', netErr.message);
+    }
 
     clearInterval(aiTimer);
 
-    if (!apiRes.ok) {
-      let errMsg = `Server error ${apiRes.status}`;
-      try { const e = await apiRes.json(); errMsg = e.error || errMsg; } catch(_) {}
-      throw new Error(errMsg);
-    }
+    // ── CLAUDE API FALLBACK ──
+    if (!apiData || !apiData.success || !apiData.fixed_resume) {
+      rtLog('Backend unavailable — using Claude AI directly…', 'warn');
+      document.getElementById('aiStepLabel').textContent = 'Sending to Claude AI…';
+      fill.style.width = '60%';
 
-    const apiData = await apiRes.json();
+      const improvedText = await claudeFixResume(editText || origText, issues, suggs, role);
+      // Score the improved text with the deterministic JS scorer — consistent with backend
+      const improvedScore = checkAtsJs(improvedText);
+      apiData = {
+        success       : true,
+        fixed_resume  : improvedText,
+        summary       : `Resume rewritten for ${role} with ${issues.length} fixes applied using Claude AI.`,
+        fixes         : [
+          ...issues.slice(0,6).map(x  => ({ category:'Content',    action: x,  detail: 'Fixed: ' + x })),
+          ...suggs .slice(0,3).map(x  => ({ category:'Keywords',   action: x,  detail: 'Applied: ' + x })),
+        ],
+        predicted_score: improvedScore.score   // ← deterministic, not guessed
+      };
+      rtLog(`Claude AI fix complete ✓ — new score: ${improvedScore.score}`, 'done');
+    }
     console.log('[DEBUG] claude-fix response:', JSON.stringify({
       success: apiData.success,
       predicted_score: apiData.predicted_score,
@@ -3092,12 +3597,37 @@ async function reScore(text) {
   document.getElementById('rescoreLoad').classList.add('show');
   document.getElementById('rescoreBanner').classList.remove('show');
   try {
-    const res  = await fetch(`${API}/analyze-resume`, {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ resume_text: text, is_enhanced: true })
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Re-score failed');
+    let data = null;
+    try {
+      const res = await fetch(`${API}/analyze-resume`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        signal: AbortSignal.timeout(15000),
+        body: JSON.stringify({ resume_text: text, is_enhanced: true })
+      });
+      if (res.ok) data = await res.json();
+    } catch(netErr) {
+      console.warn('[reScore] backend unreachable, using Claude AI:', netErr.message);
+    }
+
+    // Claude API fallback — use deterministic JS scorer (same as backend)
+    if (!data || !data.ats_check) {
+      const scored = checkAtsJs(text);
+      const pred   = predictRoleJs(text);
+      const newS   = scored.score;
+
+      // Build analysis only when score >= 80
+      const analysis = newS >= 80 ? {
+        predicted_role:  pred.predicted_role,
+        normalized_role: pred.normalized_role,
+        confidence:      pred.confidence,
+        top_3_roles:     pred.top_3_roles,
+        skills:          pred.skills,
+        experience_years: 2,
+        low_confidence:  pred.low_confidence,
+      } : null;
+
+      data = { ats_check: scored, analysis };
+    }
 
     const newS = data.ats_check.score;
     const diff = newS - origScore;

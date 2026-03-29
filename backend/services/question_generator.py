@@ -380,7 +380,8 @@ def _load_flan() -> Optional[object]:
 # ── Groq fallback (LLaMA-3 free tier) ─────────────────────────────────────────
 
 def _groq_generate(prompt: str) -> Optional[str]:
-    """Call Groq API free tier (LLaMA-3). Returns text or None."""
+    """Call Groq API free tier (LLaMA-3). Returns text or None.
+    Uses the `groq` SDK if installed, falls back to raw `requests`."""
     api_key = os.environ.get("GROQ_API_KEY", "")
     if not api_key:
         return None
@@ -394,6 +395,26 @@ def _groq_generate(prompt: str) -> Optional[str]:
             temperature=0.7,
         )
         return response.choices[0].message.content
+    except ImportError:
+        # groq SDK not installed — fall back to raw HTTP
+        try:
+            import requests  # type: ignore[import]
+            r = requests.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                json={
+                    "model": "llama-3.1-8b-instant",
+                    "messages": [{"role": "user", "content": prompt}],
+                    "max_tokens": 600,
+                    "temperature": 0.7,
+                },
+                timeout=20,
+            )
+            r.raise_for_status()
+            return r.json()["choices"][0]["message"]["content"]
+        except Exception as e:
+            print(f"[question_generator] Groq HTTP fallback error: {e}")
+            return None
     except Exception as e:
         print(f"[question_generator] Groq error: {e}")
         return None
@@ -580,4 +601,4 @@ def generate_questions_for_resume(
         "role":         role,
         "model_used":   model_used,
         "skills_used":  skills[:6],
-    } 
+    }

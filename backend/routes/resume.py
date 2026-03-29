@@ -43,6 +43,14 @@ def health_check():
     return jsonify({'status': 'ok', 'message': 'API is running'})
 
 
+@resume_bp.route('/api/groq-key', methods=['GET'])
+def groq_key():
+    """Expose GROQ_API_KEY to the frontend so browser-side Groq calls work.
+    Only returns the key — never logs it. Set GROQ_API_KEY in your .env / environment."""
+    key = os.environ.get('GROQ_API_KEY', '')
+    return jsonify({'key': key})
+
+
 @resume_bp.route('/api/upload-resume', methods=['POST'])
 def upload_resume():
     try:
@@ -976,21 +984,84 @@ def mock_interview():
 
 def _evaluate_mock_answer(answer: str, question: str, role: str) -> tuple:
     """
-    Rule-based answer evaluator. Returns (feedback_str, score_0_to_10).
-    No LLM required — uses heuristics on answer quality signals.
+    AI-powered answer evaluator using Groq (LLaMA-3).
+    Falls back to heuristics if Groq is unavailable.
+    Returns (feedback_str, score_0_to_10).
     """
     import re
+    import json as _json
+
     if not answer or len(answer.strip()) < 10:
         return ("Your answer was too brief. Try to provide a detailed response with examples.", 1)
 
-    words      = answer.split()
+    # ── Try Groq AI evaluation first ─────────────────────────────────────────
+    api_key = os.environ.get("GROQ_API_KEY", "")
+    if api_key:
+        prompt = f"""You are an expert interview coach. Evaluate this interview answer.
+
+Role: {role}
+Question: "{question}"
+Candidate's Answer: "{answer}"
+
+Respond ONLY with valid JSON — no markdown, no extra text:
+{{"score": <integer 1-10>, "feedback": "<2-3 sentences of specific, actionable feedback mentioning what was strong and what to improve>"}}"""
+        try:
+            raw = None
+            try:
+                from groq import Groq  # type: ignore[import]
+                client = Groq(api_key=api_key)
+                resp = client.chat.completions.create(
+                    model="llama-3.1-8b-instant",
+                    messages=[{"role": "user", "content": prompt}],
+                    max_tokens=250,
+                    temperature=0.4,
+                )
+                raw = resp.choices[0].message.content
+            except ImportError:
+                import requests as _req  # type: ignore[import]
+                r = _req.post(
+                    "https://api.groq.com/openai/v1/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {api_key}",
+                        "Content-Type": "application/json",
+                    },
+                    json={
+                        "model": "llama-3.1-8b-instant",
+                        "messages": [{"role": "user", "content": prompt}],
+                        "max_tokens": 250,
+                        "temperature": 0.4,
+                    },
+                    timeout=15,
+                )
+                r.raise_for_status()
+                raw = r.json()["choices"][0]["message"]["content"]
+
+            if raw:
+                clean = re.sub(r'```(?:json)?|```', '', raw).strip()
+                parsed = _json.loads(clean)
+                score = max(1, min(10, int(parsed.get("score", 6))))
+                feedback = parsed.get("feedback", "").strip()
+                if feedback:
+                    return (feedback, score)
+        except Exception as e:
+            print(f"[mock-interview] Groq eval error: {e}")
+
+    # ── Heuristic fallback (no API key or Groq failed) ───────────────────────
+    words = answer.split()
     word_count = len(words)
     has_number = bool(re.search(r'\d+', answer))
-    has_example= any(w in answer.lower() for w in ['example', 'instance', 'when i', 'i worked', 'i led', 'i built', 'i developed', 'project', 'team'])
-    has_result = any(w in answer.lower() for w in ['result', 'outcome', 'achieved', 'improved', 'reduced', 'increased', '%', 'successfully'])
+    has_example = any(
+        w in answer.lower()
+        for w in ['example', 'instance', 'when i', 'i worked', 'i led',
+                  'i built', 'i developed', 'project', 'team']
+    )
+    has_result = any(
+        w in answer.lower()
+        for w in ['result', 'outcome', 'achieved', 'improved', 'reduced',
+                  'increased', '%', 'successfully']
+    )
 
-    score = 5  # baseline
-
+    score = 5
     if word_count >= 80:
         score += 2
         length_fb = "Good detailed response."
@@ -1018,7 +1089,6 @@ def _evaluate_mock_answer(answer: str, question: str, role: str) -> tuple:
         result_fb = "Mention the result/outcome of your actions for stronger impact."
 
     score = max(1, min(10, score))
-
     tips = []
     if not has_example:
         tips.append("Use the STAR method: Situation, Task, Action, Result.")
@@ -1030,6 +1100,4 @@ def _evaluate_mock_answer(answer: str, question: str, role: str) -> tuple:
     feedback_parts = [length_fb, example_fb, result_fb]
     if tips:
         feedback_parts.append("💡 Tip: " + " ".join(tips[:2]))
-
-    feedback = " ".join(feedback_parts)
-    return (feedback, score)
+    return (" ".join(feedback_parts), score)
